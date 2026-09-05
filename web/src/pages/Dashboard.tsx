@@ -271,9 +271,10 @@ export default function Dashboard() {
       </Row>
 
       {/* 最近报告 & 告警 */}
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} align="stretch" className="dashboard-recent-row">
         <Col xs={24} md={14}>
           <Card
+            className="dashboard-recent-card"
             title={
               <Space>
                 <FileTextOutlined />
@@ -330,6 +331,7 @@ export default function Dashboard() {
         </Col>
         <Col xs={24} md={10}>
           <Card
+            className="dashboard-recent-card"
             title={
               <Space>
                 <WarningOutlined />
