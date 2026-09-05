@@ -13,6 +13,13 @@ import { APP_VERSION } from '../version';
 
 const { Title, Text, Paragraph } = Typography;
 
+const repositoryUrl = 'https://github.com/Limnov/Vantage';
+const projectLinks = {
+  quickstart: `${repositoryUrl}#快速开始`,
+  source: repositoryUrl,
+  issues: `${repositoryUrl}/issues`
+};
+
 const features = [
   { icon: <RocketOutlined />, title: '自动化采集', desc: '多源搜索引擎 + AI 摘要，7×24 不间断监控跨境动态' },
   { icon: <AimOutlined />, title: '智能路由', desc: '按等级/类目/标签的精细路由，让对的告警发到对的群' },
@@ -66,9 +73,9 @@ export default function About() {
             </Text>
           </div>
           <Space wrap>
-            <Button icon={<BookOutlined />} href="https://vantage.shengxia.me/QUICKSTART.html" target="_blank">快速上手</Button>
-            <Button icon={<GithubOutlined />} href="https://github.com/panda-lsy/Vantage-Hackathon" target="_blank">源代码</Button>
-            <Button icon={<BulbOutlined />} href="https://github.com/panda-lsy/Vantage-Hackathon/issues" target="_blank">问题反馈</Button>
+            <Button icon={<BookOutlined />} href={projectLinks.quickstart} target="_blank" rel="noreferrer">快速上手</Button>
+            <Button icon={<GithubOutlined />} href={projectLinks.source} target="_blank" rel="noreferrer">源代码</Button>
+            <Button icon={<BulbOutlined />} href={projectLinks.issues} target="_blank" rel="noreferrer">问题反馈</Button>
           </Space>
         </Space>
       </Card>
