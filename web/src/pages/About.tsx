@@ -14,9 +14,10 @@ import { APP_VERSION } from '../version';
 const { Title, Text, Paragraph } = Typography;
 
 const repositoryUrl = 'https://github.com/Limnov/Vantage';
+const cloud = import.meta.env.VITE_PLATFORM === 'cloudflare';
 const projectLinks = {
   quickstart: `${repositoryUrl}#快速开始`,
-  source: repositoryUrl,
+  source: cloud ? `${repositoryUrl}/tree/cloudflare` : repositoryUrl,
   issues: `${repositoryUrl}/issues`
 };
 
@@ -29,7 +30,7 @@ const features = [
 
 const changelog = [
   { version: `v${APP_VERSION}`, date: '2026-09-05', items: ['Agent-first 成为默认业务入口，并保留经典版切换', '统一黑白米色视觉系统', '持久 Agent 队列、质量评测、页面拆包与移动端适配'] },
-  { version: 'v2.3.0', date: '2026-08-07', items: ['GitHub Pages 部署 + 自定义域名 (vantage.shengxia.me)', 'Demo 模式：HashRouter + Mock 适配器，在线免部署体验', '修复 Dashboard 空白问题（mock 数据结构对齐后端 API）', '前端防御性检查 + Quickstart 支持 Demo 访问'] },
+  { version: 'v2.3.0', date: '2026-08-07', items: ['历史版本：GitHub Pages 部署（已停用）', 'Demo 模式：HashRouter + Mock 适配器，在线免部署体验', '修复 Dashboard 空白问题（mock 数据结构对齐后端 API）', '前端防御性检查 + Quickstart 支持 Demo 访问'] },
   { version: 'v2.2.0', date: '2026-08-06', items: ['UI/UX 大幅升级：菜单 3 组分类 + Sider 折叠 + 面包屑导航', '快捷键支持：Ctrl+K 搜索 / ? 帮助面板 / 数字键导航', '通知中心：顶栏告警 Badge + 下拉列表', '微交互：数字 CountUp 动画 / 按钮 hover 缩放 / 响应式自适应'] },
   { version: 'v2.1.0', date: '2026-06-04', items: ['统一错误处理 + Request ID', 'AI 摘要二级缓存', 'Metrics 监控端点', 'LRU 包装 bug 修复'] },
   { version: 'v2.0.0', date: '2026-06-04', items: ['多租户架构（组织/用户/角色）', 'JWT 认证', '飞书 Bot 管理', '告警路由引擎', '设置三级作用域'] },
@@ -120,9 +121,9 @@ export default function About() {
       <Card title="系统信息" size="small" style={{ marginBottom: 16 }}>
         <Descriptions size="small" column={2} bordered>
           <Descriptions.Item label="版本">v{APP_VERSION}</Descriptions.Item>
-          <Descriptions.Item label="后端">Node.js + Express 5</Descriptions.Item>
+          <Descriptions.Item label="后端">{cloud ? 'Cloudflare Workers · Hono 入口 · 共享业务 API' : 'Node.js + Express 5'}</Descriptions.Item>
           <Descriptions.Item label="前端">React 18 + Vite 5 + Antd 5</Descriptions.Item>
-          <Descriptions.Item label="数据库">SQLite（单文件）</Descriptions.Item>
+          <Descriptions.Item label="数据库">{cloud ? 'Cloudflare D1 · R2 报告归档 · Queues 后台任务' : 'SQLite（单文件）'}</Descriptions.Item>
           <Descriptions.Item label="缓存">进程内 LRU + TTL</Descriptions.Item>
           <Descriptions.Item label="AI">自定义 OpenAI-compatible / 百炼 / DeepSeek / MiniMax（设置页可配置）</Descriptions.Item>
           <Descriptions.Item label="采集">Tavily API</Descriptions.Item>

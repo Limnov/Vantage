@@ -114,7 +114,9 @@ export default function Watchlist() {
     try {
       const r = await watchlistApi.run(id);
       if (r.ok) {
-        if (r.deduplicated) {
+        if (r.queued) {
+          message.success({content: '已加入后台队列，完成后可在报告中查看结果', key: `run-${id}`, duration: 5});
+        } else if (r.deduplicated) {
           message.success({
             content: `「${r.watchlistName || ''}」24小时内已有报告，复用报告 #${r.reportId || '-'}`,
             key: `run-${id}`,

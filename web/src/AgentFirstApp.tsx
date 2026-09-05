@@ -24,10 +24,6 @@ export default function App({
 }) {
   const { user, orgs, currentOrgId, switchOrg, logout } = useAuth();
   const [setup, setSetup] = useState(false);
-  useEffect(() => {
-    if (window.location.pathname !== "/")
-      window.history.replaceState(null, "", "/");
-  }, []);
   return (
     <div className="agent-app">
       <header className="workspace-header">

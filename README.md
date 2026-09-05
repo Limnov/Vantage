@@ -9,14 +9,14 @@
 
 <p align="center">
   <strong>让 Agent 接住市场研究、持续监控与告警处置，再把每一步留在可核验的业务轨迹里。</strong><br />
-  <sub>Agent-first · 经典工作台 · 21 个业务工具 · SQLite 持久队列 · MCP · 飞书审批</sub>
+  <sub>Agent-first · 经典工作台 · D1 · R2 · Hono · Queues · MCP · 飞书审批</sub>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Vantage-3.0.0-111111?style=flat-square" alt="Vantage 3.0.0" />
   <img src="https://img.shields.io/badge/Node.js-%E2%89%A522.12-111111?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js 22.12 or newer" />
   <img src="https://img.shields.io/badge/React-18-111111?style=flat-square&logo=react&logoColor=white" alt="React 18" />
-  <img src="https://img.shields.io/badge/SQLite-durable_queue-111111?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite durable queue" />
+  <img src="https://img.shields.io/badge/Cloudflare-D1%20%2B%20R2%20%2B%20Queues-111111?style=flat-square&logo=cloudflare&logoColor=white" alt="Cloudflare D1, R2 and Queues" />
   <img src="https://img.shields.io/badge/MCP-supported-111111?style=flat-square" alt="Model Context Protocol supported" />
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-111111?style=flat-square" alt="MIT License" /></a>
 </p>
@@ -25,13 +25,45 @@ Vantage 是一个可自行部署的市场情报应用。登录后默认进入 Ag
 
 [产品界面](#产品界面) · [核心能力](#核心能力) · [Agent 如何工作](#agent-如何工作) · [快速开始](#快速开始) · [配置](#配置) · [验证](#验证) · [安全与开源](#安全与开源)
 
+## Cloudflare 版本
+
+**[产品展示页](https://vantage.limnov.com/) · [体验 Demo](https://vantage.limnov.com/demo) · [正式工作台](https://vantage.limnov.com/app)**
+
+当前 `cloudflare` 分支提供前端、API、数据库、报告归档和后台任务的 Cloudflare 适配。**线上目前开放展示页与独立 Demo，正式工作台等待 Workers Paid，尚未启用。** `main` 保留 Node.js / SQLite 自托管版本。Demo 使用独立浏览器会话和固定示例，不调用模型、不发送通知、不读写正式数据。
+
+| 产品展示页 | 独立 Demo |
+| --- | --- |
+| ![Vantage 产品展示页](./assets/readme/cloudflare-landing.png) | ![Vantage 独立 Demo](./assets/readme/cloudflare-demo.png) |
+
+| 服务 | 职责 |
+| --- | --- |
+| Workers + Hono | 公网 API 入口、鉴权业务路由适配、安全响应头 |
+| D1 | 业务数据、会话、Agent 轨迹、审批、持久限流与任务状态 |
+| R2 | 私有报告归档，按登录用户及组织校验下载 |
+| Queues + Cron Triggers | Agent 与监控任务、重复认领保护、待处理任务补发 |
+| Static Assets | React 产品、预渲染展示页和浏览器内 Demo |
+| Secrets | 模型、搜索及全局通知配置 |
+
+Hono 入口通过 Cloudflare 官方 Node HTTP 适配器复用现有 Express 业务路由，保留组织权限和业务工具。[完整部署步骤与运行边界 →](./docs/cloudflare-deployment.md)
+
+```bash
+npm ci --prefix server
+npm ci --prefix web
+npm ci --prefix cloudflare
+cd cloudflare
+npm run build:web
+npm test
+# 创建资源、填写私有配置并应用 D1 迁移后：
+npm run deploy
+```
+
 ## 产品界面
 
 | Agent-first（默认入口） | 经典管理界面 |
 | --- | --- |
 | ![Vantage Agent-first 对话工作台](./assets/readme/agent-workspace.png) | ![Vantage 经典管理界面](./assets/readme/classic-workspace.png) |
 
-两个版本采用统一的黑、白、米色视觉系统，并支持明暗主题。模式选择保存在本机浏览器中，刷新后继续使用上次的界面。
+两个版本采用统一的黑、白、米色视觉系统，并支持明暗主题。Agent 模式使用 `/app`，经典仪表盘使用 `/dashboard`；刷新与直接访问链接都保留相应界面。
 
 <p align="center">
   <img src="./assets/readme/agent-mobile.png" width="300" alt="Vantage Agent-first 移动端界面" />
@@ -49,10 +81,10 @@ Vantage 是一个可自行部署的市场情报应用。登录后默认进入 Ag
 | 告警处置 | 查询告警并确认或忽略，保留组织与操作者边界 |
 | 通知治理 | 管理组织 Bot 路由；Agent 只提出通知建议，由 `owner/admin` 独立批准 |
 | 多组织协作 | 组织、成员和 `owner / admin / member / viewer` 角色；数据库实时校验成员关系 |
-| 身份与会话 | 自助注册默认关闭；Access/Refresh Token 绑定 SQLite 会话，登出和改密会撤销会话 |
+| 身份与会话 | 自助注册默认关闭；Access/Refresh Token 绑定持久会话，登出和改密会撤销会话 |
 | 经典工作台 | Dashboard、监控、报告、告警、组织、系统设置与运行日志，按页面加载 |
 | 开发者接口 | REST API、HTTP/stdio MCP，与内部 Agent 共用 21 个 Zod 工具契约 |
-| 任务执行 | SQLite 持久队列、原子领取、租约心跳、取消和进程重启恢复 |
+| 任务执行 | Cloudflare Queues + D1 原子认领、取消和过期失败保护；Node 版使用 SQLite 持久队列 |
 
 ## Agent 如何工作
 
@@ -90,6 +122,8 @@ Agent 与 MCP 共用同一套参数校验、权限判断和业务实现：
 
 ## 系统结构
 
+下面展示共享业务分层与 Node 自托管结构。Cloudflare 对应 D1 / Queues / R2，详见[云端架构](./docs/cloudflare-deployment.md#架构)。
+
 <p align="center">
   <img src="./assets/readme/system-architecture.png" width="100%" alt="Vantage 的 Web 与 MCP 入口、REST API 与 Agent 编排层，以及搜索、模型、SQLite 和飞书服务层" />
 </p>
@@ -117,6 +151,8 @@ Agent Runner（连续上下文、工具预算、取消检查、执行记录）
 - `web/src/components/SecureSetup.tsx`：凭据独立提交表单，不经过模型上下文。
 
 ## 快速开始
+
+**Cloudflare 部署请使用[云端部署指南](./docs/cloudflare-deployment.md)。以下步骤运行本机 Node / SQLite 版本。**
 
 ### 环境要求
 
@@ -167,6 +203,8 @@ Windows 可运行根目录的 `start.ps1`。前后端启动后，使用 `Ctrl+C`
 
 ## 配置
 
+Cloudflare 版通过 `cloudflare/secrets.mjs` 或 `wrangler secret put` 配置模型和搜索；页面只读，普通业务设置保存在 D1。下面描述 Node 自托管版本。
+
 首次登录后，可在右上角「连接配置」中填写模型、搜索和飞书连接。密钥通过独立表单直接发送到后端，不进入模型消息，也不会写入 SQLite；运行时接口只返回脱敏状态。
 
 ```dotenv
@@ -201,6 +239,10 @@ stdio 进程继承启动者提供的用户和组织上下文，只适合受信�
 
 ## 验证
 
+Cloudflare 验证：`npm test --prefix cloudflare`（事务/隔离/恢复），`npm run test:smoke --prefix cloudflare`（实际 API），`npm run test:browser --prefix cloudflare`（展示页与独立 Demo）。命令前置条件及真实模型测试见[部署指南](./docs/cloudflare-deployment.md#本地验证)。
+
+共享业务验证：
+
 ```bash
 npm run check       # 后端测试 + 前端生产构建 + 离线 Agent 评测
 npm run test:ui     # 真实 HTTP / SQLite / 浏览器流程
@@ -231,7 +273,7 @@ npm run test:live   # 真实模型的临时只读业务任务
 
 ## 安全与开源
 
-Vantage 是自托管应用。公网部署前应配置 HTTPS、可信 `CORS_ORIGINS` 和网关限流，并为 Access Token 与 Refresh Token 使用不同的强随机密钥。API Key、Webhook、SQLite、日志和本地 `.env` 不应提交到 Git。
+Vantage 是自托管应用。公网部署前应配置 HTTPS、可信 `CORS_ORIGINS` 和网关限流，并为 Access Token 与 Refresh Token 使用不同的强随机密钥。API Key、Webhook、数据库文件、日志和本地 `.env` 不应提交到 Git。Cloudflare 资源 ID 不是授权凭据；密钥与管理员密码仅保存在忽略文件和云端 Secrets / D1 密码哈希中。MIT 许可覆盖项目原创代码，第三方依赖和外部服务仍遵循各自条款。
 
 安全默认值：
 
@@ -247,7 +289,7 @@ JWT_REFRESH_EXPIRES_IN=7d
 - 登录会创建可撤销的 SQLite 会话；登出和改密会立即撤销相应会话。升级后旧版无会话标识的 Token 会失效，需要重新登录。
 - 全局运行日志、搜索分析和缓存管理仅限系统管理员；外部通知、Bot 测试及 Agent 写操作执行最小角色检查。
 
-当前内置限流与 MCP 传输会话保存在单进程内，登录会话和 Agent 队列保存在 SQLite。多个 Worker 必须访问同一个本机 SQLite 文件；跨主机水平扩展需要外部队列、共享 MCP 会话与统一限流。项目不包含 TLS、托管密钥服务或完整的生产运维基线。
+Node 自托管版的内置限流与 MCP 传输会话保存在单进程内，登录会话和 Agent 队列保存在 SQLite。多个 Worker 必须访问同一个本机 SQLite 文件；跨主机水平扩展需要外部队列、共享 MCP 会话与统一限流。该 Node 模式需要自行配置 TLS 和密钥管理。Cloudflare 分支使用 HTTPS 自定义域名、Secrets、D1 限流和无状态 MCP；两种版本均需部署者负责账户、备份和费用管理。
 
 项目以 [MIT License](./LICENSE) 开源。发布前与每次安全事件后，都应重新扫描当前树和全部可达 Git 历史，并轮换任何可能暴露的凭据。安全问题请按 [`SECURITY.md`](./SECURITY.md) 的方式私下报告。
 
@@ -266,7 +308,8 @@ Vantage/
 │   ├── src/scheduler/       # 定时任务
 │   └── test/                # Node.js 测试
 ├── web/                     # Agent-first 与经典 React 工作台
-├── db/                      # SQLite schema 与迁移
+├── cloudflare/              # Hono Worker、D1 适配、R2、Queues 与云端迁移
+├── db/                      # Node 版 SQLite schema 与迁移
 ├── docs/                    # 重构说明与 Agent 设计资料
 ├── assets/readme/           # README 产品截图与架构图
 └── README.md

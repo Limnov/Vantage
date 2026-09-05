@@ -1,13 +1,11 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense } from "react";
 import { Spin } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import AgentFirstApp from "./AgentFirstApp";
 
 const ClassicApp = lazy(() => import("./ClassicApp"));
 
 type AppMode = "agent" | "classic";
-
-const MODE_KEY = "vantage.ui-mode";
 
 export default function App({
   themeMode,
@@ -17,17 +15,12 @@ export default function App({
   onToggleTheme: () => void;
 }) {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<AppMode>(() =>
-    localStorage.getItem(MODE_KEY) === "classic" ? "classic" : "agent",
-  );
-
-  useEffect(() => {
-    localStorage.setItem(MODE_KEY, mode);
-  }, [mode]);
+  const { pathname } = useLocation();
+  const mode: AppMode =
+    pathname === "/app" || pathname === "/login" ? "agent" : "classic";
 
   const switchMode = (next: AppMode) => {
-    setMode(next);
-    navigate(next === "classic" ? "/dashboard" : "/", { replace: true });
+    navigate(next === "classic" ? "/dashboard" : "/app", { replace: true });
   };
 
   if (mode === "classic") {

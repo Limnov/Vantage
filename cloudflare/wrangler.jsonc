@@ -1,0 +1,78 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vantage",
+  "main": "dist/worker.mjs",
+  "account_id": "28c508bf41168952d42f067113491f4e",
+  "compatibility_date": "2026-09-05",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "enable_nodejs_http_server_modules",
+    "global_fetch_strictly_public",
+  ],
+  "build": {
+    "command": "npm run build",
+  },
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/health", "/mcp"],
+  },
+  "routes": [
+    {
+      "pattern": "vantage.limnov.com",
+      "custom_domain": true,
+    },
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vantage-production",
+      "database_id": "e883b0ff-4615-4fb1-a06f-c622a7a0dd7f",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "REPORTS",
+      "bucket_name": "vantage-reports",
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "queue": "vantage-agent",
+        "binding": "AGENT_QUEUE",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "vantage-agent",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 3,
+        "max_concurrency": 2,
+      },
+    ],
+  },
+  "triggers": {
+    "crons": ["* * * * *"],
+  },
+  "vars": {
+    "NODE_ENV": "production",
+    "HOST": "0.0.0.0",
+    "ALLOW_INSECURE_DEV_ADMIN": "false",
+    "REGISTRATION_MODE": "disabled",
+    "AGENT_WORKER_ENABLED": "false",
+    "SCHEDULER_ENABLED": "false",
+    "CORS_ORIGINS": "https://vantage.limnov.com",
+    "LOG_FORMAT": "json",
+    "AI_TIMEOUT": "120000",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  "limits": {
+    "cpu_ms": 300000,
+  },
+}

@@ -33,7 +33,7 @@ export default function Login() {
       await login(values.username, values.password);
       localStorage.setItem('vantage.lastUsername', values.username);
       message.success('登录成功');
-      const from = (location.state as any)?.from || '/';
+      const from = (location.state as any)?.from || (location.pathname === '/login' ? '/app' : location.pathname);
       navigate(from, { replace: true });
     } catch (err: any) {
       message.error(err.response?.data?.error || '登录失败');
@@ -47,7 +47,7 @@ export default function Login() {
     try {
       await register(values);
       message.success('注册成功，已自动创建组织');
-      navigate('/', { replace: true });
+      navigate('/app', { replace: true });
     } catch (err: any) {
       message.error(err.response?.data?.error || '注册失败');
     } finally {

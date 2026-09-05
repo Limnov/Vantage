@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { ConfigProvider, theme, App as AntdApp } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import App from './App';
@@ -8,6 +8,22 @@ import { AuthProvider, useAuth } from './lib/auth';
 import Login from './pages/Login';
 import 'antd/dist/reset.css';
 import './index.css';
+
+const Landing = lazy(() => import('./pages/Landing'));
+const Demo = lazy(() => import('./pages/Demo'));
+
+function Entry({mode,toggleTheme}: {mode: ThemeMode; toggleTheme: () => void}) {
+  const {pathname} = useLocation();
+  useEffect(() => {
+    document.title = pathname === '/' ? 'Vantage — Agent 驱动的市场情报工作台' : pathname === '/demo' ? 'Vantage Demo · 独立场景演示' : 'Vantage · 工作台';
+    document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://vantage.limnov.com${pathname}`);
+    let robots = document.querySelector('meta[name="robots"]');
+    if (!robots) { robots = document.createElement('meta'); robots.setAttribute('name','robots'); document.head.appendChild(robots); }
+    robots.setAttribute('content', pathname === '/' || pathname === '/demo' ? 'index,follow' : 'noindex,nofollow');
+  }, [pathname]);
+  if (pathname === '/' || pathname === '/demo') return <Suspense fallback={<div className="mode-loading">加载中…</div>}>{pathname === '/' ? <Landing/> : <Demo/>}</Suspense>;
+  return <AuthProvider><AuthGate><App themeMode={mode} onToggleTheme={toggleTheme}/></AuthGate></AuthProvider>;
+}
 
 type ThemeMode = 'light' | 'dark';
 
@@ -102,11 +118,7 @@ function Root() {
     >
       <AntdApp>
         <Router>
-          <AuthProvider>
-            <AuthGate>
-              <App themeMode={mode} onToggleTheme={toggleTheme} />
-            </AuthGate>
-          </AuthProvider>
+          <Entry mode={mode} toggleTheme={toggleTheme} />
         </Router>
       </AntdApp>
     </ConfigProvider>

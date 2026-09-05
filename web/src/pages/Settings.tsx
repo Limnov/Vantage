@@ -459,6 +459,13 @@ export default function Settings() {
 
       <Form form={form} layout="vertical">
         {Object.entries(settingGroups).map(([groupKey, group]) => {
+          if (feishuConfig?.editable === false && ['ai_model','tavily','feishu'].includes(groupKey)) {
+            return <Card key={groupKey} title={group.label} style={{marginBottom: 24}}>
+              <Alert type="info" showIcon message="由部署管理员管理" description="云端模型、搜索和全局通知凭据通过 Cloudflare Secrets 配置。组织 Bot 和告警规则仍可在产品内管理。" />
+              {groupKey === 'ai_model' && <p style={{marginTop:16}}>当前模型服务：{aiData?.activeProviderLabel || aiData?.activeProvider || '未配置'}</p>}
+              <a href="https://github.com/Limnov/Vantage/blob/cloudflare/docs/cloudflare-deployment.md" target="_blank" rel="noreferrer">查看云端配置说明 ↗</a>
+            </Card>;
+          }
           // AI model group: editable local runtime config
           if (groupKey === 'ai_model') {
             return (
@@ -1289,7 +1296,7 @@ export default function Settings() {
                 <Text strong>提示</Text>
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    AI、Tavily 和全局飞书凭据由本页面保存到服务端本地 server/.env，不写入 SQLite，并支持热重载；去重、推送开关等业务设置仍保存在 SQLite。
+                    {feishuConfig?.editable === false ? '云端凭据保存在 Cloudflare Secrets，业务设置保存在 D1。' : 'AI、Tavily 和全局飞书凭据保存在 server/.env；业务设置保存在 SQLite。'}
                   </Text>
                 </div>
               </div>

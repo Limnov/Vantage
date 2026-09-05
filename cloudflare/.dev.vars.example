@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local Wrangler only. Never commit .dev.vars.
+JWT_SECRET=replace-with-at-least-32-random-characters
+JWT_REFRESH_SECRET=replace-with-a-different-32-character-random-secret
+AI_API_KEY=
+AI_BASE_URL=https://api.example.com/v1
+AI_MODEL=
+TAVILY_API_KEY=
+CORS_ORIGINS=http://localhost:8787,http://127.0.0.1:8787

@@ -87,3 +87,9 @@ coverage/
 .vite/
 
 doc/
+
+# Cloudflare deployment state and local secrets
+cloudflare/dist/
+.wrangler/
+.dev.vars
+.env.cloudflare.local

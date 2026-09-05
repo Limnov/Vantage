@@ -16,6 +16,7 @@ export default function SecureSetup({ onClose }: { onClose: () => void }) {
   const { user, currentOrg, currentOrgId } = useAuth();
   const [form] = Form.useForm();
   const [botForm] = Form.useForm();
+  const [cloudConfig, setCloudConfig] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bots, setBots] = useState<any[]>([]);
   const [botId, setBotId] = useState<number | undefined>();
@@ -28,6 +29,7 @@ export default function SecureSetup({ onClose }: { onClose: () => void }) {
       runtimeConfigApi
         .get()
         .then((r) => {
+          setCloudConfig(r.editable === false);
           const fields = Object.fromEntries(
             Object.entries(r.values || {})
               .filter(([, v]: any) => !v.secret)
@@ -87,7 +89,8 @@ export default function SecureSetup({ onClose }: { onClose: () => void }) {
                   key: "model",
                   label: "模型与搜索",
                   children: (
-                    <Form form={form} layout="vertical" onFinish={saveModel}>
+                    <Form form={form} layout="vertical" onFinish={saveModel} disabled={cloudConfig}>
+                      {cloudConfig && <Alert type="info" showIcon message="云端模型与搜索配置由部署管理员在 Cloudflare Secrets 中管理。" style={{marginBottom:16}} />}
                       <Form.Item label="连接名称" name="AI_PROVIDER_NAME">
                         <Input placeholder="我的模型服务" />
                       </Form.Item>

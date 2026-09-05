@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /$
+Disallow: /api/
+Disallow: /app
+Disallow: /dashboard
+Disallow: /login
+Sitemap: https://vantage.limnov.com/sitemap.xml
