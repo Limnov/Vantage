@@ -152,6 +152,17 @@ npm run dev
 | API | <http://127.0.0.1:3004> |
 | 健康检查 | <http://127.0.0.1:3004/health> |
 
+局域网访问需要使用强管理员密码，并显式声明监听地址、Web 主机与 CORS 来源。将示例 IP 替换为运行机器的局域网地址：
+
+```bash
+HOST=0.0.0.0 \
+CORS_ORIGINS=http://192.168.31.251:5177 \
+ALLOW_INSECURE_DEV_ADMIN=false \
+VANTAGE_WEB_HOST=0.0.0.0 \
+VANTAGE_WEB_ALLOWED_HOSTS=192.168.31.251 \
+npm run dev
+```
+
 Windows 可运行根目录的 `start.ps1`。前后端启动后，使用 `Ctrl+C` 停止；也可运行 `stop.ps1` 清理残留进程。
 
 ## 配置
