@@ -10,18 +10,19 @@ import 'antd/dist/reset.css';
 import './index.css';
 
 const Landing = lazy(() => import('./pages/Landing'));
-const Demo = lazy(() => import('./pages/Demo'));
+
 
 function Entry({mode,toggleTheme}: {mode: ThemeMode; toggleTheme: () => void}) {
   const {pathname} = useLocation();
   useEffect(() => {
-    document.title = pathname === '/' ? 'Vantage — Agent 驱动的市场情报工作台' : pathname === '/demo' ? 'Vantage Demo · 独立场景演示' : 'Vantage · 工作台';
+    document.title = pathname === '/' ? 'Vantage — Agent 驱动的市场情报工作台' : pathname === '/demo' ? 'Vantage Demo · 真实工作台' : 'Vantage · 工作台';
     document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://vantage.limnov.com${pathname}`);
     let robots = document.querySelector('meta[name="robots"]');
     if (!robots) { robots = document.createElement('meta'); robots.setAttribute('name','robots'); document.head.appendChild(robots); }
     robots.setAttribute('content', pathname === '/' || pathname === '/demo' ? 'index,follow' : 'noindex,nofollow');
   }, [pathname]);
-  if (pathname === '/' || pathname === '/demo') return <Suspense fallback={<div className="mode-loading">加载中…</div>}>{pathname === '/' ? <Landing/> : <Demo/>}</Suspense>;
+  if (pathname === '/') return <Suspense fallback={<div className="mode-loading">加载中…</div>}><Landing/></Suspense>;
+  if (pathname === '/demo') return <AuthProvider><Login demoMode /></AuthProvider>;
   return <AuthProvider><AuthGate><App themeMode={mode} onToggleTheme={toggleTheme}/></AuthGate></AuthProvider>;
 }
 

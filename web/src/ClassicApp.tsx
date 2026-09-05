@@ -351,7 +351,7 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
           mode="inline"
           selectedKeys={[selected]}
           style={{ borderRight: 0, paddingTop: 8 }}
-          items={menuGroups}
+          items={user?.is_demo ? menuGroups.filter(group => group.key === 'workspace') : menuGroups}
           inlineCollapsed={siderCollapsed}
         />
         {!siderCollapsed && (
@@ -393,7 +393,7 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
                 <Button className="classic-org-switch" type="text" loading={orgSwitching} icon={<SwapOutlined spin={orgSwitching} />}>
                   <Space>
                     <Text strong>{currentOrg?.name || '选择组织'}</Text>
-                    <Tag>{currentOrg?.my_role || '-'}</Tag>
+                    <Tag>{user?.is_demo ? '只读 Demo' : (currentOrg?.my_role || currentOrg?.role || '-')}</Tag>
                   </Space>
                 </Button>
               </Dropdown>
@@ -423,6 +423,7 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
                   type="text"
                   className="classic-toolbar-button classic-secondary-action"
                   aria-label="全局搜索"
+                  disabled={user?.is_demo}
                   icon={<SearchOutlined />}
                 />
               </Dropdown>
@@ -476,6 +477,7 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
             </Dropdown>
           </Space>
         </Header>
+        {user?.is_demo && <div className="demo-workspace-note" role="status">Demo · 真实工作台 / 示例数据 · 只读浏览，不提供 API Key，不执行真实调用。</div>}
         <Content className="classic-content" style={{
           margin: 16,
           padding: 24,

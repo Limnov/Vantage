@@ -1,0 +1,26 @@
+[Unit]
+Description=Vantage market intelligence and Agent worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vantage
+Group=vantage
+WorkingDirectory=/opt/vantage/current/server
+EnvironmentFile=/etc/vantage/service.env
+EnvironmentFile=/var/lib/vantage/config/runtime.env
+ExecStart=/opt/vantage-runtime/bin/node src/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=180
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/vantage
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

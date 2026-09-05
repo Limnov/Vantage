@@ -23,6 +23,7 @@ export interface LoginResponse {
     email: string;
     display_name?: string;
     is_system_admin: boolean;
+  is_demo?: boolean;
   };
   orgs: Array<{
     id: number;

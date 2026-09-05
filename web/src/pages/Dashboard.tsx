@@ -70,7 +70,7 @@ function SignalDonut({ data }: { data: Array<{ type: string; count: number }> })
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { currentOrg } = useAuth();
+  const { currentOrg, user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [health, setHealth] = useState<any>(null);
   const [timeseries, setTimeseries] = useState<any>(null);
@@ -170,11 +170,11 @@ export default function Dashboard() {
         </div>
         <Space>
           <Tooltip title="运行所有监控项">
-            <Button icon={<ThunderboltOutlined />} onClick={() => navigate('/watchlist')}>
+            <Button disabled={user?.is_demo} icon={<ThunderboltOutlined />} onClick={() => navigate('/watchlist')}>
               运行全部
             </Button>
           </Tooltip>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/watchlist')}>
+          <Button disabled={user?.is_demo} type="primary" icon={<PlusOutlined />} onClick={() => navigate('/watchlist')}>
             新建监控
           </Button>
           <Button icon={<ReloadOutlined spin={refreshing} />} onClick={() => load(false)} loading={refreshing}>

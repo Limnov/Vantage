@@ -63,7 +63,7 @@ router.post('/login', async (req, res) => {
 
   // 支持用户名或邮箱登录
   const user = await queryOne(
-    'SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1',
+    'SELECT u.*, (SELECT org_id FROM demo_accounts WHERE user_id = u.id) AS demo_org_id FROM users u WHERE username = ? OR email = ? LIMIT 1',
     [username, username]
   );
   if (!user) {
@@ -88,6 +88,8 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'invalid credentials' });
   }
 
+  user.is_demo = !!user.demo_org_id;
+  if (user.is_demo) user.is_system_admin = 0;
   const { token, refreshToken } = await issueSession(user);
 
   // 更新最后登录信息
@@ -117,9 +119,10 @@ router.post('/login', async (req, res) => {
       username: user.username,
       email: user.email,
       display_name: user.display_name,
-      is_system_admin: !!user.is_system_admin
+      is_system_admin: !!user.is_system_admin,
+      is_demo: !!user.is_demo
     },
-    orgs
+    orgs: user.is_demo ? orgs.filter(org => org.id === user.demo_org_id).map(org => ({ ...org, role: 'viewer' })) : orgs
   });
 });
 
@@ -209,9 +212,10 @@ router.get('/me', requireAuth, async (req, res) => {
       username: req.user.username,
       email: req.user.email,
       display_name: req.user.display_name,
-      is_system_admin: !!req.user.is_system_admin
+      is_system_admin: !!req.user.is_system_admin,
+      is_demo: !!req.user.is_demo
     },
-    orgs
+    orgs: req.user.is_demo ? orgs.filter(org => org.id === req.user.demo_org_id).map(org => ({ ...org, role: 'viewer' })) : orgs
   });
 });
 

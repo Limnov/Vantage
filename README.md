@@ -25,15 +25,21 @@ Vantage 是一个可自行部署的市场情报应用。登录后默认进入 Ag
 
 [产品界面](#产品界面) · [核心能力](#核心能力) · [Agent 如何工作](#agent-如何工作) · [快速开始](#快速开始) · [配置](#配置) · [验证](#验证) · [安全与开源](#安全与开源)
 
-## Cloudflare 版本
+## 在线体验
 
-**[产品展示页](https://vantage.limnov.com/) · [体验 Demo](https://vantage.limnov.com/demo) · [正式工作台](https://vantage.limnov.com/app)**
+**[产品展示页](https://vantage.limnov.com/) · [登录 Demo](https://vantage.limnov.com/demo) · [正式工作台](https://vantage.limnov.com/app)**
 
-当前 `cloudflare` 分支提供前端、API、数据库、报告归档和后台任务的 Cloudflare 适配。**线上目前开放展示页与独立 Demo，正式工作台等待 Workers Paid，尚未启用。** `main` 保留 Node.js / SQLite 自托管版本。Demo 使用独立浏览器会话和固定示例，不调用模型、不发送通知、不读写正式数据。
+当前 `aliyun` 分支使用阿里云服务器运行 Node.js、SQLite 和常驻 Agent Worker，Cloudflare 负责域名代理与 HTTPS。产品展示页、真实工作台和 Demo 共用站点，无需开通 Workers Paid。[服务器部署说明 →](./deploy/aliyun/README.md)
 
-| 产品展示页 | 独立 Demo |
+**演示账号：`demo` / 密码：`demo`。** Demo 登录正式界面，复用仪表盘、监控、报告、告警和 Agent 历史；数据来自独立演示组织。账号只读，不提供 API Key，不执行真实模型、搜索或通知，也不能访问正式组织的数据。
+
+| 真实仪表盘 Demo | Agent 历史 Demo |
 | --- | --- |
-| ![Vantage 产品展示页](./assets/readme/cloudflare-landing.png) | ![Vantage 独立 Demo](./assets/readme/cloudflare-demo.png) |
+| ![Vantage 真实仪表盘 Demo](./assets/readme/aliyun-demo.png) | ![Vantage Agent 历史 Demo](./assets/readme/aliyun-agent-demo.png) |
+
+## Cloudflare 适配分支
+
+`cloudflare` 分支保留 D1 / R2 / Hono / Queues 方案；`main` 保留此前的 Node 自托管基线。以下是 Cloudflare 适配能力，当前线上正式业务使用上述阿里云部署。完整 Cloudflare 后端仍需满足该分支文档中的 Workers 套餐和资源要求。
 
 | 服务 | 职责 |
 | --- | --- |
@@ -41,7 +47,7 @@ Vantage 是一个可自行部署的市场情报应用。登录后默认进入 Ag
 | D1 | 业务数据、会话、Agent 轨迹、审批、持久限流与任务状态 |
 | R2 | 私有报告归档，按登录用户及组织校验下载 |
 | Queues + Cron Triggers | Agent 与监控任务、重复认领保护、待处理任务补发 |
-| Static Assets | React 产品、预渲染展示页和浏览器内 Demo |
+| Static Assets | React 产品与预渲染展示页（Demo 以相应分支实现为准） |
 | Secrets | 模型、搜索及全局通知配置 |
 
 Hono 入口通过 Cloudflare 官方 Node HTTP 适配器复用现有 Express 业务路由，保留组织权限和业务工具。[完整部署步骤与运行边界 →](./docs/cloudflare-deployment.md)

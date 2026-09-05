@@ -49,7 +49,7 @@ export default function Landing() {
             {productEnabled ? '打开产品' : '查看产品状态'}
           </Link>
         </div>
-        <small>Demo 无需注册 · 内置示例数据 · 无真实通知</small>
+        <small>Demo 账号登录 · 真实工作台 · 只读示例数据</small>
         <div className="landing-preview">
           <div className="preview-bar">
             <span>Vantage / Agent 工作台</span>
@@ -78,7 +78,7 @@ export default function Landing() {
                   识别机会与风险，保留来源与执行记录。在发送通知之前，由你确认。
                 </p>
                 <Link to="/demo?scenario=research">
-                  亲自跑一遍 <ArrowRightOutlined />
+                  进入真实工作台 <ArrowRightOutlined />
                 </Link>
               </div>
               <div className="preview-signal">

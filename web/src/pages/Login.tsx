@@ -11,7 +11,7 @@ import { authApi } from '../api/auth';
 
 const { Title, Text } = Typography;
 
-export default function Login() {
+export default function Login({ demoMode = false }: { demoMode?: boolean }) {
   const { login, register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [registrationEnabled, setRegistrationEnabled] = useState(false);
@@ -19,7 +19,7 @@ export default function Login() {
   const location = useLocation();
   const { message } = AntdApp.useApp();
 
-  const defaultUsername = localStorage.getItem('vantage.lastUsername') || '';
+  const defaultUsername = demoMode ? 'demo' : localStorage.getItem('vantage.lastUsername') || '';
 
   useEffect(() => {
     authApi.registration()
@@ -33,7 +33,7 @@ export default function Login() {
       await login(values.username, values.password);
       localStorage.setItem('vantage.lastUsername', values.username);
       message.success('登录成功');
-      const from = (location.state as any)?.from || (location.pathname === '/login' ? '/app' : location.pathname);
+      const from = demoMode ? '/dashboard' : (location.state as any)?.from || (location.pathname === '/login' ? '/app' : location.pathname);
       navigate(from, { replace: true });
     } catch (err: any) {
       message.error(err.response?.data?.error || '登录失败');
@@ -77,7 +77,8 @@ export default function Login() {
               style={{ display: 'block', objectFit: 'contain', margin: '0 auto 12px' }}
             />
             <Title level={3} style={{ margin: 0 }}>Vantage</Title>
-            <Text type="secondary">情报与行动 · Agent 工作台</Text>
+            <Text type="secondary">{demoMode ? '使用演示账号，进入真实工作台' : '情报与行动 · Agent 工作台'}</Text>
+            {demoMode && <p className="demo-login-note">账号 <strong>demo</strong> · 密码 <strong>demo</strong><br/>浏览示例监控、报告与告警。演示账号只读，不提供 API Key，也不执行真实 AI、搜索或通知。</p>}
           </div>
 
           <Tabs
@@ -88,7 +89,7 @@ export default function Login() {
                 key: 'login',
                 label: '登录',
                 children: (
-                  <Form layout="vertical" onFinish={onLogin} initialValues={{ username: defaultUsername }}>
+                  <Form layout="vertical" onFinish={onLogin} initialValues={{ username: defaultUsername, password: demoMode ? 'demo' : '' }}>
                     <Form.Item name="username" label="用户名 / 邮箱" rules={[{ required: true, message: '请输入用户名' }]}>
                       <Input prefix={<UserOutlined />} placeholder="admin" size="large" />
                     </Form.Item>
@@ -103,7 +104,7 @@ export default function Login() {
                   </Form>
                 )
               },
-              ...(registrationEnabled ? [{
+              ...(!demoMode && registrationEnabled ? [{
                 key: 'register',
                 label: '注册',
                 children: (

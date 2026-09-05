@@ -298,6 +298,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
         if (!stale) {
           setHistory(r.items || []);
           setHistoryTotal(r.total || 0);
+          if (user?.is_demo && r.items?.length) setActive(current => current || r.items[0].id);
         }
       })
       .catch((e) => {
@@ -401,7 +402,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
             setGoal("");
             setError("");
           }}
-          disabled={sending}
+          disabled={sending || user?.is_demo}
         >
           新建对话
         </Button>
@@ -425,7 +426,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                 setTurns([]);
                 setError("");
               }}
-              disabled={sending}
+              disabled={sending || user?.is_demo}
             >
               <MessageOutlined />
               <span>{r.goal}</span>
@@ -493,6 +494,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                 {examples.map((example) => (
                   <button
                     key={example.title}
+                    disabled={user?.is_demo}
                     onClick={() => setGoal(example.prompt)}
                   >
                     <div>
@@ -709,7 +711,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
               onChange={(e) => setGoal(e.target.value)}
               autoSize={{ minRows: 2, maxRows: 6 }}
               maxLength={4000}
-              disabled={sending || !currentOrgId}
+              disabled={sending || !currentOrgId || user?.is_demo}
               onKeyDown={(e) => {
                 if (
                   e.key === "Enter" &&
@@ -732,7 +734,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                 aria-label="发送任务"
                 shape="circle"
                 icon={<ArrowUpOutlined />}
-                disabled={busy || !goal.trim() || !currentOrgId}
+                disabled={busy || !goal.trim() || !currentOrgId || user?.is_demo}
                 loading={sending}
                 onClick={send}
               />

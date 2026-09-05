@@ -1,3 +1,4 @@
+import { useAuth } from '../lib/auth';
 import { useEffect, useState } from 'react';
 import {
   Table, Button, Space, Tag, Modal, Form, Input, Select, InputNumber,
@@ -35,6 +36,7 @@ const statusMeta: Record<string, { color: string; text: string; icon: any }> = {
 };
 
 export default function Watchlist() {
+  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -169,9 +171,9 @@ export default function Watchlist() {
         <Space wrap>
           <Button icon={<ReloadOutlined />} onClick={load}>刷新</Button>
           <Popconfirm title="确定执行所有启用的监控项？" onConfirm={onRunAll}>
-            <Button icon={<ThunderboltOutlined />}>全部执行</Button>
+            <Button disabled={user?.is_demo} icon={<ThunderboltOutlined />}>全部执行</Button>
           </Popconfirm>
-          <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>新建监控</Button>
+          <Button disabled={user?.is_demo} type="primary" icon={<PlusOutlined />} onClick={onCreate}>新建监控</Button>
         </Space>
       </div>
 
@@ -264,17 +266,18 @@ export default function Watchlist() {
                     <Button
                       size="small"
                       type="text"
+                      disabled={user?.is_demo}
                       loading={runningId === r.id}
                       icon={runningId === r.id ? undefined : <PlayCircleOutlined style={{ color: 'var(--v-text)' }} />}
                       onClick={() => onRun(r.id)}
                     />
                   </Tooltip>
                   <Tooltip title="编辑">
-                    <Button size="small" type="text" icon={<EditOutlined />} onClick={() => onEdit(r)} />
+                    <Button size="small" type="text" disabled={user?.is_demo} icon={<EditOutlined />} onClick={() => onEdit(r)} />
                   </Tooltip>
                   <Popconfirm title="确定删除？" onConfirm={() => onDelete(r.id)}>
                     <Tooltip title="删除">
-                      <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                      <Button size="small" type="text" danger disabled={user?.is_demo} icon={<DeleteOutlined />} />
                     </Tooltip>
                   </Popconfirm>
                 </Space>

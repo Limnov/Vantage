@@ -21,6 +21,7 @@ export interface User {
   email: string;
   display_name?: string;
   is_system_admin: boolean;
+  is_demo?: boolean;
 }
 
 export interface Org {

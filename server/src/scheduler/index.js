@@ -45,7 +45,7 @@ async function tick() {
   }
   isRunning = true;
   try {
-    const candidates = await query('SELECT * FROM watchlist WHERE enabled = 1');
+    const candidates = await query('SELECT * FROM watchlist WHERE enabled = 1 AND org_id NOT IN (SELECT org_id FROM demo_accounts)');
     const now = new Date();
     const items = candidates.filter(item => isWatchlistDue(item, now));
 
@@ -85,7 +85,7 @@ async function runNow(watchlistId) {
  * 手动触发全部
  */
 async function runAll() {
-  const items = await query('SELECT id FROM watchlist WHERE enabled = 1');
+  const items = await query('SELECT id FROM watchlist WHERE enabled = 1 AND org_id NOT IN (SELECT org_id FROM demo_accounts)');
   const results = [];
   for (const item of items) {
     results.push(await runWatchlist(item.id, { silent: true }));

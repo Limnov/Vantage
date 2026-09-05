@@ -1,3 +1,4 @@
+import { useAuth } from '../lib/auth';
 import { useEffect, useState } from 'react';
 import { Card, Tag, Space, Typography, Button, Popconfirm, message, Empty, Segmented, Row, Col, Checkbox } from 'antd';
 import {
@@ -23,6 +24,7 @@ const statusMeta: Record<string, { color: string; text: string }> = {
 };
 
 export default function Alerts() {
+  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -127,8 +129,8 @@ export default function Alerts() {
               {selectedIds.length > 0 && (
                 <Space>
                   <Text type="secondary">已选 {selectedIds.length} 条</Text>
-                  <Button size="small" icon={<CheckOutlined />} loading={batchLoading} onClick={() => batchAction('ack')}>批量确认</Button>
-                  <Button size="small" icon={<CloseOutlined />} loading={batchLoading} onClick={() => batchAction('dismiss')}>批量忽略</Button>
+                  <Button size="small" disabled={user?.is_demo} icon={<CheckOutlined />} loading={batchLoading} onClick={() => batchAction('ack')}>批量确认</Button>
+                  <Button size="small" disabled={user?.is_demo} icon={<CloseOutlined />} loading={batchLoading} onClick={() => batchAction('dismiss')}>批量忽略</Button>
                 </Space>
               )}
               {items.length > 0 && (
@@ -178,14 +180,14 @@ export default function Alerts() {
                   </div>
                   <Space size={4} style={{ marginLeft: 16 }}>
                     {a.status !== 'acked' && (
-                      <Button size="small" icon={<CheckOutlined />} onClick={() => onAck(a.id)}>确认</Button>
+                      <Button size="small" disabled={user?.is_demo} icon={<CheckOutlined />} onClick={() => onAck(a.id)}>确认</Button>
                     )}
                     {a.status !== 'dismissed' && (
                       <Popconfirm title="确定忽略？" onConfirm={() => onDismiss(a.id)}>
-                        <Button size="small" icon={<CloseOutlined />}>忽略</Button>
+                        <Button size="small" disabled={user?.is_demo} icon={<CloseOutlined />}>忽略</Button>
                       </Popconfirm>
                     )}
-                    <Button size="small" icon={<SendOutlined />} onClick={() => onResend(a.id)}>重发</Button>
+                    <Button size="small" disabled={user?.is_demo} icon={<SendOutlined />} onClick={() => onResend(a.id)}>重发</Button>
                   </Space>
                 </div>
               </Col>

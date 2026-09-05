@@ -8,6 +8,7 @@
 const jwt = require('jsonwebtoken');
 const { queryOne } = require('../db');
 const config = require('../config');
+const { demoAccess } = require('../security/demo');
 const logger = require('../utils/logger');
 
 /**
@@ -33,7 +34,8 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ error: 'unauthorized', message: 'Session is no longer valid' });
     }
     const user = await queryOne(
-      `SELECT u.id, u.username, u.email, u.display_name, u.is_active, u.is_system_admin
+      `SELECT u.id, u.username, u.email, u.display_name, u.is_active, u.is_system_admin,
+       (SELECT org_id FROM demo_accounts WHERE user_id = u.id) AS demo_org_id
        FROM users u JOIN auth_sessions s ON s.user_id = u.id
        WHERE u.id = ? AND s.id = ? AND s.revoked_at IS NULL AND s.expires_at > ?`,
       [payload.userId, payload.sid, Math.floor(Date.now() / 1000)]
@@ -46,11 +48,21 @@ async function requireAuth(req, res, next) {
       return res.status(403).json({ error: 'forbidden', message: 'User is disabled' });
     }
 
+    user.is_demo = !!user.demo_org_id;
+    if (user.is_demo) user.is_system_admin = 0;
     req.user = user;
     req.authSessionId = payload.sid;
     // 当前组织只从 header 解析，避免业务 body/path 与授权上下文出现两个来源。
     const orgIdHeader = req.headers['x-org-id'];
     const orgId = parseInt(orgIdHeader || 0, 10);
+
+    if (user.is_demo) {
+      const error = demoAccess(req.method, req.originalUrl, orgIdHeader, user.demo_org_id);
+      if (error) return res.status(403).json({ error: 'demo_read_only', message: error });
+      req.currentOrgId = user.demo_org_id;
+      req.currentOrgRole = 'viewer';
+      return next();
+    }
 
     if (orgId > 0) {
       // 验证用户在该组织里有有效成员关系
@@ -97,7 +109,8 @@ async function optionalAuth(req, res, next) {
     });
     if (!payload.sid) return next();
     const user = await queryOne(
-      `SELECT u.id, u.username, u.email, u.display_name, u.is_active, u.is_system_admin
+      `SELECT u.id, u.username, u.email, u.display_name, u.is_active, u.is_system_admin,
+       (SELECT org_id FROM demo_accounts WHERE user_id = u.id) AS demo_org_id
        FROM users u JOIN auth_sessions s ON s.user_id = u.id
        WHERE u.id = ? AND s.id = ? AND s.revoked_at IS NULL AND s.expires_at > ?`,
       [payload.userId, payload.sid, Math.floor(Date.now() / 1000)]

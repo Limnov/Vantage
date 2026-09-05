@@ -40,7 +40,7 @@ router.get('/', requireAuth, async (req, res) => {
       [req.user.id]
     );
   }
-  res.json({ items: orgs });
+  res.json({ items: req.user.is_demo ? orgs.filter(org => org.id === req.user.demo_org_id).map(org => ({ ...org, role: 'viewer' })) : orgs });
 });
 
 /**

@@ -52,6 +52,7 @@ export default function App({
           <Tooltip title="连接配置">
             <Button
               aria-label="连接配置"
+              disabled={user?.is_demo}
               icon={<SettingOutlined />}
               onClick={() => setSetup(true)}
             />
@@ -72,6 +73,7 @@ export default function App({
           </Tooltip>
         </div>
       </header>
+      {user?.is_demo && <div className="demo-workspace-note" role="status">Demo · 真实工作台 / 示例数据 · 可查看历史任务；不提供 API Key，不执行真实调用。</div>}
       <ErrorBoundary key={currentOrgId || "boundary"}>
         <Agent
           key={currentOrgId || "no-org"}

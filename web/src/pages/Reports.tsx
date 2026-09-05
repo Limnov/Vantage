@@ -1,3 +1,4 @@
+import { useAuth } from '../lib/auth';
 import { useEffect, useState } from 'react';
 import { Table, Card, Tag, Space, Typography, Button, Drawer, Skeleton, Empty } from 'antd';
 import {
@@ -23,6 +24,7 @@ const sentimentMeta: Record<string, { color: string; text: string }> = {
 };
 
 export default function Reports() {
+  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -164,7 +166,7 @@ export default function Reports() {
               render: (_, r: any) => (
                 <Space size={4}>
                   <Button size="small" type="link" icon={<EyeOutlined />} onClick={() => onShowDetail(r.id)}>查看</Button>
-                  <Button size="small" type="link" icon={<SendOutlined />} onClick={() => onPush(r.id)}>推送</Button>
+                  <Button size="small" type="link" disabled={user?.is_demo} icon={<SendOutlined />} onClick={() => onPush(r.id)}>推送</Button>
                 </Space>
               )
             }

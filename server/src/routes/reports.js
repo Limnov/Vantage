@@ -45,7 +45,7 @@ router.get('/', requireAuth, async (req, res) => {
   const offset = (page - 1) * pageSize;
 
   const [items, [{ total }]] = await Promise.all([
-    query(`SELECT r.id, r.org_id, r.agent_run_id, r.watchlist_id, r.title, r.query, r.summary, r.key_points, r.signal_type, r.sentiment, r.sources, r.report_date, r.duration_ms, r.created_at FROM reports r ${whereSql} ORDER BY r.id DESC LIMIT ${pageSize} OFFSET ${offset}`, params),
+    query(`SELECT r.id, r.org_id, r.agent_run_id, r.watchlist_id, r.title, r.query, r.summary, r.key_points, r.signal_type, r.sentiment, r.sources, r.report_date, r.duration_ms, r.created_at FROM reports r ${whereSql} ORDER BY r.created_at DESC, r.id DESC LIMIT ${pageSize} OFFSET ${offset}`, params),
     query(`SELECT COUNT(*) as total FROM reports r ${whereSql}`, params)
   ]);
 
