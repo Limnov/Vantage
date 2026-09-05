@@ -707,12 +707,27 @@
   padding-inline: 10px;
   border: 1px solid var(--v-border-soft);
   border-radius: 8px;
+  background: transparent;
+  max-width: 220px;
+}
+
+.classic-org-switch .ant-typography {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classic-header .topbar-demo-tag.ant-tag {
+  margin: 0;
+  border-color: var(--v-border-soft);
   background: var(--v-surface-2);
+  color: var(--v-text-2);
 }
 
 .classic-user-button.ant-btn {
+  width: 36px;
   height: 36px;
-  padding: 0 8px 0 5px;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 8px;
   color: var(--v-text);
@@ -728,10 +743,6 @@
   display: flex;
 }
 
-.classic-user-role.ant-tag {
-  margin: 0 0 0 2px;
-}
-
 /* 列表项更紧凑 */
 .ant-list-item {
   padding: 12px 0 !important;
@@ -742,28 +753,23 @@
   background: var(--v-surface-2) !important;
 }
 
-/* 响应式：保留组织、模式、主题和用户等关键入口。 */
+/* 响应式：保留组织、模式、搜索、告警和账户入口。 */
 @media (max-width: 900px) {
   .classic-header-actions > .ant-space-item:has(.classic-secondary-action) {
     display: none;
   }
-  .classic-user-name,
-  .classic-user-role {
-    display: none;
-  }
-  .classic-user-button.ant-btn {
-    width: 36px;
-    padding: 0;
-  }
 }
 
 @media (max-width: 680px) {
-  .classic-mode-switch > span:not(.ant-btn-icon) {
+  .classic-mode-label {
     display: none;
   }
   .classic-mode-switch.ant-btn {
     width: 36px;
     padding: 0;
+  }
+  .classic-header .topbar-demo-tag.ant-tag {
+    display: none;
   }
 }
 

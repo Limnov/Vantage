@@ -4,9 +4,9 @@ import {
   DashboardOutlined, EyeOutlined, FileTextOutlined, WarningOutlined, SettingOutlined,
   MoonOutlined, SunOutlined, ReloadOutlined, SearchOutlined,
   RiseOutlined, FallOutlined, ArrowRightOutlined, TeamOutlined, RobotOutlined, AimOutlined,
-  LogoutOutlined, UserOutlined, SwapOutlined, CrownOutlined, MenuFoldOutlined, MenuUnfoldOutlined,
+  LogoutOutlined, UserOutlined, MenuFoldOutlined, MenuUnfoldOutlined,
   QuestionCircleOutlined, InfoCircleOutlined, BellOutlined, CheckOutlined, ApiOutlined,
-  AppstoreOutlined, ControlOutlined, FileSearchOutlined
+  FileSearchOutlined
 } from '@ant-design/icons';
 import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
@@ -171,6 +171,8 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
       </div>
     ), disabled: true },
     { type: 'divider' as const },
+    { key: 'refresh', icon: <ReloadOutlined />, label: '刷新当前页面', onClick: () => window.location.reload() },
+    { key: 'theme', icon: themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />, label: themeMode === 'dark' ? '切换浅色' : '切换深色', onClick: onToggleTheme },
     { key: 'about', icon: <InfoCircleOutlined />, label: '关于', onClick: () => navigate('/about') },
     { key: 'help', icon: <QuestionCircleOutlined />, label: '帮助 & 快捷键 (?)', onClick: () => setHelpOpen(true) },
     { type: 'divider' as const },
@@ -390,13 +392,15 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
                 trigger={['click']}
                 disabled={orgSwitching}
               >
-                <Button className="classic-org-switch" type="text" loading={orgSwitching} icon={<SwapOutlined spin={orgSwitching} />}>
-                  <Space>
-                    <Text strong>{currentOrg?.name || '选择组织'}</Text>
-                    <Tag>{user?.is_demo ? '只读 Demo' : (currentOrg?.my_role || currentOrg?.role || '-')}</Tag>
-                  </Space>
+                <Button className="classic-org-switch" type="text" loading={orgSwitching}>
+                  <Text strong>{currentOrg?.name || '选择组织'}</Text>
                 </Button>
               </Dropdown>
+              {user?.is_demo && (
+                <Tooltip title="示例数据，只读浏览，不调用 API">
+                  <Tag className="topbar-demo-tag">Demo · 只读</Tag>
+                </Tooltip>
+              )}
             </Space>
           </div>
           <Space size={4} className="classic-header-actions" style={{ flexShrink: 0 }}>
@@ -408,7 +412,7 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
                 icon={<RobotOutlined />}
                 onClick={onSwitchMode}
               >
-                Agent-first
+                <span className="classic-mode-label">Agent</span>
               </Button>
             </Tooltip>
             <Tooltip title="全局搜索 (⌘K)">
@@ -428,33 +432,6 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
                 />
               </Dropdown>
             </Tooltip>
-            <Tooltip title="刷新">
-              <Button
-                type="text"
-                className="classic-toolbar-button classic-secondary-action"
-                aria-label="刷新页面"
-                icon={<ReloadOutlined />}
-                onClick={() => window.location.reload()}
-              />
-            </Tooltip>
-            <Tooltip title={themeMode === 'dark' ? '切换浅色' : '切换深色'}>
-              <Button
-                type="text"
-                className="classic-toolbar-button"
-                aria-label={themeMode === 'dark' ? '切换浅色' : '切换深色'}
-                icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
-                onClick={onToggleTheme}
-              />
-            </Tooltip>
-            <Tooltip title="帮助 (?)">
-              <Button
-                type="text"
-                className="classic-toolbar-button classic-secondary-action"
-                aria-label="打开帮助"
-                icon={<QuestionCircleOutlined />}
-                onClick={() => setHelpOpen(true)}
-              />
-            </Tooltip>
             <Tooltip title="通知">
               <Dropdown menu={{ items: notificationItems }} trigger={['click']} placement="bottomRight">
                 <Button type="text" className="classic-toolbar-button" aria-label="查看通知" icon={
@@ -470,14 +447,10 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
                 className="classic-user-button"
                 aria-label="打开用户菜单"
                 icon={<Avatar size="small" icon={<UserOutlined />} />}
-              >
-                <span className="classic-user-name">{user?.display_name || user?.username}</span>
-                {user?.is_system_admin && <Tag className="classic-user-role">超管</Tag>}
-              </Button>
+              />
             </Dropdown>
           </Space>
         </Header>
-        {user?.is_demo && <div className="demo-workspace-note" role="status">Demo · 真实工作台 / 示例数据 · 只读浏览，不提供 API Key，不执行真实调用。</div>}
         <Content className="classic-content" style={{
           margin: 16,
           padding: 24,

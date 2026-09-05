@@ -147,5 +147,4 @@ html[data-theme='dark'] .brand-logo-dark { display: block !important; }
 html[data-theme='dark'] .accent-logo-light { display: none; }
 html[data-theme='dark'] .accent-logo-dark { display: block; }
 
-.demo-workspace-note { flex-shrink: 0; padding: 9px 20px; background: var(--v-bg-2, #eee9df); color: var(--v-text-2, #756a59); font-size: 12px; border-bottom: 1px solid var(--v-border, #d4cdbf); }
 .demo-login-note { margin: 16px 0 0; color: var(--v-text-2, #756a59); font-size: 13px; line-height: 1.8; }

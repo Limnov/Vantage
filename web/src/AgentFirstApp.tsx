@@ -1,11 +1,12 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import { Button, Select, Tooltip } from "antd";
+import { lazy, Suspense, useState } from "react";
+import { Avatar, Button, Dropdown, Select, Tag, Tooltip } from "antd";
 import {
   LogoutOutlined,
   AppstoreOutlined,
   MoonOutlined,
   SunOutlined,
   SettingOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "./lib/auth";
 import Agent from "./pages/Agent";
@@ -24,12 +25,47 @@ export default function App({
 }) {
   const { user, orgs, currentOrgId, switchOrg, logout } = useAuth();
   const [setup, setSetup] = useState(false);
+  const accountMenu = {
+    items: [
+      {
+        key: "account",
+        label: (
+          <div className="topbar-account-summary">
+            <strong>{user?.display_name || user?.username}</strong>
+            <span>@{user?.username}</span>
+          </div>
+        ),
+        disabled: true,
+      },
+      { type: "divider" as const },
+      {
+        key: "setup",
+        icon: <SettingOutlined />,
+        label: "连接配置",
+        disabled: user?.is_demo,
+        onClick: () => setSetup(true),
+      },
+      {
+        key: "theme",
+        icon: themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />,
+        label: themeMode === "dark" ? "切换浅色" : "切换深色",
+        onClick: onToggleTheme,
+      },
+      { type: "divider" as const },
+      {
+        key: "logout",
+        icon: <LogoutOutlined />,
+        label: "退出登录",
+        danger: true,
+        onClick: logout,
+      },
+    ],
+  };
   return (
     <div className="agent-app">
       <header className="workspace-header">
         <a className="wordmark" href="/" aria-label="Vantage 首页">
           <span className="brand-symbol">V</span>Vantage
-          <span className="wordmark-caption">情报与行动</span>
         </a>
         <div className="workspace-controls">
           <Select
@@ -37,8 +73,14 @@ export default function App({
             value={currentOrgId}
             onChange={switchOrg}
             options={orgs.map((o) => ({ value: o.id, label: o.name }))}
-            style={{ minWidth: 130 }}
+            popupMatchSelectWidth={false}
+            className="topbar-org-select"
           />
+          {user?.is_demo && (
+            <Tooltip title="示例数据，只读浏览，不调用 API">
+              <Tag className="topbar-demo-tag">Demo · 只读</Tag>
+            </Tooltip>
+          )}
           <Tooltip title="切换到经典版">
             <Button
               type="primary"
@@ -49,31 +91,16 @@ export default function App({
               经典版
             </Button>
           </Tooltip>
-          <Tooltip title="连接配置">
+          <Dropdown menu={accountMenu} trigger={["click"]} placement="bottomRight">
             <Button
-              aria-label="连接配置"
-              disabled={user?.is_demo}
-              icon={<SettingOutlined />}
-              onClick={() => setSetup(true)}
+              type="text"
+              className="topbar-account-button"
+              aria-label="打开账户菜单"
+              icon={<Avatar size={28} icon={<UserOutlined />} />}
             />
-          </Tooltip>
-          <Tooltip title="切换主题">
-            <Button
-              aria-label="切换主题"
-              icon={themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
-              onClick={onToggleTheme}
-            />
-          </Tooltip>
-          <Tooltip title={`${user?.display_name || user?.username} · 退出登录`}>
-            <Button
-              aria-label="退出登录"
-              icon={<LogoutOutlined />}
-              onClick={logout}
-            />
-          </Tooltip>
+          </Dropdown>
         </div>
       </header>
-      {user?.is_demo && <div className="demo-workspace-note" role="status">Demo · 真实工作台 / 示例数据 · 可查看历史任务；不提供 API Key，不执行真实调用。</div>}
       <ErrorBoundary key={currentOrgId || "boundary"}>
         <Agent
           key={currentOrgId || "no-org"}
