@@ -1,0 +1,116 @@
+{
+  "folders": [
+    {
+      "name": "Vantage",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": false,
+      "**/.git": true,
+      "db_data": true,
+      "**/*.pem": true,
+      "**/*.err": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/package-lock.json": true,
+      "db_data": true
+    },
+    "git.scanRepositories": ["E:\\Vantage"],
+    "git.defaultBranchName": "main",
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.env.windows": {
+      "PATH": "D:\\Applications\\Git\\cmd;${env:PATH}"
+    },
+    "editor.formatOnSave": true,
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "ms-vscode.vscode-typescript-next"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Vantage API (debug)",
+        "type": "node",
+        "request": "launch",
+        "cwd": "${workspaceFolder}/server",
+        "program": "${workspaceFolder}/server/src/index.js",
+        "envFile": "${workspaceFolder}/server/.env",
+        "skipFiles": ["<node_internals>/**"]
+      },
+      {
+        "name": "Vantage Web (vite dev)",
+        "type": "node",
+        "request": "launch",
+        "cwd": "${workspaceFolder}/web",
+        "runtimeExecutable": "npx",
+        "runtimeArgs": ["vite", "--port", "5178"]
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Vantage: 启动全部服务",
+        detail: "启动 MySQL + Redis + PM2",
+        "type": "shell",
+        "command": "powershell -ExecutionPolicy Bypass -File ${workspaceFolder}/start.ps1",
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "Vantage: 停止全部服务",
+        "detail": "停止 PM2 + Redis + MySQL",
+        "type": "shell",
+        "command": "powershell -ExecutionPolicy Bypass -File ${workspaceFolder}/stop.ps1",
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "Vantage: 构建前端",
+        "detail": "cd web && npm run build",
+        "type": "shell",
+        "command": "npm run build",
+        "options": {
+          "cwd": "${workspaceFolder}/web"
+        },
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "Vantage: 查看日志",
+        "detail": "pm2 logs --lines 50",
+        "type": "shell",
+        "command": "pm2 logs --lines 50",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      }
+    ]
+  }
+}
