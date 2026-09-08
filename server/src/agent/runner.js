@@ -10,6 +10,67 @@ const { createToolRegistry } = require('./toolRegistry');
 const { buildInitialMessages, createWorkflowState, PHASES, phaseForTool } = require('./workflow');
 const defaultStore = require('./store');
 
+const DEFAULT_MAX_TOOL_CALLS_PER_STEP = 4;
+const DEFAULT_TOOL_CONTEXT_MAX_CHARS = 20000;
+
+function boundedInteger(value, fallback, min, max) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function compactForModel(value, options = {}, depth = 0) {
+  const maxDepth = options.maxDepth ?? 5;
+  const maxArray = options.maxArray ?? 20;
+  const maxKeys = options.maxKeys ?? 40;
+  const maxString = options.maxString ?? 1600;
+  if (typeof value === 'string') {
+    return value.length > maxString
+      ? `${value.substring(0, maxString)}… [truncated ${value.length - maxString} chars]`
+      : value;
+  }
+  if (value === null || value === undefined || typeof value !== 'object') return value;
+  if (depth >= maxDepth) return '[nested value omitted]';
+  if (Array.isArray(value)) {
+    const items = value.slice(0, maxArray).map((item) => compactForModel(item, options, depth + 1));
+    if (value.length > maxArray) items.push({ _omitted_items: value.length - maxArray });
+    return items;
+  }
+  const entries = Object.entries(value);
+  const compacted = Object.fromEntries(
+    entries.slice(0, maxKeys).map(([key, item]) => [key, compactForModel(item, options, depth + 1)])
+  );
+  if (entries.length > maxKeys) compacted._omitted_fields = entries.length - maxKeys;
+  return compacted;
+}
+
+function serializeToolResultForModel(result, maxChars = DEFAULT_TOOL_CONTEXT_MAX_CHARS) {
+  const limit = boundedInteger(maxChars, DEFAULT_TOOL_CONTEXT_MAX_CHARS, 4000, 48000);
+  const first = JSON.stringify(compactForModel(result));
+  if (first.length <= limit) return first;
+  const compact = JSON.stringify(compactForModel(result, {
+    maxDepth: 4,
+    maxArray: 10,
+    maxKeys: 25,
+    maxString: 500
+  }));
+  if (compact.length <= limit) return compact;
+  return JSON.stringify({
+    ok: result?.ok === true,
+    truncated: true,
+    message: '工具结果过大，模型仅收到压缩预览；完整结果已保存在执行轨迹中。',
+    preview: compact.substring(0, Math.max(1000, limit - 300))
+  });
+}
+
 function messageText(content) {
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) {
@@ -154,7 +215,7 @@ function modelStepOutput(response) {
     finish_reason: response?.finishReason || null,
     content: messageText(message.content).substring(0, 2000),
     tool_calls: Array.isArray(message.tool_calls)
-      ? message.tool_calls.map((call) => ({
+      ? message.tool_calls.slice(0, 20).map((call) => ({
         id: call.id || null,
         name: call.function?.name || null,
         arguments: String(call.function?.arguments || '').substring(0, 2000)
@@ -212,6 +273,20 @@ async function runAgent({
   const runStartedAt = Date.now();
   const operations = [];
   const notificationProposals = [];
+  const successfulCalls = new Map();
+  let mutationEpoch = 0;
+  const maxToolCallsPerStep = boundedInteger(
+    process.env.AGENT_MAX_TOOL_CALLS_PER_STEP,
+    DEFAULT_MAX_TOOL_CALLS_PER_STEP,
+    1,
+    8
+  );
+  const toolContextMaxChars = boundedInteger(
+    process.env.AGENT_TOOL_CONTEXT_MAX_CHARS,
+    DEFAULT_TOOL_CONTEXT_MAX_CHARS,
+    4000,
+    48000
+  );
   let formatRepairPending = false;
   let formatRepairAttempts = 0;
 
@@ -273,7 +348,8 @@ async function runAgent({
       });
 
       const message = response.message || {};
-      const toolCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
+      const requestedToolCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
+      const toolCalls = requestedToolCalls.slice(0, maxToolCallsPerStep);
       if (!toolCalls.length) {
         const finalText = messageText(message.content);
         const parsedFinal = parseJsonObject(finalText);
@@ -298,7 +374,7 @@ async function runAgent({
         formatRepairPending = false;
         const final = normalizeFinal(finalText, evidenceMap);
         const researchTools = new Set(['search_market', 'extract_source', 'compare_reports']);
-        const isOperation = !operations.some(op => op.ok && researchTools.has(op.tool));
+        const isOperation = !operations.some(op => researchTools.has(op.tool));
         final.kind = isOperation ? 'operation' : 'research';
         final.operations = operations;
         final.proposed_actions = notificationProposals;
@@ -379,16 +455,36 @@ async function runAgent({
         const toolStartedAt = Date.now();
         let args = {};
         let result;
+        let replayed = false;
         try {
           args = JSON.parse(call.function?.arguments || '{}');
-          result = toolName === 'propose_notification' && notificationProposals.length > 0
-            ? { ok: false, error: { code: 'proposal_limit', message: '每轮任务最多一个通知建议；请在下一轮提出另一个建议' } }
-            : await registry.execute(toolName, args, { ...context, runId, stepNo });
+          const fingerprint = `${toolName}:${stableJson(args)}`;
+          const cached = successfulCalls.get(fingerprint);
+          const previous = toolName === 'propose_notification' || cached?.mutationEpoch !== mutationEpoch
+            ? null
+            : cached;
+          if (previous) {
+            replayed = true;
+            result = {
+              ...previous.result,
+              meta: { ...(previous.result.meta || {}), replayed: true, original_step: previous.stepNo }
+            };
+          } else {
+            result = toolName === 'propose_notification' && notificationProposals.length > 0
+              ? { ok: false, error: { code: 'proposal_limit', message: '每轮任务最多一个通知建议；请在下一轮提出另一个建议' } }
+              : await registry.execute(toolName, args, { ...context, runId, stepNo, goal });
+            if (result.ok) {
+              const toolSpec = typeof registry.spec === 'function' ? registry.spec(toolName) : null;
+              const readOnly = toolSpec?.readOnly !== false;
+              if (!readOnly) mutationEpoch += 1;
+              successfulCalls.set(fingerprint, { result, readOnly, stepNo, mutationEpoch });
+            }
+          }
         } catch (error) {
           result = { ok: false, error: { code: 'invalid_tool_call', message: String(error.message || error).substring(0, 500) } };
         }
         if (result.ok && toolName === 'propose_notification') notificationProposals.push(result.data.action);
-        operations.push({ tool: toolName, ok: result.ok, data: result.data || null, error: result.error || null });
+        operations.push({ tool: toolName, ok: result.ok, replayed, data: result.data || null, error: result.error || null });
         collectEvidence(result, evidenceMap, toolName);
         const nextPhase = phaseForTool(toolName);
         workflow.phase = nextPhase;
@@ -407,12 +503,18 @@ async function runAgent({
         messages.push({
           role: 'tool',
           tool_call_id: callId,
-          content: JSON.stringify(result)
+          content: serializeToolResultForModel(result, toolContextMaxChars)
         });
         await store.updateRun(runId, {
           phase: nextPhase,
           stepCount: stepNo,
           metadata: { evidence_count: evidenceMap.size, usage: workflow.usage }
+        });
+      }
+      if (requestedToolCalls.length > toolCalls.length) {
+        messages.push({
+          role: 'user',
+          content: `运行时为控制副作用与上下文大小，每轮最多执行 ${maxToolCallsPerStep} 个工具；其余 ${requestedToolCalls.length - toolCalls.length} 个未执行。请根据已返回结果决定下一步。`
         });
       }
     }
@@ -444,5 +546,7 @@ module.exports = {
   parseJsonObject,
   normalizeFinal,
   evaluateEvidenceQuality,
-  messageText
+  messageText,
+  stableJson,
+  serializeToolResultForModel
 };

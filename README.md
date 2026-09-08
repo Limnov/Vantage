@@ -229,7 +229,11 @@ Agent Worker 可按部署容量调整：
 AGENT_WORKER_CONCURRENCY=1
 AGENT_WORKER_LEASE_SECONDS=120
 AGENT_WORKER_POLL_MS=500
+AGENT_MAX_TOOL_CALLS_PER_STEP=4
+AGENT_TOOL_CONTEXT_MAX_CHARS=20000
 ```
+
+Runner 会重放同一状态下已成功的重复工具调用，避免模型重复创建或修改资源；任意新的写操作都会让旧重放结果失效。工具完整输出保存在执行轨迹中，送回模型的副本会按字符预算压缩，防止长列表或正文持续放大上下文。
 
 同一 SQLite 文件上的多个 Worker 通过原子领取避免重复执行。租约过期时，只读任务可自动重跑；已经成功执行写工具的任务会失败关闭并保留轨迹，避免重复产生业务副作用。
 

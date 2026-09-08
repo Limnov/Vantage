@@ -2,7 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { createToolRegistry, assertSafeSourceUrl, resolveSafeSourceUrl } = require('../src/agent/toolRegistry');
-const { runAgent, normalizeFinal, evaluateEvidenceQuality } = require('../src/agent/runner');
+const {
+  runAgent,
+  normalizeFinal,
+  evaluateEvidenceQuality,
+  stableJson,
+  serializeToolResultForModel
+} = require('../src/agent/runner');
 const { PHASES, phaseForTool, buildInitialMessages } = require('../src/agent/workflow');
 
 test('tool registry validates arguments and returns evidence', async () => {
@@ -206,6 +212,169 @@ test('agent runner can complete a tool call loop with a fake model', async () =>
   assert.equal(events.some((event) => event.type === 'step' && event.step.kind === 'tool'), true);
   assert.equal(events.some((event) => event.type === 'step' && event.step.kind === 'tool' && event.step.latencyMs >= 0), true);
   assert.equal(events.some((event) => event.type === 'update' && event.patch.status === 'completed'), true);
+});
+
+test('agent runner replays an identical successful write instead of executing it twice', async () => {
+  let executions = 0;
+  let round = 0;
+  const registry = {
+    definitions: () => [],
+    list: () => ['create_item'],
+    spec: () => ({ readOnly: false }),
+    execute: async () => {
+      executions += 1;
+      return { ok: true, data: { id: 41, created: true } };
+    }
+  };
+  const result = await runAgent({
+    runId: 'run-write-replay',
+    goal: '创建一个项目',
+    context: { orgId: 1, userId: 2 },
+    registry,
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    complete: async () => {
+      round += 1;
+      if (round === 1) {
+        return {
+          message: {
+            tool_calls: [
+              { id: 'call_a', function: { name: 'create_item', arguments: '{"name":"same"}' } },
+              { id: 'call_b', function: { name: 'create_item', arguments: '{"name":"same"}' } }
+            ]
+          }
+        };
+      }
+      return {
+        message: {
+          content: JSON.stringify({ title: '完成', summary: '已创建', answer: '已创建' })
+        }
+      };
+    }
+  });
+
+  assert.equal(executions, 1);
+  assert.equal(result.operations.length, 2);
+  assert.equal(result.operations[0].replayed, false);
+  assert.equal(result.operations[1].replayed, true);
+  assert.equal(result.operations[1].data.id, 41);
+});
+
+test('an intervening write invalidates an older replay entry', async () => {
+  const executedValues = [];
+  let round = 0;
+  await runAgent({
+    runId: 'run-write-replay-invalidation',
+    goal: '依次调整状态',
+    context: { orgId: 1, userId: 2 },
+    registry: {
+      definitions: () => [],
+      list: () => ['set_value'],
+      spec: () => ({ readOnly: false }),
+      execute: async (_name, args) => {
+        executedValues.push(args.value);
+        return { ok: true, data: { value: args.value } };
+      }
+    },
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    complete: async () => {
+      round += 1;
+      if (round === 1) {
+        return {
+          message: {
+            tool_calls: [
+              { id: 'call_1', function: { name: 'set_value', arguments: '{"value":1}' } },
+              { id: 'call_2', function: { name: 'set_value', arguments: '{"value":2}' } },
+              { id: 'call_3', function: { name: 'set_value', arguments: '{"value":1}' } }
+            ]
+          }
+        };
+      }
+      return { message: { content: JSON.stringify({ title: '完成', summary: '完成', answer: '完成' }) } };
+    }
+  });
+
+  assert.deepEqual(executedValues, [1, 2, 1]);
+});
+
+test('agent runner caps tool calls returned in one model step', async () => {
+  let executions = 0;
+  let secondRoundMessages;
+  let round = 0;
+  const result = await runAgent({
+    runId: 'run-tool-call-cap',
+    goal: '批量读取',
+    context: { orgId: 1, userId: 2 },
+    registry: {
+      definitions: () => [],
+      list: () => ['read_item'],
+      spec: () => ({ readOnly: true }),
+      execute: async (_name, args) => {
+        executions += 1;
+        return { ok: true, data: { id: args.id } };
+      }
+    },
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    complete: async ({ messages }) => {
+      round += 1;
+      if (round === 1) {
+        return {
+          message: {
+            tool_calls: Array.from({ length: 6 }, (_, index) => ({
+              id: `call_${index}`,
+              function: { name: 'read_item', arguments: JSON.stringify({ id: index + 1 }) }
+            }))
+          }
+        };
+      }
+      secondRoundMessages = messages;
+      return {
+        message: {
+          content: JSON.stringify({ title: '完成', summary: '已读取', answer: '已读取' })
+        }
+      };
+    }
+  });
+
+  assert.equal(executions, 4);
+  assert.equal(result.operations.length, 4);
+  assert.match(secondRoundMessages.at(-1).content, /其余 2 个未执行/);
+});
+
+test('tool results sent back to the model are valid JSON and bounded', () => {
+  const serialized = serializeToolResultForModel({
+    ok: true,
+    data: {
+      items: Array.from({ length: 30 }, (_, index) => ({
+        id: index + 1,
+        content: 'x'.repeat(3000)
+      }))
+    }
+  }, 4000);
+  assert.doesNotThrow(() => JSON.parse(serialized));
+  assert.ok(serialized.length <= 4000);
+  assert.equal(stableJson({ b: 2, a: 1 }), stableJson({ a: 1, b: 2 }));
+});
+
+test('failed research remains a research result with evidence warnings', async () => {
+  let round = 0;
+  const result = await runAgent({
+    runId: 'run-failed-research',
+    goal: '研究新品趋势',
+    context: { orgId: 1, userId: 2 },
+    registry: {
+      definitions: () => [],
+      list: () => ['search_market'],
+      spec: () => ({ readOnly: true }),
+      execute: async () => ({ ok: false, error: { code: 'search_failed', message: 'unavailable' } })
+    },
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    complete: async () => (++round === 1
+      ? { message: { tool_calls: [{ id: 'search', function: { name: 'search_market', arguments: '{"query":"新品"}' } }] } }
+      : { message: { content: JSON.stringify({ title: '研究失败', summary: '暂无来源', answer: '暂时无法完成' }) } })
+  });
+
+  assert.equal(result.kind, 'research');
+  assert.match(result.warnings.join(' '), /verified evidence/);
 });
 
 test('agent runner repairs malformed final JSON once with tools disabled', async () => {
