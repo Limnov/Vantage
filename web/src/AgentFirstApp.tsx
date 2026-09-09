@@ -82,8 +82,8 @@ export default function App({
             </Tooltip>
           )}
           {user?.is_trial && user.trial && (
-            <Tooltip title={`今日剩余 Agent ${user.trial.remaining.agent_runs} 次、搜索 ${user.trial.remaining.searches} 次；到期：${user.trial.expires_at}`}>
-              <Tag className="topbar-demo-tag">测试账号 · 有限额</Tag>
+            <Tooltip title={user.trial.unlimited_usage ? `Agent 与搜索不限调用次数；到期：${user.trial.expires_at}` : `今日剩余 Agent ${user.trial.remaining.agent_runs} 次、搜索 ${user.trial.remaining.searches} 次；到期：${user.trial.expires_at}`}>
+              <Tag className="topbar-demo-tag">测试账号{user.trial.unlimited_usage ? " · 开放额度" : " · 有限额"}</Tag>
             </Tooltip>
           )}
           <Tooltip title="切换到经典版">

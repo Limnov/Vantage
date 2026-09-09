@@ -122,6 +122,16 @@ test('trial account uses real feature paths within tenant, expiry and quota boun
     assert.equal(me.status, 200);
     assert.deepEqual(me.data.user.trial.remaining, { agent_runs: 0, searches: 0 });
 
+    sqlite.prepare('UPDATE trial_accounts SET unlimited_usage=1 WHERE user_id=?').run(userId);
+    const unlimitedRun = await request('/api/agent/runs', 'POST', { goal: 'quota waived by deployment owner' });
+    assert.equal(unlimitedRun.status, 202);
+    assert.equal((await registry.execute('search_market', input, { userId, orgId })).ok, true);
+    assert.equal((await registry.execute('search_market', input, { userId, orgId })).ok, true);
+    const unlimitedMe = await request('/api/auth/me');
+    assert.equal(unlimitedMe.data.user.trial.unlimited_usage, true);
+    assert.deepEqual(unlimitedMe.data.user.trial.remaining, { agent_runs: null, searches: null });
+    assert.equal(searches, 4);
+
     sqlite.prepare("UPDATE trial_accounts SET expires_at=datetime('now','-1 minute') WHERE user_id=?").run(userId);
     const expired = await request('/api/auth/login', 'POST', {
       username: 'external-test',

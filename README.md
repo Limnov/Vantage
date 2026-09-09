@@ -38,11 +38,11 @@ Vantage 是一个可自行部署的市场情报应用。登录后默认进入 Ag
 管理员可以创建一个使用服务器统一 LLM 与 Tavily 配置的真实测试账号。测试人员无需也无法查看或填写 API Key；所有限制由后端执行，不能仅靠前端绕过。默认策略为 30 天有效、每天 10 次 Agent 任务、30 次市场搜索、最多 3 个监控。监控只能手动运行，定时任务、MCP、开发者 API、Provider/密钥配置、组织与成员管理、通知推送和改密均关闭。账号使用独立组织，无法读取其他租户数据。
 
 ```bash
-TRIAL_PASSWORD='至少 16 位的随机密码' \
+TRIAL_PASSWORD='至少 12 位的密码' \
 npm --prefix server run account:trial
 ```
 
-可用环境变量：`TRIAL_USERNAME`、`TRIAL_EMAIL`、`TRIAL_EXPIRES_DAYS`、`TRIAL_DAILY_AGENT_LIMIT`、`TRIAL_DAILY_SEARCH_LIMIT`、`TRIAL_MAX_WATCHLISTS`。脚本不会把密码写入日志，重复运行只会轮换已存在测试账号的密码和策略，并注销旧会话。
+可用环境变量：`TRIAL_USERNAME`、`TRIAL_EMAIL`、`TRIAL_EXPIRES_DAYS`、`TRIAL_DAILY_AGENT_LIMIT`、`TRIAL_DAILY_SEARCH_LIMIT`、`TRIAL_MAX_WATCHLISTS`。部署者明确接受 Provider 用量时可设置 `TRIAL_UNLIMITED_USAGE=true`，取消 Agent 与搜索的每日额度。脚本不会把密码写入日志，重复运行只会轮换已存在测试账号的密码和策略，并注销旧会话。
 
 | 真实仪表盘 Demo | Agent 历史 Demo |
 | --- | --- |

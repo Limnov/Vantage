@@ -23,11 +23,12 @@ async function getTrialPolicy(userId) {
     org_id: Number(row.org_id),
     expires_at: row.expires_at,
     expired,
+    unlimited_usage: Boolean(row.unlimited_usage),
     allow_scheduled: Boolean(row.allow_scheduled),
     allow_mcp: Boolean(row.allow_mcp),
     limits: {
-      daily_agent_runs: Number(row.daily_agent_limit),
-      daily_searches: Number(row.daily_search_limit),
+      daily_agent_runs: row.unlimited_usage ? null : Number(row.daily_agent_limit),
+      daily_searches: row.unlimited_usage ? null : Number(row.daily_search_limit),
       max_watchlists: Number(row.max_watchlists)
     },
     usage: {
@@ -35,8 +36,8 @@ async function getTrialPolicy(userId) {
       searches: Number(row.searches)
     },
     remaining: {
-      agent_runs: Math.max(0, Number(row.daily_agent_limit) - Number(row.agent_runs)),
-      searches: Math.max(0, Number(row.daily_search_limit) - Number(row.searches))
+      agent_runs: row.unlimited_usage ? null : Math.max(0, Number(row.daily_agent_limit) - Number(row.agent_runs)),
+      searches: row.unlimited_usage ? null : Math.max(0, Number(row.daily_search_limit) - Number(row.searches))
     }
   };
 }
@@ -79,6 +80,7 @@ async function consumeTrialQuota(userId, metric) {
   const policy = await getTrialPolicy(userId);
   if (!policy) return null;
   if (policy.expired) throw new ApiError('测试账号已到期', 403, 'trial_expired');
+  if (policy.unlimited_usage) return policy;
   await query(
     `INSERT OR IGNORE INTO trial_usage_daily (user_id, usage_date)
      VALUES (?, date('now', 'localtime'))`,

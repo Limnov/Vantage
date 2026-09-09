@@ -22,9 +22,10 @@ async function main() {
   const agentLimit = integer('TRIAL_DAILY_AGENT_LIMIT', 10, 1, 1000);
   const searchLimit = integer('TRIAL_DAILY_SEARCH_LIMIT', 30, 1, 10000);
   const watchlistLimit = integer('TRIAL_MAX_WATCHLISTS', 3, 0, 100);
+  const unlimitedUsage = process.env.TRIAL_UNLIMITED_USAGE === 'true';
 
   if (!/^[A-Za-z0-9._-]{3,50}$/.test(username)) throw new Error('TRIAL_USERNAME is invalid');
-  if (password.length < 16) throw new Error('TRIAL_PASSWORD must be at least 16 characters');
+  if (password.length < 12) throw new Error('TRIAL_PASSWORD must be at least 12 characters');
 
   const existing = await queryOne(
     `SELECT u.id, t.org_id FROM users u
@@ -76,18 +77,19 @@ async function main() {
     );
     await query(
       `INSERT INTO trial_accounts
-       (user_id, org_id, expires_at, daily_agent_limit, daily_search_limit, max_watchlists, allow_scheduled, allow_mcp)
-       VALUES (?, ?, datetime('now', '+' || ? || ' days'), ?, ?, ?, 0, 0)
+       (user_id, org_id, expires_at, daily_agent_limit, daily_search_limit, max_watchlists, unlimited_usage, allow_scheduled, allow_mcp)
+       VALUES (?, ?, datetime('now', '+' || ? || ' days'), ?, ?, ?, ?, 0, 0)
        ON CONFLICT(user_id) DO UPDATE SET
          org_id = excluded.org_id,
          expires_at = excluded.expires_at,
          daily_agent_limit = excluded.daily_agent_limit,
          daily_search_limit = excluded.daily_search_limit,
          max_watchlists = excluded.max_watchlists,
+         unlimited_usage = excluded.unlimited_usage,
          allow_scheduled = 0,
          allow_mcp = 0,
          updated_at = datetime('now')`,
-      [userId, org.id, days, agentLimit, searchLimit, watchlistLimit]
+      [userId, org.id, days, agentLimit, searchLimit, watchlistLimit, unlimitedUsage ? 1 : 0]
     );
     await query('DELETE FROM trial_usage_daily WHERE user_id = ?', [userId]);
     sqlite.exec('COMMIT');
@@ -98,7 +100,10 @@ async function main() {
       username,
       org_id: org.id,
       expires_at: policy.expires_at,
-      limits: { daily_agent_runs: agentLimit, daily_searches: searchLimit, max_watchlists: watchlistLimit },
+      limits: unlimitedUsage
+        ? { daily_agent_runs: null, daily_searches: null, max_watchlists: watchlistLimit }
+        : { daily_agent_runs: agentLimit, daily_searches: searchLimit, max_watchlists: watchlistLimit },
+      unlimited_usage: unlimitedUsage,
       capabilities: { scheduled_tasks: false, mcp: false, provider_configuration: false }
     }));
   } catch (error) {

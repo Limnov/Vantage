@@ -476,6 +476,7 @@ CREATE TABLE IF NOT EXISTS trial_accounts (
   daily_agent_limit INTEGER NOT NULL DEFAULT 10 CHECK (daily_agent_limit BETWEEN 1 AND 1000),
   daily_search_limit INTEGER NOT NULL DEFAULT 30 CHECK (daily_search_limit BETWEEN 1 AND 10000),
   max_watchlists INTEGER NOT NULL DEFAULT 3 CHECK (max_watchlists BETWEEN 0 AND 100),
+  unlimited_usage INTEGER NOT NULL DEFAULT 0 CHECK (unlimited_usage IN (0, 1)),
   allow_scheduled INTEGER NOT NULL DEFAULT 0 CHECK (allow_scheduled IN (0, 1)),
   allow_mcp INTEGER NOT NULL DEFAULT 0 CHECK (allow_mcp IN (0, 1)),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

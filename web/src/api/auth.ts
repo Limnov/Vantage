@@ -29,9 +29,10 @@ export interface LoginResponse {
       expires_at: string;
       allow_scheduled: boolean;
       allow_mcp: boolean;
-      limits: { daily_agent_runs: number; daily_searches: number; max_watchlists: number };
+      unlimited_usage?: boolean;
+      limits: { daily_agent_runs: number | null; daily_searches: number | null; max_watchlists: number };
       usage: { agent_runs: number; searches: number };
-      remaining: { agent_runs: number; searches: number };
+      remaining: { agent_runs: number | null; searches: number | null };
     };
   };
   orgs: Array<{
