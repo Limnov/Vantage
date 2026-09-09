@@ -22,16 +22,26 @@ await build({
 });
 const { html } = createRequire(import.meta.url)(output);
 const target = path.join(root, "../web/dist/index.html");
+const appTarget = path.join(root, "../web/dist/app.html");
+const emptyRoot = '<div id="root"></div>';
 let page = await readFile(target, "utf8");
-await writeFile(path.join(root, "../web/dist/app.html"), page);
-page = page.replace('<div id="root"></div>', `<div id="root">${html}</div>`);
-const css = (await readdir(path.join(root, "../web/dist/assets"))).find(
-  (name) => /^(?:public|Landing)-.*\.css$/.test(name),
-);
-if (css)
-  page = page.replace(
-    "</head>",
-    `<link rel="stylesheet" href="/assets/${css}" /></head>`,
+if (page.includes(emptyRoot)) {
+  await writeFile(appTarget, page);
+  page = page.replace(emptyRoot, `<div id="root">${html}</div>`);
+  const css = (await readdir(path.join(root, "../web/dist/assets"))).find(
+    (name) => /^(?:public|Landing)-.*\.css$/.test(name),
   );
-await writeFile(target, page);
-console.log("Landing page prerendered; application shell preserved separately");
+  if (css)
+    page = page.replace(
+      "</head>",
+      `<link rel="stylesheet" href="/assets/${css}" /></head>`,
+    );
+  await writeFile(target, page);
+  console.log("Landing page prerendered; application shell preserved separately");
+} else {
+  const appPage = await readFile(appTarget, "utf8");
+  if (!appPage.includes(emptyRoot)) {
+    throw new Error("Application shell is not clean; rebuild the web bundle before prerendering");
+  }
+  console.log("Landing page was already prerendered; application shell left unchanged");
+}
