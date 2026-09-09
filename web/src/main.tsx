@@ -1,15 +1,16 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, useLocation } from 'react-router-dom';
+import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { ConfigProvider, theme, App as AntdApp } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
-import App from './App';
 import { AuthProvider, useAuth } from './lib/auth';
-import Login from './pages/Login';
 import 'antd/dist/reset.css';
 import './index.css';
 
 const Landing = lazy(() => import('./pages/Landing'));
+const Login = lazy(() => import('./pages/Login'));
+const AgentFirstApp = lazy(() => import('./AgentFirstApp'));
+const ClassicApp = lazy(() => import('./ClassicApp'));
 
 
 function Entry({mode,toggleTheme}: {mode: ThemeMode; toggleTheme: () => void}) {
@@ -22,8 +23,8 @@ function Entry({mode,toggleTheme}: {mode: ThemeMode; toggleTheme: () => void}) {
     robots.setAttribute('content', pathname === '/' || pathname === '/demo' ? 'index,follow' : 'noindex,nofollow');
   }, [pathname]);
   if (pathname === '/') return <Suspense fallback={<div className="mode-loading">加载中…</div>}><Landing/></Suspense>;
-  if (pathname === '/demo') return <AuthProvider><Login demoMode /></AuthProvider>;
-  return <AuthProvider><AuthGate><App themeMode={mode} onToggleTheme={toggleTheme}/></AuthGate></AuthProvider>;
+  if (pathname === '/demo') return <AuthProvider><Suspense fallback={<div className="auth-loading">加载中...</div>}><Login demoMode /></Suspense></AuthProvider>;
+  return <AuthProvider><AuthGate><Workspace themeMode={mode} onToggleTheme={toggleTheme}/></AuthGate></AuthProvider>;
 }
 
 type ThemeMode = 'light' | 'dark';
@@ -40,8 +41,38 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!isAuthenticated) return <Login />;
+  if (!isAuthenticated) return <Suspense fallback={<div className="auth-loading">加载中...</div>}><Login /></Suspense>;
   return <>{children}</>;
+}
+
+function Workspace({
+  themeMode,
+  onToggleTheme,
+}: {
+  themeMode: ThemeMode;
+  onToggleTheme: () => void;
+}) {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const isAgentMode = pathname === '/app' || pathname === '/login';
+
+  return (
+    <Suspense fallback={<div className="mode-loading">正在打开工作台…</div>}>
+      {isAgentMode ? (
+        <AgentFirstApp
+          themeMode={themeMode}
+          onToggleTheme={onToggleTheme}
+          onSwitchMode={() => navigate('/dashboard', { replace: true })}
+        />
+      ) : (
+        <ClassicApp
+          themeMode={themeMode}
+          onToggleTheme={onToggleTheme}
+          onSwitchMode={() => navigate('/app', { replace: true })}
+        />
+      )}
+    </Suspense>
+  );
 }
 
 function Root() {

@@ -23,9 +23,10 @@ await build({
 const { html } = createRequire(import.meta.url)(output);
 const target = path.join(root, "../web/dist/index.html");
 let page = await readFile(target, "utf8");
+await writeFile(path.join(root, "../web/dist/app.html"), page);
 page = page.replace('<div id="root"></div>', `<div id="root">${html}</div>`);
 const css = (await readdir(path.join(root, "../web/dist/assets"))).find(
-  (name) => /^public-.*\.css$/.test(name),
+  (name) => /^(?:public|Landing)-.*\.css$/.test(name),
 );
 if (css)
   page = page.replace(
@@ -33,4 +34,4 @@ if (css)
     `<link rel="stylesheet" href="/assets/${css}" /></head>`,
   );
 await writeFile(target, page);
-console.log("Landing page prerendered for crawlers and no-JavaScript visitors");
+console.log("Landing page prerendered; application shell preserved separately");
