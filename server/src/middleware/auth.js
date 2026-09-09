@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const { queryOne } = require('../db');
 const config = require('../config');
 const { demoAccess } = require('../security/demo');
+const { getTrialPolicy, trialAccess } = require('../security/trial');
 const logger = require('../utils/logger');
 
 /**
@@ -50,6 +51,9 @@ async function requireAuth(req, res, next) {
 
     user.is_demo = !!user.demo_org_id;
     if (user.is_demo) user.is_system_admin = 0;
+    user.trial = user.is_demo ? null : await getTrialPolicy(user.id);
+    user.is_trial = Boolean(user.trial);
+    if (user.is_trial) user.is_system_admin = 0;
     req.user = user;
     req.authSessionId = payload.sid;
     // 当前组织只从 header 解析，避免业务 body/path 与授权上下文出现两个来源。
@@ -61,6 +65,14 @@ async function requireAuth(req, res, next) {
       if (error) return res.status(403).json({ error: 'demo_read_only', message: error });
       req.currentOrgId = user.demo_org_id;
       req.currentOrgRole = 'viewer';
+      return next();
+    }
+
+    if (user.is_trial) {
+      const error = trialAccess(req.method, req.originalUrl, orgIdHeader, user.trial);
+      if (error) return res.status(error.status).json({ error: error.error, message: error.message });
+      req.currentOrgId = user.trial.org_id;
+      req.currentOrgRole = 'member';
       return next();
     }
 
@@ -116,6 +128,10 @@ async function optionalAuth(req, res, next) {
       [payload.userId, payload.sid, Math.floor(Date.now() / 1000)]
     );
     if (user && user.is_active) {
+      user.is_demo = !!user.demo_org_id;
+      user.trial = user.is_demo ? null : await getTrialPolicy(user.id);
+      user.is_trial = Boolean(user.trial);
+      if (user.is_demo || user.is_trial) user.is_system_admin = 0;
       req.user = user;
       req.authSessionId = payload.sid;
     }

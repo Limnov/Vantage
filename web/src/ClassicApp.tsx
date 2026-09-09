@@ -401,6 +401,11 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
                   <Tag className="topbar-demo-tag">Demo · 只读</Tag>
                 </Tooltip>
               )}
+              {user?.is_trial && user.trial && (
+                <Tooltip title={`今日剩余 Agent ${user.trial.remaining.agent_runs} 次、搜索 ${user.trial.remaining.searches} 次；到期：${user.trial.expires_at}`}>
+                  <Tag className="topbar-demo-tag">测试账号 · 有限额</Tag>
+                </Tooltip>
+              )}
             </Space>
           </div>
           <Space size={4} className="classic-header-actions" style={{ flexShrink: 0 }}>

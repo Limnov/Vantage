@@ -22,6 +22,7 @@ const { queryOne } = require('../db');
 const { agentQueue } = require('../agent/queue');
 const asyncHandler = require('../middleware/asyncHandler');
 const { requireOrgRole } = require('../middleware/auth');
+const { consumeTrialQuota } = require('../security/trial');
 
 const router = express.Router();
 router.get('/capabilities', (req, res) => res.json({ items: require('../agent/toolSchemas').TOOL_SPECS.map(({ name, title, description, readOnly }) => ({ name, title, description, readOnly })) }));
@@ -103,6 +104,7 @@ router.post('/runs', requireOrgRole('owner', 'admin', 'member'), asyncHandler(as
   if (watchlistId && !(await queryOne('SELECT id FROM watchlist WHERE id = ? AND org_id = ?', [watchlistId, orgId]))) {
     return res.status(404).json({ error: '当前组织中未找到监控' });
   }
+  await consumeTrialQuota(req.user.id, 'agent_runs');
   const runId = randomUUID();
   await createRun({
     id: runId,

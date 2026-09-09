@@ -8,6 +8,12 @@ const express = require('express');
 const { query, queryOne } = require('../db');
 const { requireAuth, requireOrgRole } = require('../middleware/auth');
 const scheduler = require('../scheduler');
+const asyncHandler = require('../middleware/asyncHandler');
+const {
+  consumeTrialQuota,
+  assertTrialWatchlistCreate,
+  assertTrialSchedulingAllowed
+} = require('../security/trial');
 
 const router = express.Router();
 
@@ -92,7 +98,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 /**
  * 新建
  */
-router.post('/', requireAuth, requireOrgRole('owner', 'admin', 'member'), async (req, res) => {
+router.post('/', requireAuth, requireOrgRole('owner', 'admin', 'member'), asyncHandler(async (req, res) => {
   const orgId = req.currentOrgId || (req.user.is_system_admin ? parseInt(req.body.orgId || 1, 10) : 0);
   if (!orgId) return res.status(400).json({ error: 'org context required' });
 
@@ -105,29 +111,32 @@ router.post('/', requireAuth, requireOrgRole('owner', 'admin', 'member'), async 
   }
   // 2026-06-04: 允许 search_mode 字段，默认 product
   const validMode = ['news', 'product', 'general'].includes(search_mode) ? search_mode : 'product';
+  await assertTrialWatchlistCreate(req.user.id, orgId);
 
   const r = await query(
-    `INSERT INTO watchlist (org_id, owner_id, name, type, search_mode, query, category, tags, region, language, priority, schedule, alert_threshold, meta, last_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+    `INSERT INTO watchlist (org_id, owner_id, name, type, search_mode, query, category, tags, region, language, priority, schedule, alert_threshold, meta, enabled, last_status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
     [orgId, req.user.id, name, type, validMode, q, category || null, tags || null,
      region || 'global', language || 'zh',
      priority || 5, schedule || '0 7 * * *',
      alert_threshold ? JSON.stringify(alert_threshold) : null,
-     meta ? JSON.stringify(meta) : null]
+     meta ? JSON.stringify(meta) : null,
+     req.user.is_trial ? 0 : 1]
   );
 
   res.json({ id: r.insertId });
-});
+}));
 
 /**
  * 更新
  */
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', requireAuth, asyncHandler(async (req, res) => {
   const item = await queryOne('SELECT * FROM watchlist WHERE id = ?', [req.params.id]);
   if (!item) return res.status(404).json({ error: 'Not found' });
   if (!canMutateWatchlist(req, item)) {
     return res.status(403).json({ error: 'forbidden' });
   }
+  assertTrialSchedulingAllowed(req.user, req.body?.enabled === true || req.body?.enabled === 1);
 
   const allowed = ['name', 'type', 'search_mode', 'query', 'category', 'tags', 'region', 'language', 'priority', 'schedule', 'alert_threshold', 'meta', 'enabled'];
   const sets = [];
@@ -143,7 +152,7 @@ router.put('/:id', requireAuth, async (req, res) => {
   params.push(req.params.id, item.org_id);
   await query(`UPDATE watchlist SET ${sets.join(', ')} WHERE id = ? AND org_id = ?`, params);
   res.json({ updated: sets.length });
-});
+}));
 
 /**
  * 删除
@@ -161,7 +170,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
 /**
  * 立即执行
  */
-router.post('/:id/run', requireAuth, async (req, res) => {
+router.post('/:id/run', requireAuth, async (req, res, next) => {
   const id = parseInt(req.params.id, 10);
   const item = normalizeWatchlist(await queryOne('SELECT * FROM watchlist WHERE id = ?', [id]));
   if (!item) return res.status(404).json({ error: 'Not found' });
@@ -179,7 +188,13 @@ router.post('/:id/run', requireAuth, async (req, res) => {
 
   const startTime = Date.now();
   try {
-    const result = await runWatchlist(id, { silent: true, force, userId: req.user.id });
+    await consumeTrialQuota(req.user.id, 'searches');
+    const result = await runWatchlist(id, {
+      silent: true,
+      force,
+      forcePaused: Boolean(req.user.is_trial),
+      userId: req.user.id
+    });
     const duration = Date.now() - startTime;
 
     if (result.ok) {
@@ -198,6 +213,7 @@ router.post('/:id/run', requireAuth, async (req, res) => {
 
     res.json({ ...result, durationMs: duration, watchlistName: item.name });
   } catch (err) {
+    if (err.isApiError) return next(err);
     const duration = Date.now() - startTime;
     logStore.push('error', 'watchlist', `监控执行异常: ${item.name}`, {
       id, error: err.message, durationMs: duration

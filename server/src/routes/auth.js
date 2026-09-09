@@ -10,6 +10,7 @@ const { query, queryOne } = require('../db');
 const config = require('../config');
 const { requireAuth } = require('../middleware/auth');
 const logger = require('../utils/logger');
+const { getTrialPolicy } = require('../security/trial');
 const {
   LOCAL_DEV_ADMIN,
   isDisallowedAdminPassword,
@@ -90,6 +91,12 @@ router.post('/login', async (req, res) => {
 
   user.is_demo = !!user.demo_org_id;
   if (user.is_demo) user.is_system_admin = 0;
+  user.trial = user.is_demo ? null : await getTrialPolicy(user.id);
+  user.is_trial = Boolean(user.trial);
+  if (user.is_trial && user.trial.expired) {
+    return res.status(403).json({ error: 'trial_expired', message: '测试账号已到期' });
+  }
+  if (user.is_trial) user.is_system_admin = 0;
   const { token, refreshToken } = await issueSession(user);
 
   // 更新最后登录信息
@@ -120,9 +127,15 @@ router.post('/login', async (req, res) => {
       email: user.email,
       display_name: user.display_name,
       is_system_admin: !!user.is_system_admin,
-      is_demo: !!user.is_demo
+      is_demo: !!user.is_demo,
+      is_trial: !!user.is_trial,
+      trial: user.trial || undefined
     },
-    orgs: user.is_demo ? orgs.filter(org => org.id === user.demo_org_id).map(org => ({ ...org, role: 'viewer' })) : orgs
+    orgs: user.is_demo
+      ? orgs.filter(org => org.id === user.demo_org_id).map(org => ({ ...org, role: 'viewer' }))
+      : user.is_trial
+        ? orgs.filter(org => org.id === user.trial.org_id).map(org => ({ ...org, role: 'member' }))
+        : orgs
   });
 });
 
@@ -213,9 +226,15 @@ router.get('/me', requireAuth, async (req, res) => {
       email: req.user.email,
       display_name: req.user.display_name,
       is_system_admin: !!req.user.is_system_admin,
-      is_demo: !!req.user.is_demo
+      is_demo: !!req.user.is_demo,
+      is_trial: !!req.user.is_trial,
+      trial: req.user.trial || undefined
     },
-    orgs: req.user.is_demo ? orgs.filter(org => org.id === req.user.demo_org_id).map(org => ({ ...org, role: 'viewer' })) : orgs
+    orgs: req.user.is_demo
+      ? orgs.filter(org => org.id === req.user.demo_org_id).map(org => ({ ...org, role: 'viewer' }))
+      : req.user.is_trial
+        ? orgs.filter(org => org.id === req.user.trial.org_id).map(org => ({ ...org, role: 'member' }))
+        : orgs
   });
 });
 

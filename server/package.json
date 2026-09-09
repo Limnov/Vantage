@@ -12,6 +12,7 @@
     "dev": "node --watch src/index.js",
     "db:migrate": "node ../db/migrations/run.js",
     "db:import-mysql": "node scripts/migrate-mysql-to-sqlite.js",
+    "account:trial": "node scripts/create-trial-account.js",
     "test": "node --test test/*.test.js",
     "eval:agent": "node scripts/evaluate-agent.js",
     "mcp": "node src/mcp/stdio.js",

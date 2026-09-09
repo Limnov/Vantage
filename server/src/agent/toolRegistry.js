@@ -111,7 +111,10 @@ function createToolRegistry(overrides = {}) {
   const dependencies = { ...createDefaultDependencies(), ...overrides };
 
   const handlers = {
-    async search_market(input) {
+    async search_market(input, context) {
+      if (context.userId) {
+        await require('../security/trial').consumeTrialQuota(context.userId, 'searches');
+      }
       const raw = await dependencies.searchMarket(input);
       const items = Array.isArray(raw) ? raw : (Array.isArray(raw?.results) ? raw.results : []);
       const results = items.slice(0, input.max_results).map((item, index) => {

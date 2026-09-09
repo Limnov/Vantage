@@ -257,6 +257,7 @@ async function executeBusiness(name, input, context) {
       };
     }
     case "create_watchlist": {
+      const trial = await require("../security/trial").assertTrialWatchlistCreate(context.userId, org);
       const fields = {
         org_id: org,
         owner_id: context.userId,
@@ -265,6 +266,7 @@ async function executeBusiness(name, input, context) {
         enabled: false,
         ...input,
       };
+      if (trial) fields.enabled = false;
       const keys = Object.keys(fields);
       const result = await query(
         `INSERT INTO watchlist (${keys.join(",")}) VALUES (${keys.map(() => "?").join(",")})`,
@@ -288,6 +290,11 @@ async function executeBusiness(name, input, context) {
         fail("只能操作自己创建的监控");
       if (name === "update_watchlist") {
         const { watchlist_id, ...fields } = input;
+        const trialPolicy = await require("../security/trial").getTrialPolicy(context.userId);
+        require("../security/trial").assertTrialSchedulingAllowed(
+          { is_trial: Boolean(trialPolicy), trial: trialPolicy },
+          fields.enabled === true,
+        );
         await update("watchlist", watchlist_id, fields);
         return {
           item: await owned("watchlist", watchlist_id),
@@ -301,8 +308,11 @@ async function executeBusiness(name, input, context) {
         ]);
         return { deleted: item.id };
       }
+      const trialPolicy = await require("../security/trial").getTrialPolicy(context.userId);
+      await require("../security/trial").consumeTrialQuota(context.userId, "searches");
       const result = await require("../services").runWatchlist(item.id, {
         silent: true,
+        forcePaused: Boolean(trialPolicy),
         userId: context.userId,
       });
       if (!result.ok) fail(result.error || "监控执行失败", "monitor_failed");

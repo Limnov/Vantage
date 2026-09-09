@@ -35,7 +35,10 @@ async function runWatchlist(watchlistId, options = {}) {
   const { silent = false } = options;
   const taskName = `watchlist:${watchlistId}`;
   const startTime = Date.now();
-  const item = await queryOne('SELECT * FROM watchlist WHERE id = ? AND enabled = 1', [watchlistId]);
+  const item = await queryOne(
+    options.forcePaused ? 'SELECT * FROM watchlist WHERE id = ?' : 'SELECT * FROM watchlist WHERE id = ? AND enabled = 1',
+    [watchlistId]
+  );
   if (!item) {
     return { ok: false, error: 'not_found' };
   }

@@ -31,7 +31,7 @@ class AgentQueue {
       [runId]
     );
     this.start();
-    void this.tick();
+    if (process.env.AGENT_WORKER_ENABLED !== 'false') void this.tick();
   }
 
   start() {

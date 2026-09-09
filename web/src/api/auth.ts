@@ -23,7 +23,16 @@ export interface LoginResponse {
     email: string;
     display_name?: string;
     is_system_admin: boolean;
-  is_demo?: boolean;
+    is_demo?: boolean;
+    is_trial?: boolean;
+    trial?: {
+      expires_at: string;
+      allow_scheduled: boolean;
+      allow_mcp: boolean;
+      limits: { daily_agent_runs: number; daily_searches: number; max_watchlists: number };
+      usage: { agent_runs: number; searches: number };
+      remaining: { agent_runs: number; searches: number };
+    };
   };
   orgs: Array<{
     id: number;

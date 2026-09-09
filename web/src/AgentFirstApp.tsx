@@ -42,7 +42,7 @@ export default function App({
         key: "setup",
         icon: <SettingOutlined />,
         label: "连接配置",
-        disabled: user?.is_demo,
+        disabled: user?.is_demo || user?.is_trial,
         onClick: () => setSetup(true),
       },
       {
@@ -79,6 +79,11 @@ export default function App({
           {user?.is_demo && (
             <Tooltip title="示例数据，只读浏览，不调用 API">
               <Tag className="topbar-demo-tag">Demo · 只读</Tag>
+            </Tooltip>
+          )}
+          {user?.is_trial && user.trial && (
+            <Tooltip title={`今日剩余 Agent ${user.trial.remaining.agent_runs} 次、搜索 ${user.trial.remaining.searches} 次；到期：${user.trial.expires_at}`}>
+              <Tag className="topbar-demo-tag">测试账号 · 有限额</Tag>
             </Tooltip>
           )}
           <Tooltip title="切换到经典版">

@@ -40,8 +40,10 @@ npm test --prefix server
 DEMO_BASE_URL=https://vantage.limnov.com node server/scripts/smoke-demo-ui.js
 ```
 
-4. 只传输 `server/src`、`server/scripts/seed-demo.js`、server 包清单、`db`、根包清单和 `web/dist`；在 Linux 上运行 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --omit=dev --prefix server`。不要上传本地数据库、日志或 macOS 的 node_modules。
+4. 只传输 `server/src`、`server/scripts/seed-demo.js`、`server/scripts/create-trial-account.js`、server 包清单、`db`、根包清单和 `web/dist`；在 Linux 上运行 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --omit=dev --prefix server`。不要上传本地数据库、日志或 macOS 的 node_modules。
 5. 在相同私有环境和 `vantage` 用户下依次运行 `node db/migrations/run.js`、`node server/scripts/seed-demo.js`。Demo 初始化幂等，遇到同名的普通用户或已有组织会拒绝覆盖。
+
+需要让外部人员体验真实 Agent 时，用单独生成的强随机密码运行 `npm --prefix server run account:trial`。测试账号复用服务器 LLM 与 Tavily 配置，但限制到独立组织、30 天有效期、每日 Agent/搜索额度和 3 个手动监控；密码只交给受邀测试人员，不写入发布目录或 Git。
 6. 安装本目录的 systemd / Caddy 配置，执行 `caddy validate --config /etc/caddy/Caddyfile`、`systemctl daemon-reload`、`systemctl enable --now vantage caddy`。
 7. 验证源站后，将 Cloudflare 的 `vantage` 记录设置为服务器 A 记录并开启代理。旧 Worker 自定义域名必须先解除；不要同时保留两个入口。Cloudflare 到源站应使用 Full 或 Full (strict)。
 
