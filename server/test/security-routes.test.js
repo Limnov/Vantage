@@ -247,6 +247,7 @@ test('default proxy policy ignores spoofed forwarding headers for rate limiting'
         const second = await fetch(base + '/health', { headers: { 'x-forwarded-for': '203.0.113.20' } });
         process.stdout.write(JSON.stringify({ first: first.status, second: second.status }));
       } finally {
+        server.closeAllConnections();
         server.close(async () => { await db.closeAll(); });
       }
     });

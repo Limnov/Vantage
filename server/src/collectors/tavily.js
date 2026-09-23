@@ -7,6 +7,31 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 
+async function getApiKey() {
+  const tavilyRoute = require('../routes/tavily');
+  const apiKey = await tavilyRoute.getEffectiveApiKey();
+  if (!apiKey) throw new Error('TAVILY_API_KEY not configured (check WebUI settings or .env)');
+  return apiKey;
+}
+
+async function extract(url) {
+  const apiKey = await getApiKey();
+  const response = await axios.post('https://api.tavily.com/extract', {
+    urls: url,
+    extract_depth: 'basic',
+    format: 'text'
+  }, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    timeout: 20000
+  });
+  const result = (response.data?.results || []).find(item => item.url === url);
+  if (!result?.raw_content) {
+    const failed = (response.data?.failed_results || []).find(item => item.url === url);
+    throw new Error(failed?.error || 'Tavily did not return source content');
+  }
+  return { content: result.raw_content, contentLength: result.raw_content.length };
+}
+
 /**
  * 用 Tavily 搜索
  * @param {string} query
@@ -151,4 +176,4 @@ function calculateRelevance(result, query) {
   return matched / tokens.length;
 }
 
-module.exports = { search, calculateRelevance };
+module.exports = { search, extract, calculateRelevance };

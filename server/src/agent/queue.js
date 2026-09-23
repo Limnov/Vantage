@@ -90,10 +90,15 @@ class AgentQueue {
     const metadata = parseJson(row.metadata);
     let previousReport = null;
     if (metadata.conversation_id) {
+      const merchantScope = metadata.agent === 'merchant_research';
       const previous = await queryOne(
         `SELECT goal,result_json FROM agent_runs WHERE org_id=? AND id<>?
          AND json_extract(metadata,'$.conversation_id')=? AND status='completed'
-         ORDER BY rowid DESC LIMIT 1`, [row.org_id, runId, metadata.conversation_id]
+         ${merchantScope ? "AND user_id=? AND json_extract(metadata,'$.agent')='merchant_research'" : ''}
+         ORDER BY rowid DESC LIMIT 1`,
+        merchantScope
+          ? [row.org_id, runId, metadata.conversation_id, row.user_id]
+          : [row.org_id, runId, metadata.conversation_id]
       );
       if (previous) previousReport = { ...parseJson(previous.result_json), goal: previous.goal };
     }
@@ -102,7 +107,9 @@ class AgentQueue {
       context: {
         orgId: row.org_id, userId: row.user_id,
         watchlistId: metadata.watchlist_id || null,
-        source: metadata.source || 'queue', previousReport
+        source: metadata.source || 'queue', previousReport,
+        agent: metadata.agent || null,
+        merchant: metadata.merchant || null
       }
     };
   }

@@ -28,6 +28,11 @@ const router = express.Router();
 router.get('/capabilities', (req, res) => res.json({ items: require('../agent/toolSchemas').TOOL_SPECS.map(({ name, title, description, readOnly }) => ({ name, title, description, readOnly })) }));
 
 const RUN_STATUSES = new Set(['queued', 'running', 'completed', 'failed', 'cancelled']);
+const MERCHANT_AGENT = 'merchant_research';
+
+function merchantField(value, maxLength) {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength + 1) : '';
+}
 
 function resolveOrgId(req) {
   if (req.currentOrgId) return req.currentOrgId;
@@ -116,6 +121,62 @@ router.post('/runs', requireOrgRole('owner', 'admin', 'member'), asyncHandler(as
 
   await agentQueue.enqueue(runId);
 
+  return res.status(202).json({
+    run_id: runId,
+    conversation_id: conversationId,
+    status: 'queued',
+    poll: `/api/agent/runs/${runId}`
+  });
+}));
+
+// QMuse 商户入口只接受业务问题；研究约束和工具边界由服务端决定。
+router.post('/merchant-research', requireOrgRole('owner', 'admin', 'member'), asyncHandler(async (req, res) => {
+  const question = merchantField(req.body?.question, 500);
+  const industry = merchantField(req.body?.industry, 40);
+  const region = merchantField(req.body?.region, 60);
+  const suppliedConversationId = req.body?.conversationId;
+  const orgId = resolveOrgId(req);
+
+  if (question.length < 8 || question.length > 500) {
+    return res.status(400).json({ error: 'invalid_question', message: '经营问题需要 8 至 500 个字符' });
+  }
+  if (industry.length > 40 || region.length > 60) {
+    return res.status(400).json({ error: 'invalid_merchant_context', message: '行业或地区过长' });
+  }
+  if (!orgId) {
+    return res.status(400).json({ error: 'organization context required (send X-Org-ID)' });
+  }
+
+  let conversationId = randomUUID();
+  if (suppliedConversationId !== undefined && suppliedConversationId !== null && suppliedConversationId !== '') {
+    if (typeof suppliedConversationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(suppliedConversationId)) {
+      return res.status(400).json({ error: 'invalid_conversation_id' });
+    }
+    const previous = await queryOne(
+      `SELECT id FROM agent_runs WHERE org_id = ? AND user_id = ? AND status = 'completed'
+       AND json_extract(metadata, '$.agent') = ?
+       AND json_extract(metadata, '$.conversation_id') = ? LIMIT 1`,
+      [orgId, req.user.id, MERCHANT_AGENT, suppliedConversationId]
+    );
+    if (!previous) return res.status(404).json({ error: 'conversation_not_found' });
+    conversationId = suppliedConversationId;
+  }
+
+  await consumeTrialQuota(req.user.id, 'agent_runs');
+  const runId = randomUUID();
+  await createRun({
+    id: runId,
+    orgId,
+    userId: req.user.id,
+    goal: question,
+    metadata: {
+      source: 'qmuse',
+      agent: MERCHANT_AGENT,
+      merchant: { industry, region },
+      conversation_id: conversationId
+    }
+  });
+  await agentQueue.enqueue(runId);
   return res.status(202).json({
     run_id: runId,
     conversation_id: conversationId,

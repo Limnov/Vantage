@@ -7,7 +7,7 @@
 
 const { chatWithTools } = require('./llm');
 const { createToolRegistry } = require('./toolRegistry');
-const { buildInitialMessages, createWorkflowState, PHASES, phaseForTool } = require('./workflow');
+const { buildInitialMessages, createWorkflowState, PHASES, phaseForTool, MERCHANT_RESEARCH_TOOLS } = require('./workflow');
 const defaultStore = require('./store');
 
 const DEFAULT_MAX_TOOL_CALLS_PER_STEP = 4;
@@ -206,6 +206,39 @@ function normalizeFinal(text, evidenceMap) {
   };
 }
 
+function stabilizeMerchantFinal(final, evidenceMap) {
+  if (final.evidence_quality.fulltext_count > 0) {
+    final.answer_status = 'grounded_answer';
+    return final;
+  }
+  const verifiedSources = Array.from(evidenceMap.values())
+    .filter(item => item.evidence_level === 'fulltext')
+    .slice(0, 4);
+  final.title = verifiedSources.length ? '已找到可核验来源' : '本次研究尚未完成核验';
+  final.summary = verifiedSources.length
+    ? `已核验 ${verifiedSources.length} 个公开来源，但模型未能生成带有效引用的综合结论。`
+    : '已检索到公开线索，但未能核验来源原文，暂时无法给出可靠的经营结论。';
+  final.answer = verifiedSources.length
+    ? '已核验的来源列在下方，请查看原文；本次没有生成可靠的综合结论。'
+    : '本次未获得可核验的来源原文。请调整问题或稍后重试；下方搜索线索可供自行查看。';
+  final.key_points = [];
+  final.confidence = 'low';
+  final.evidence_ids = verifiedSources.map(item => item.evidence_id);
+  final.evidence_quality = evaluateEvidenceQuality(final.evidence_ids, evidenceMap);
+  final.answer_status = verifiedSources.length ? 'sources_only' : 'insufficient_evidence';
+  final.warnings.push('未生成带有效原文引用的综合结论，已隐藏未经支持的模型回答');
+  return final;
+}
+
+function visibleEvidence(evidenceMap, citedIds = []) {
+  const cited = new Set(citedIds);
+  const items = Array.from(evidenceMap.values());
+  return [
+    ...items.filter(item => cited.has(item.evidence_id)),
+    ...items.filter(item => !cited.has(item.evidence_id))
+  ].slice(0, 20);
+}
+
 function modelStepOutput(response) {
   const message = response?.message || {};
   return {
@@ -269,6 +302,9 @@ async function runAgent({
     userId: context.userId
   });
   const messages = buildInitialMessages(goal, context);
+  const allowedTools = context.agent === 'merchant_research'
+    ? new Set(MERCHANT_RESEARCH_TOOLS)
+    : null;
   const evidenceMap = new Map();
   const runStartedAt = Date.now();
   const operations = [];
@@ -305,8 +341,21 @@ async function runAgent({
         throw error;
       }
       const startedAt = Date.now();
-      const availableToolDefinitions = formatRepairPending ? [] : registry.definitions();
-      const availableToolNames = formatRepairPending ? [] : registry.list();
+      const forceFinal = context.agent === 'merchant_research' && stepNo === maxSteps;
+      if (forceFinal && !formatRepairPending) {
+        messages.push({ role: 'user', content: buildFinalRepairPrompt(evidenceMap) });
+      }
+      const merchantSearchCount = operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length;
+      const merchantExtractCount = operations.filter(item => item.tool === 'extract_source' && item.ok && !item.replayed).length;
+      const availableTool = (name) => (!allowedTools || allowedTools.has(name))
+        && !(context.agent === 'merchant_research' && (
+          (name === 'search_market' && merchantSearchCount >= 3)
+          || (name === 'extract_source' && merchantExtractCount >= 4)
+        ));
+      const availableToolDefinitions = formatRepairPending || forceFinal ? [] : registry.definitions()
+        .filter((tool) => availableTool(tool.function?.name));
+      const availableToolNames = formatRepairPending || forceFinal ? [] : registry.list()
+        .filter(availableTool);
       let response;
       try {
         response = await complete({
@@ -349,7 +398,9 @@ async function runAgent({
 
       const message = response.message || {};
       const requestedToolCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
-      const toolCalls = requestedToolCalls.slice(0, maxToolCallsPerStep);
+      const toolCalls = forceFinal || formatRepairPending
+        ? []
+        : requestedToolCalls.slice(0, maxToolCallsPerStep);
       if (!toolCalls.length) {
         const finalText = messageText(message.content);
         const parsedFinal = parseJsonObject(finalText);
@@ -373,8 +424,11 @@ async function runAgent({
         }
         formatRepairPending = false;
         const final = normalizeFinal(finalText, evidenceMap);
+        if (context.agent === 'merchant_research') stabilizeMerchantFinal(final, evidenceMap);
         const researchTools = new Set(['search_market', 'extract_source', 'compare_reports']);
-        const isOperation = !operations.some(op => researchTools.has(op.tool));
+        const isOperation = context.agent === 'merchant_research'
+          ? false
+          : !operations.some(op => researchTools.has(op.tool));
         final.kind = isOperation ? 'operation' : 'research';
         final.operations = operations;
         final.proposed_actions = notificationProposals;
@@ -395,7 +449,7 @@ async function runAgent({
             watchlistId: context.watchlistId || null,
             result: {
               ...final,
-              evidence: Array.from(evidenceMap.values()).slice(0, 20)
+              evidence: visibleEvidence(evidenceMap, final.evidence_ids)
             },
             durationMs: Date.now() - runStartedAt
           })
@@ -412,7 +466,7 @@ async function runAgent({
           report_id: reportId,
           proposed_actions: proposedActions,
           actions: savedActions,
-          evidence: Array.from(evidenceMap.values()).slice(0, 20),
+          evidence: visibleEvidence(evidenceMap, final.evidence_ids),
           meta: {
             steps: stepNo,
             duration_ms: Date.now() - runStartedAt,
@@ -469,10 +523,26 @@ async function runAgent({
               ...previous.result,
               meta: { ...(previous.result.meta || {}), replayed: true, original_step: previous.stepNo }
             };
+          } else if (allowedTools && !allowedTools.has(toolName)) {
+            result = { ok: false, error: { code: 'tool_not_allowed', message: '商户研究只能调用只读研究工具' } };
+          } else if (context.agent === 'merchant_research' && toolName === 'search_market'
+            && operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length >= 3) {
+            result = { ok: false, error: { code: 'research_search_limit', message: '本轮研究最多执行 3 次搜索，请使用现有来源完成核验与总结' } };
+          } else if (context.agent === 'merchant_research' && toolName === 'extract_source'
+            && operations.filter(item => item.tool === 'extract_source' && item.ok && !item.replayed).length >= 4) {
+            result = { ok: false, error: { code: 'research_extract_limit', message: '本轮研究最多核验 4 个来源，请使用现有证据完成总结' } };
           } else {
             result = toolName === 'propose_notification' && notificationProposals.length > 0
               ? { ok: false, error: { code: 'proposal_limit', message: '每轮任务最多一个通知建议；请在下一轮提出另一个建议' } }
-              : await registry.execute(toolName, args, { ...context, runId, stepNo, goal });
+              : await registry.execute(toolName, args, {
+                ...context,
+                runId,
+                stepNo,
+                goal,
+                searchSources: context.agent === 'merchant_research'
+                  ? Array.from(evidenceMap.values()).filter(item => item.source_tool === 'search_market')
+                  : undefined
+              });
             if (result.ok) {
               const toolSpec = typeof registry.spec === 'function' ? registry.spec(toolName) : null;
               const readOnly = toolSpec?.readOnly !== false;

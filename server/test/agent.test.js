@@ -63,6 +63,23 @@ test('source resolver rejects reserved and private DNS results', async () => {
   );
 });
 
+test('merchant extraction only reads links from its own search and requires page content', async () => {
+  const registry = createToolRegistry({
+    extractSourceViaTavily: async () => ({ content: '核验后的网页正文', contentLength: 9 })
+  });
+  const context = {
+    agent: 'merchant_research',
+    searchSources: [{ url: 'https://example.com/article', title: '来源标题', published_date: '2026-09-20' }]
+  };
+  const blocked = await registry.execute('extract_source', { url: 'https://other.example/article' }, context);
+  assert.equal(blocked.error.code, 'source_not_in_search');
+  const result = await registry.execute('extract_source', { url: 'https://example.com/article' }, context);
+  assert.equal(result.ok, true);
+  assert.equal(result.data.evidence[0].title, '来源标题');
+  assert.equal(result.data.published_date, '2026-09-20');
+  assert.match(result.data.evidence[0].excerpt, /网页正文/);
+});
+
 test('notification tool creates a proposal and does not send anything', async () => {
   let readCount = 0;
   const registry = createToolRegistry({
@@ -257,6 +274,109 @@ test('agent runner replays an identical successful write instead of executing it
   assert.equal(result.operations[0].replayed, false);
   assert.equal(result.operations[1].replayed, true);
   assert.equal(result.operations[1].data.id, 41);
+});
+
+test('merchant research keeps user context and rejects model-requested write tools', async () => {
+  let calls = 0;
+  let rounds = 0;
+  const offered = [];
+  const result = await runAgent({
+    runId: 'merchant-read-only',
+    goal: '附近同类门店最近有哪些新品？',
+    context: { orgId: 1, userId: 2, agent: 'merchant_research', merchant: { industry: '零售门店', region: '杭州' } },
+    registry: {
+      definitions: () => [
+        { type: 'function', function: { name: 'search_market' } },
+        { type: 'function', function: { name: 'delete_watchlist' } }
+      ],
+      list: () => ['search_market', 'delete_watchlist'],
+      execute: async () => { calls += 1; return { ok: true, data: { deleted: 1 } }; }
+    },
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    complete: async ({ messages, tools }) => {
+      rounds += 1;
+      offered.push(tools.map((tool) => tool.function.name));
+      assert.match(messages[0].content, /只读研究工具/);
+      assert.match(messages[1].content, /零售门店/);
+      if (rounds === 1) {
+        return { message: { tool_calls: [{ id: 'unexpected-write', function: { name: 'delete_watchlist', arguments: '{"watchlist_id":1}' } }] } };
+      }
+      return { message: { content: JSON.stringify({ title: '研究结果', summary: '缺少证据', answer: '目前无法核验' }) } };
+    }
+  });
+  assert.equal(calls, 0);
+  assert.deepEqual(offered, [['search_market'], ['search_market']]);
+  assert.equal(result.kind, 'research');
+  assert.equal(result.operations[0].error.code, 'tool_not_allowed');
+  assert.ok(result.warnings.some((warning) => warning.includes('no verified evidence')));
+  assert.equal(result.title, '本次研究尚未完成核验');
+  assert.deepEqual(result.key_points, []);
+  assert.match(result.answer, /未获得可核验/);
+});
+
+test('merchant research caps searches within a run to protect trial quota', async () => {
+  let searches = 0;
+  let round = 0;
+  const result = await runAgent({
+    runId: 'merchant-search-cap',
+    goal: '查询新品',
+    context: { orgId: 1, userId: 2, agent: 'merchant_research' },
+    registry: {
+      definitions: () => [],
+      list: () => ['search_market'],
+      spec: () => ({ readOnly: true }),
+      execute: async () => {
+        searches += 1;
+        return { ok: true, data: { evidence: [] } };
+      }
+    },
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    complete: async () => (++round === 1
+      ? { message: { tool_calls: Array.from({ length: 4 }, (_, index) => ({
+        id: `search_${index}`,
+        function: { name: 'search_market', arguments: JSON.stringify({ query: `新品${index}` }) }
+      })) } }
+      : { message: { content: JSON.stringify({ answer: '未经证实的结论' }) } })
+  });
+  assert.equal(searches, 3);
+  assert.equal(result.operations[3].error.code, 'research_search_limit');
+  assert.doesNotMatch(result.answer, /未经证实的结论/);
+});
+
+test('merchant research keeps verified sources when the model cannot produce a valid final answer', async () => {
+  let round = 0;
+  const result = await runAgent({
+    runId: 'merchant-sources-only',
+    goal: '研究新品',
+    context: { orgId: 1, userId: 2, agent: 'merchant_research' },
+    registry: {
+      definitions: () => [],
+      list: () => ['search_market', 'extract_source'],
+      spec: () => ({ readOnly: true }),
+      execute: async (name) => ({ ok: true, data: { evidence: [{
+        evidence_id: name === 'extract_source' ? 'page_verified' : 'search_found',
+        title: '公开来源',
+        url: 'https://example.com/article',
+        excerpt: '网页内容',
+        published_date: '2026-09-20'
+      }] } })
+    },
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    maxSteps: 3,
+    complete: async ({ tools }) => {
+      round += 1;
+      if (round < 3) return { message: { tool_calls: [{
+        id: `call_${round}`,
+        function: { name: round === 1 ? 'search_market' : 'extract_source', arguments: '{}' }
+      }] } };
+      assert.deepEqual(tools, []);
+      return { message: { content: '未经核验的模型断言' } };
+    }
+  });
+  assert.equal(result.answer_status, 'sources_only');
+  assert.deepEqual(result.evidence_ids, ['page_verified']);
+  assert.equal(result.evidence[0].evidence_id, 'page_verified');
+  assert.doesNotMatch(result.answer, /未经核验的模型断言/);
 });
 
 test('an intervening write invalidates an older replay entry', async () => {

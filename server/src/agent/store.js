@@ -88,6 +88,7 @@ function normalizeRunSummary(row) {
     metadata: {
       agent: metadata.agent || null,
       conversation_id: metadata.conversation_id || null,
+      merchant: metadata.agent === 'merchant_research' ? metadata.merchant || null : null,
       provider: metadata.provider || null,
       model: metadata.model || null,
     },

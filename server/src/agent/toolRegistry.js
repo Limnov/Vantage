@@ -74,6 +74,10 @@ function createDefaultDependencies() {
       });
     },
 
+    async extractSourceViaTavily(input) {
+      return require('../collectors/tavily').extract(input.url);
+    },
+
     async getReport(reportId, context) {
       const { queryOne } = require('../db');
       if (!context.orgId) throw new ToolExecutionError('organization context is required', 'org_context_required');
@@ -143,23 +147,32 @@ function createToolRegistry(overrides = {}) {
       };
     },
 
-    async extract_source(input) {
-      const url = await resolveSafeSourceUrl(input.url);
-      const page = await dependencies.extractSource({ ...input, url: url.href });
+    async extract_source(input, context) {
+      const url = context.agent === 'merchant_research'
+        ? assertSafeSourceUrl(input.url)
+        : await resolveSafeSourceUrl(input.url);
+      const searchSources = Array.isArray(context.searchSources) ? context.searchSources : [];
+      const matchedSource = searchSources.find(source => source.url === url.href);
+      if (context.agent === 'merchant_research' && !matchedSource) {
+        throw new ToolExecutionError('source URL must come from this run search results', 'source_not_in_search');
+      }
+      const page = context.agent === 'merchant_research'
+        ? await dependencies.extractSourceViaTavily({ ...input, url: url.href })
+        : await dependencies.extractSource({ ...input, url: url.href });
       const content = shortText(page?.content, input.max_chars);
       const id = evidenceId('page', url.href);
       return {
         url: url.href,
-        title: shortText(page?.title || page?.ogTitle, 300),
-        published_date: page?.publishedDate || null,
+        title: shortText(page?.title || page?.ogTitle || matchedSource?.title, 300),
+        published_date: page?.publishedDate || matchedSource?.published_date || null,
         content_length: page?.contentLength || content.length,
-        evidence: [{
+        evidence: content ? [{
           evidence_id: id,
-          title: shortText(page?.title || page?.ogTitle, 300),
+          title: shortText(page?.title || page?.ogTitle || matchedSource?.title, 300),
           url: url.href,
           excerpt: content,
           untrusted_content: true
-        }],
+        }] : [],
         warnings: content
           ? []
           : [page?.error || 'source content is empty or could not be extracted']
