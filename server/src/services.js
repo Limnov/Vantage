@@ -195,13 +195,18 @@ async function collect(item, options = {}) {
   if (options.region) strategy.region = options.region;
   if (options.searchDepth) strategy.searchDepth = options.searchDepth;
   let source = 'tavily';
+  // Market research favors recall at search time; the Agent validates scope and
+  // source text before turning any candidate into a conclusion.
+  const minRelevance = Number.isFinite(options.minRelevance)
+    ? Math.max(0, Math.min(1, options.minRelevance))
+    : 0.3;
 
   // 1. 优先 Tavily
   try {
     results = await tavily.search(item.query, {
       maxResults,
       ...strategy,
-      minRelevance: 0.3
+      minRelevance
     });
     if (results.length === 0) {
       throw new Error('Tavily returned no relevant results');

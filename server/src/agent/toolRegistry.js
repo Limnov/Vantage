@@ -64,6 +64,7 @@ function createDefaultDependencies() {
         maxResults: input.max_results,
         days: input.days,
         region: input.region,
+        minRelevance: context.agent === 'merchant_research' ? 0.15 : undefined,
         searchDepth: context.agent === 'merchant_research' ? 'basic' : undefined
       });
     },

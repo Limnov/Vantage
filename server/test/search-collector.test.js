@@ -89,8 +89,33 @@ test('merchant research uses general search even when the model requests news', 
     assert.equal(received.item.search_mode, 'general');
     assert.equal(received.options.searchDepth, 'basic');
     assert.equal(received.options.region, '美国');
+    assert.equal(received.options.minRelevance, 0.15);
   } finally {
     services.collect = originalCollect;
+  }
+});
+
+test('merchant search keeps a low lexical-score candidate for later scope and source validation', async () => {
+  const originalPost = axios.post;
+  const originalKey = process.env.TAVILY_API_KEY;
+  process.env.TAVILY_API_KEY = 'tvly-fixture-key-12345';
+  axios.post = async () => ({ data: { results: [{
+    title: 'Phone case screen protectors',
+    url: 'https://brand.example/us/new-screen-protector',
+    content: 'Available now in US stores.',
+    score: 0.23,
+    published_date: new Date().toISOString().slice(0, 10)
+  }] } });
+  try {
+    const query = 'phone case new launch United States US 手机壳 新品上市 phone accessories';
+    const strict = await tavily.search(query, { topic: 'general', minRelevance: 0.3 });
+    const research = await tavily.search(query, { topic: 'general', minRelevance: 0.15 });
+    assert.equal(strict.length, 0);
+    assert.equal(research.length, 1);
+  } finally {
+    axios.post = originalPost;
+    if (originalKey === undefined) delete process.env.TAVILY_API_KEY;
+    else process.env.TAVILY_API_KEY = originalKey;
   }
 });
 
