@@ -27,9 +27,11 @@ Vantage 是一个可自行部署的市场情报应用。登录后默认进入 Ag
 
 ## 在线体验
 
-**[产品展示页](https://vantage.limnov.com/) · [登录 Demo](https://vantage.limnov.com/demo) · [正式工作台](https://vantage.limnov.com/app)**
+**[产品展示页](https://vantage.limnov.com/) · [真实案例评分](https://vantage.limnov.com/evidence) · [登录 Demo](https://vantage.limnov.com/demo) · [正式工作台](https://vantage.limnov.com/app)**
 
-当前 `aliyun` 分支使用阿里云服务器运行 Node.js、SQLite 和常驻 Agent Worker，Cloudflare 负责域名代理与 HTTPS。产品展示页、真实工作台和 Demo 共用站点，无需开通 Workers Paid。[服务器部署说明 →](./deploy/aliyun/README.md)
+当前正式环境在树莓派运行 Node.js、SQLite 和常驻 Agent Worker，Caddy 提供静态站点与 API 反代，Cloudflare 提供公网 HTTPS。产品展示页、真实工作台和 Demo 共用域名，无需开通 Workers Paid。[当前生产运行说明 →](./deploy/pi/README.md)
+
+真实案例评分记录了同一道美国手机配件任务中 Vantage 与 Google 搜索加逐页核验的观察值，并明确标出未测的监控信噪比；这是单例故障定位对照，不是总体产品排名。[评分口径与原始来源 →](./docs/real-case-scorecard.md)
 
 **演示账号：`demo` / 密码：`demo`。** Demo 登录正式界面，复用仪表盘、监控、报告、告警和 Agent 历史；数据来自独立演示组织。账号只读，不提供 API Key，不执行真实模型、搜索或通知，也不能访问正式组织的数据。
 

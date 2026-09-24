@@ -17,6 +17,7 @@ export default function Landing() {
         </Link>
         <nav aria-label="产品导航">
           <a href="#workflow">如何工作</a>
+          <Link to="/evidence">真实案例</Link>
           <a
             href="https://github.com/Limnov/Vantage"
             target="_blank"

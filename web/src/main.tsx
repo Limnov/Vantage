@@ -8,6 +8,7 @@ import 'antd/dist/reset.css';
 import './index.css';
 
 const Landing = lazy(() => import('./pages/Landing'));
+const Evidence = lazy(() => import('./pages/Evidence'));
 const Login = lazy(() => import('./pages/Login'));
 const AgentFirstApp = lazy(() => import('./AgentFirstApp'));
 const ClassicApp = lazy(() => import('./ClassicApp'));
@@ -16,13 +17,14 @@ const ClassicApp = lazy(() => import('./ClassicApp'));
 function Entry({mode,toggleTheme}: {mode: ThemeMode; toggleTheme: () => void}) {
   const {pathname} = useLocation();
   useEffect(() => {
-    document.title = pathname === '/' ? 'Vantage — Agent 驱动的市场情报工作台' : pathname === '/demo' ? 'Vantage Demo · 真实工作台' : 'Vantage · 工作台';
+    document.title = pathname === '/' ? 'Vantage — Agent 驱动的市场情报工作台' : pathname === '/demo' ? 'Vantage Demo · 真实工作台' : pathname === '/evidence' ? '真实案例与评测 · Vantage' : 'Vantage · 工作台';
     document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://vantage.limnov.com${pathname}`);
     let robots = document.querySelector('meta[name="robots"]');
     if (!robots) { robots = document.createElement('meta'); robots.setAttribute('name','robots'); document.head.appendChild(robots); }
     robots.setAttribute('content', pathname === '/' || pathname === '/demo' ? 'index,follow' : 'noindex,nofollow');
   }, [pathname]);
   if (pathname === '/') return <Suspense fallback={<div className="mode-loading">加载中…</div>}><Landing/></Suspense>;
+  if (pathname === '/evidence') return <Suspense fallback={<div className="mode-loading">加载中…</div>}><Evidence/></Suspense>;
   if (pathname === '/demo') return <AuthProvider><Suspense fallback={<div className="auth-loading">加载中...</div>}><Login demoMode /></Suspense></AuthProvider>;
   return <AuthProvider><AuthGate><Workspace themeMode={mode} onToggleTheme={toggleTheme}/></AuthGate></AuthProvider>;
 }
