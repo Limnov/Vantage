@@ -485,6 +485,10 @@
   .public-nav nav > a:not(.public-button) {
     display: none;
   }
+  .public-nav nav > a.public-evidence-link {
+    display: inline;
+    white-space: nowrap;
+  }
   .public-brand {
     font-size: 21px;
   }
