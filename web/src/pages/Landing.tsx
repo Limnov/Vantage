@@ -1,194 +1,199 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { CloseOutlined, MenuOutlined } from '@ant-design/icons';
 import { productEnabled } from '../lib/deployment';
-import { Link } from "react-router-dom";
-import {
-  ArrowRightOutlined,
-  GithubOutlined,
-  CheckOutlined,
-} from "@ant-design/icons";
-import "../public.css";
+import '../public.css';
+import '../landing.css';
+
+const sourceUrl = 'https://github.com/Limnov/Vantage';
 
 export default function Landing() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const scene = document.querySelector<HTMLElement>('.v-hero-scene');
+    const hero = document.querySelector<HTMLElement>('.v-hero');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let frame = 0;
+    const updateScene = () => {
+      frame = 0;
+      if (!scene || !hero) return;
+      const bounds = scene.getBoundingClientRect();
+      const travel = Math.max(1, bounds.height - window.innerHeight);
+      const progress = Math.min(1, Math.max(0, -bounds.top / travel));
+      hero.style.setProperty('--hero-progress', reducedMotion.matches ? '0' : progress.toFixed(3));
+      setScrolled(bounds.bottom < 90);
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateScene);
+    };
+    updateScene();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    if (!('IntersectionObserver' in window)) {
+      return () => {
+        window.removeEventListener('scroll', onScroll);
+        window.removeEventListener('resize', onScroll);
+        window.cancelAnimationFrame(frame);
+      };
+    }
+    const nodes = document.querySelectorAll<HTMLElement>('.v-reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    nodes.forEach((node) => observer.observe(node));
+    document.documentElement.classList.add('v-motion-ready');
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      document.documentElement.classList.remove('v-motion-ready');
+    };
+  }, []);
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
-    <main className="public-site">
-      <header className="public-nav">
-        <Link className="public-brand" to="/">
-          <img src="/vantage-logo.png" alt="" />
-          Vantage
-        </Link>
-        <nav aria-label="产品导航">
-          <a href="#workflow">如何工作</a>
-          <Link className="public-evidence-link" to="/evidence">真实案例</Link>
-          <a
-            href="https://github.com/Limnov/Vantage"
-            target="_blank"
-            rel="noreferrer"
-          >
-            GitHub ↗
-          </a>
-          <Link className="public-button small" to="/app">
-            {productEnabled ? '进入工作台' : '产品准备中'} <ArrowRightOutlined />
+    <main className="public-site v-landing">
+      <header className={'v-nav-shell' + (scrolled ? ' is-scrolled' : '')}>
+        <div className="v-nav-inner">
+          <Link className="v-brand" to="/" onClick={closeMenu} aria-label="Vantage 首页">
+            <img src="/vantage-logo-white.png" alt="" />
+            <span>Vantage</span>
           </Link>
-        </nav>
+          <nav id="vantage-site-nav" className={'v-nav-links' + (menuOpen ? ' is-open' : '')} aria-label="产品导航">
+            <a href="#product" onClick={closeMenu}>产品</a>
+            <a href="#capabilities" onClick={closeMenu}>功能</a>
+            <Link to="/evidence" onClick={closeMenu}>案例</Link>
+            <a href={sourceUrl} target="_blank" rel="noreferrer" onClick={closeMenu}>源码</a>
+          </nav>
+          <div className="v-nav-actions">
+            <Link className="v-nav-cta" to={productEnabled ? '/app' : '/demo'} onClick={closeMenu}>
+              {productEnabled ? '进入产品' : '体验 Demo'}
+            </Link>
+            <button className="v-menu-toggle" type="button" aria-label={menuOpen ? '关闭菜单' : '打开菜单'}
+              aria-controls="vantage-site-nav" aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}>
+              {menuOpen ? <CloseOutlined /> : <MenuOutlined />}
+            </button>
+          </div>
+        </div>
       </header>
-      <section className="landing-hero">
-        <div className="eyebrow">市场情报，从观察到行动</div>
-        <h1>
-          看见市场变化。
-          <br />
-          <span>让 Agent 接着做。</span>
-        </h1>
-        <p>
-          把研究、监控、报告与告警交给同一个工作台。
-          <br />
-          从一个目标开始，沿着证据走到下一步行动。
-        </p>
-        <div className="public-actions">
-          <Link className="public-button" to="/demo">
-            体验 Demo <ArrowRightOutlined />
-          </Link>
-          <Link className="public-button outline" to="/app">
-            {productEnabled ? '打开产品' : '查看产品状态'}
-          </Link>
-        </div>
-        <small>Demo 账号登录 · 真实工作台 · 只读示例数据</small>
-        <div className="landing-preview">
-          <div className="preview-bar">
-            <span>Vantage / Agent 工作台</span>
-            <span>交互场景预览</span>
+
+      <div className="v-hero-scene">
+        <section className="v-hero" aria-labelledby="v-hero-title">
+          <div className="v-hero-noise" aria-hidden="true" />
+          <div className="v-hero-copy">
+            <h1 id="v-hero-title"><span>跨境市场情报</span><span className="v-hero-accent">Agent 工作台</span></h1>
+            <div className="v-hero-actions">
+              <Link className="v-pill v-pill-light" to="/demo">体验 Demo</Link>
+              <a className="v-text-link" href="#product">查看产品</a>
+            </div>
           </div>
-          <div className="preview-content">
-            <div className="preview-prompt">
-              研究东南亚消费电子市场，找出本周值得关注的变化。
+          <div className="v-hero-lens" aria-hidden="true">
+            <div className="v-lens-outer" /><div className="v-lens-mid" />
+            <div className="v-lens-core"><img src="/vantage-logo-white.png" alt="" /></div>
+            <div className="v-lens-scan" />
+          </div>
+        </section>
+      </div>
+
+      <section className="v-product" id="product" aria-labelledby="v-product-title">
+        <div className="v-section-container">
+          <div className="v-product-heading v-reveal">
+            <div><span className="v-kicker">产品界面</span><h2 id="v-product-title">正式工作台</h2></div>
+            <p>Agent 经典版 报告 监控 告警</p>
+          </div>
+          <div className="v-product-stage v-reveal">
+            <div className="v-product-topline"><span><i /> VANTAGE</span><span>只读演示</span></div>
+            <div className="v-product-screen">
+              <picture>
+                <source media="(max-width: 640px)" srcSet="/landing-demo-agent-mobile.png" />
+                <img src="/landing-demo-agent.png" alt="Vantage 正式工作台中的只读 Demo 对话与报告画面" loading="lazy" />
+              </picture>
             </div>
-            <div className="preview-trace">
-              <span>
-                <CheckOutlined /> 查询监控
-              </span>
-              <span>
-                <CheckOutlined /> 对照证据
-              </span>
-              <span>
-                <CheckOutlined /> 生成报告
-              </span>
-            </div>
-            <div className="preview-result">
-              <div>
-                <span className="eyebrow">示例研究摘要</span>
-                <h2>把变化，变成有依据的下一步。</h2>
-                <p>
-                  识别机会与风险，保留来源与执行记录。在发送通知之前，由你确认。
-                </p>
-                <Link to="/demo?scenario=research">
-                  进入真实工作台 <ArrowRightOutlined />
-                </Link>
-              </div>
-              <div className="preview-signal">
-                <span>关注信号</span>
-                <b>03</b>
-                <span>机会 / 风险 / 待验证</span>
-              </div>
+            <div className="v-product-caption">
+              <span>正式界面 只读演示数据</span>
+              <Link to="/demo">打开 Demo</Link>
             </div>
           </div>
         </div>
       </section>
-      <section className="landing-section" id="workflow">
-        <div className="eyebrow">一个目标，一条完整工作流</div>
-        <h2>
-          研究之后，
-          <br />
-          工作继续向前。
-        </h2>
-        <div className="workflow-columns">
-          {[
-            [
-              "01",
-              "描述目标",
-              "告诉 Agent 你关心的市场、品牌或问题。它会调用业务工具，查询已有资料。",
-            ],
-            [
-              "02",
-              "检查证据",
-              "沿着来源查看报告、研究摘要和执行轨迹，了解结论从何而来。",
-            ],
-            [
-              "03",
-              "安排后续",
-              "创建监控、比较报告、处理告警。发送通知前，检查内容并确认操作。",
-            ],
-          ].map(([n, title, body]) => (
-            <article key={n}>
-              <span>{n}</span>
-              <h3>{title}</h3>
-              <p>{body}</p>
+
+      <section className="v-capabilities" id="capabilities" aria-labelledby="v-capabilities-title">
+        <div className="v-section-container">
+          <div className="v-capabilities-heading v-reveal">
+            <span className="v-kicker">核心功能</span>
+            <h2 id="v-capabilities-title">搜索<br />核验<br />监控</h2>
+          </div>
+          <div className="v-feature-grid">
+            <article className="v-feature v-feature-search v-reveal">
+              <div className="v-feature-visual v-search-visual" aria-hidden="true">
+                <div className="v-search-query"><span>美国 手机配件</span><span>⌕</span></div>
+                <div className="v-search-result"><i /><span /><b /></div>
+                <div className="v-search-result"><i /><span /><b /></div>
+                <div className="v-search-result"><i /><span /><b /></div>
+              </div>
+              <div><h3>市场搜索</h3><p>品类 市场 时间范围</p></div>
             </article>
-          ))}
+            <article className="v-feature v-feature-verify v-reveal">
+              <div className="v-feature-visual v-verify-visual" aria-hidden="true">
+                <div className="v-verify-document"><span>ORIGINAL SOURCE</span><strong>原始来源</strong><i /><i /><i /></div>
+                <div className="v-verify-stamp">✓<small>已核验</small></div>
+              </div>
+              <div><h3>来源核验</h3><p>原文 日期 引用</p></div>
+            </article>
+            <article className="v-feature v-feature-monitor v-reveal">
+              <div className="v-feature-visual v-monitor-visual" aria-hidden="true">
+                <div className="v-monitor-line"><span /><span /><span /><span /></div>
+                <div className="v-monitor-card"><b>新告警</b><span>来源 时间 状态</span></div>
+              </div>
+              <div><h3>持续监控</h3><p>报告 告警 审批</p></div>
+            </article>
+          </div>
         </div>
       </section>
-      <section className="landing-split">
-        <div>
-          <div className="eyebrow">两种入口，共享业务</div>
-          <h2>
-            对话完成工作，
-            <br />
-            界面掌握细节。
-          </h2>
-          <p>
-            Agent-first
-            工作台用于描述目标与执行任务。经典版用于查看监控、报告、告警和组织设置，两种模式随时切换。
-          </p>
-          <Link className="public-button outline" to="/demo">
-            探索示例工作台 <ArrowRightOutlined />
-          </Link>
-        </div>
-        <div className="product-sheet">
-          {[
-            ["Agent", "目标、工具轨迹与审批"],
-            ["监控", "计划、区域与执行状态"],
-            ["报告", "结论、来源与比较"],
-            ["告警", "优先级、通知与处理"],
-          ].map(([a, b]) => (
-            <div key={a}>
-              <strong>{a}</strong>
-              <span>{b}</span>
-              <ArrowRightOutlined />
-            </div>
-          ))}
+
+      <section className="v-evidence" id="evidence" aria-labelledby="v-evidence-title">
+        <div className="v-section-container v-evidence-grid">
+          <div className="v-reveal">
+            <span className="v-kicker">单次真实任务</span>
+            <h2 id="v-evidence-title">真实任务对比</h2>
+            <p>美国手机配件 两条必要线索</p>
+            <Link className="v-pill v-pill-dark" to="/evidence">查看任务记录</Link>
+          </div>
+          <div className="v-scorecard v-reveal" aria-label="单次案例的结果覆盖对比">
+            <div className="v-scorecard-top"><span>单次案例</span><span>美国手机配件</span></div>
+            <div className="v-score-row"><span>Vantage</span><strong>1<small>条</small></strong></div>
+            <div className="v-score-row"><span>Google 搜索逐页核验</span><strong>2<small>条</small></strong></div>
+            <p>单次案例 修复后待复测</p>
+          </div>
         </div>
       </section>
-      <section className="landing-close">
-        <div className="eyebrow">开源 · 可自行部署</div>
-        <h2>
-          让情报成为每天
-          <br />
-          真正用得上的工具。
-        </h2>
-        <p>源码、架构与部署方式都在仓库里。</p>
-        <div className="public-actions">
-          <Link className="public-button" to="/demo">
-            开始体验 <ArrowRightOutlined />
-          </Link>
-          <a
-            className="public-button outline"
-            href="https://github.com/Limnov/Vantage"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <GithubOutlined /> 查看源码
-          </a>
+
+      <section className="v-final" aria-labelledby="v-final-title">
+        <div className="v-section-container v-reveal">
+          <span className="v-kicker">VANTAGE</span>
+          <h2 id="v-final-title">开始使用</h2>
+          <div className="v-final-actions">
+            <Link className="v-pill v-pill-dark" to="/demo">体验 Demo</Link>
+            <Link className="v-pill v-pill-outline" to="/app">进入产品</Link>
+            <a className="v-source-link" href={sourceUrl} target="_blank" rel="noreferrer">查看源码</a>
+          </div>
         </div>
       </section>
-      <footer className="public-footer">
-        <Link className="public-brand" to="/">
-          Vantage
-        </Link>
-        <span>© 2026 Freakz2z · MIT License</span>
-        <a
-          href="https://github.com/Limnov/Vantage/security/policy"
-          target="_blank"
-          rel="noreferrer"
-        >
-          安全报告 ↗
-        </a>
+
+      <footer className="v-footer">
+        <Link to="/" className="v-footer-brand">Vantage</Link>
+        <span>2026 Freakz2z MIT</span>
+        <div><Link to="/evidence">案例</Link><a href={sourceUrl} target="_blank" rel="noreferrer">GitHub</a></div>
       </footer>
     </main>
   );
