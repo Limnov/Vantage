@@ -17,7 +17,7 @@ const ClassicApp = lazy(() => import('./ClassicApp'));
 function Entry({mode,toggleTheme}: {mode: ThemeMode; toggleTheme: () => void}) {
   const {pathname} = useLocation();
   useEffect(() => {
-    document.title = pathname === '/' ? 'Vantage — Agent 驱动的市场情报工作台' : pathname === '/demo' ? 'Vantage Demo · 真实工作台' : pathname === '/evidence' ? '真实案例与评测 · Vantage' : 'Vantage · 工作台';
+    document.title = pathname === '/' ? 'Vantage 跨境市场情报 Agent 工作台' : pathname === '/demo' ? 'Vantage Demo 真实工作台' : pathname === '/evidence' ? 'Vantage 真实案例与评测' : 'Vantage 工作台';
     document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://vantage.limnov.com${pathname}`);
     let robots = document.querySelector('meta[name="robots"]');
     if (!robots) { robots = document.createElement('meta'); robots.setAttribute('name','robots'); document.head.appendChild(robots); }

@@ -17,7 +17,7 @@ try {
     if (new URL(r.url()).pathname.startsWith("/api/")) apis.push(r.url());
   });
   await page.goto(base);
-  await page.getByRole("heading", { name: /看见市场变化/ }).waitFor();
+  await page.getByRole("heading", { name: /跨境市场情报/ }).waitFor();
   await page.screenshot({
     path: new URL("../../assets/readme/cloudflare-landing.png", import.meta.url)
       .pathname,
