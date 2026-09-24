@@ -7,69 +7,75 @@ import '../landing.css';
 
 const sourceUrl = 'https://github.com/Limnov/Vantage';
 
-const chapters = [
-  { id: 'search', number: '01', title: '市场搜索', cards: [
-    ['任务', '品类 市场 时间'], ['工具', '搜索 调用'], ['结果', '原始链接'], ['追踪', '执行记录'],
-  ] },
-  { id: 'verify', number: '02', title: '来源核验', cards: [
-    ['原文', 'CPSC 官方通报'], ['日期', '2026 09 03'], ['覆盖', '1条 共需2条'], ['状态', '修复后待复测'],
-  ] },
-  { id: 'monitor', number: '03', title: '持续监控', cards: [
-    ['告警', '4条演示数据'], ['通知', '0条真实发送'], ['监控', '生产启用0个'], ['评分', '暂无长期样本'],
-  ] },
-] as const;
-
-function StoryDevice({ kind }: { kind: typeof chapters[number]['id'] }) {
-  if (kind === 'search') return (
-    <div className="v-device v-device-search">
-      <div className="v-device-bar"><span>VANTAGE AGENT</span><span>只读 Demo</span></div>
-      <img src="/landing-demo-agent-mobile.png" alt="Vantage Agent 只读 Demo 的实际手机界面" loading="lazy" />
-    </div>
-  );
-  if (kind === 'verify') return (
-    <div className="v-device v-device-verify" aria-label="真实案例报告摘要">
-      <div className="v-device-bar"><span>报告 39</span><span>生产案例</span></div>
-      <div className="v-report-inner">
-        <span className="v-report-index">美国 手机配件</span>
-        <h3>充电宝<br />安全通报</h3>
-        <div className="v-report-source"><span>CPSC 官方原文</span><b>已核验</b></div>
-        <div className="v-report-lines"><i /><i /><i /></div>
-        <div className="v-report-result"><strong>1条</strong><span>已覆盖<br />共需2条</span></div>
-        <Link to="/evidence">查看完整记录</Link>
-      </div>
-    </div>
-  );
-  return (
-    <div className="v-device v-device-monitor" aria-label="只读 Demo 告警界面摘要">
-      <div className="v-device-bar"><span>告警中心</span><span>只读 Demo</span></div>
-      <div className="v-alert-inner">
-        <h3>4条告警</h3>
-        <div className="v-alert-item"><span>风险</span><strong>履约时效波动</strong><small>待处理</small></div>
-        <div className="v-alert-item"><span>风险</span><strong>渠道价格竞争加剧</strong><small>待处理</small></div>
-        <div className="v-alert-item"><span>机会</span><strong>轻量化配件关注度提升</strong><small>待处理</small></div>
-        <div className="v-alert-foot">示例数据 未发送通知</div>
-      </div>
-    </div>
-  );
+function PhoneShell({ children, label, dark = false }: { children: React.ReactNode; label: string; dark?: boolean }) {
+  return <div className={'v-phone' + (dark ? ' v-phone-dark' : '')} role="img" aria-label={label}>
+    <div className="v-phone-speaker" aria-hidden="true" />
+    <div className="v-phone-screen" aria-hidden="true">{children}</div>
+  </div>;
 }
 
-function StoryChapter({ chapter }: { chapter: typeof chapters[number] }) {
-  return (
-    <section className={`v-story-chapter v-story-${chapter.id}`} id={chapter.id} aria-labelledby={`v-story-${chapter.id}-title`}>
-      <div className="v-story-stage">
-        <div className="v-story-intro"><span>{chapter.number}</span><h2 id={`v-story-${chapter.id}-title`}>{chapter.title}</h2></div>
-        <div className="v-story-grid">
-          <div className="v-story-side v-story-side-left">
-            {chapter.cards.slice(0, 2).map(([label, value]) => <div className="v-story-card" key={label}><span>{label}</span><strong>{value}</strong><i aria-hidden="true" /></div>)}
-          </div>
-          <StoryDevice kind={chapter.id} />
-          <div className="v-story-side v-story-side-right">
-            {chapter.cards.slice(2).map(([label, value]) => <div className="v-story-card" key={label}><span>{label}</span><strong>{value}</strong><i aria-hidden="true" /></div>)}
-          </div>
-        </div>
+function SearchChapter() {
+  return <section className="v-story-chapter v-story-search" id="search" aria-labelledby="v-story-search-title">
+    <div className="v-story-stage"><div className="v-search-layout">
+      <div className="v-search-copy"><span className="v-chapter-index">01 搜索</span><h2 id="v-story-search-title">从目标<br />开始搜索</h2>
+        <div className="v-search-steps"><span>设定任务</span><span>调用搜索</span><span>整理来源</span></div>
       </div>
-    </section>
-  );
+      <div className="v-search-art"><div className="v-search-orbit" aria-hidden="true" />
+        <PhoneShell label="搜索功能界面示意">
+          <div className="v-ui-top"><span>Vantage</span><span className="v-ui-dot" /></div>
+          <div className="v-search-ui-title">新建研究</div>
+          <div className="v-search-ui-field"><small>研究目标</small><strong>了解目标市场</strong><i /></div>
+          <div className="v-search-ui-tags"><span>品类</span><span>市场</span><span>时间</span></div>
+          <div className="v-search-ui-action">开始搜索 <span aria-hidden="true">↗</span></div>
+          <div className="v-search-ui-progress"><span className="v-ui-dot" /> 正在整理公开来源</div>
+          <div className="v-search-ui-results"><div><b>来源</b><i /></div><div><b>来源</b><i /></div></div>
+        </PhoneShell>
+        <div className="v-search-float v-search-float-a" aria-hidden="true">搜索公开来源</div>
+        <div className="v-search-float v-search-float-b" aria-hidden="true">保留原始链接</div>
+      </div>
+    </div></div>
+  </section>;
+}
+
+function VerifyChapter() {
+  return <section className="v-story-chapter v-story-verify" id="verify" aria-labelledby="v-story-verify-title">
+    <div className="v-story-stage"><div className="v-verify-layout">
+      <div className="v-verify-art">
+        <div className="v-verify-paper v-verify-paper-back" aria-hidden="true"><span>原文</span><i /><i /><i /></div>
+        <PhoneShell label="来源核验功能界面示意">
+          <div className="v-ui-top"><span>Vantage</span><span className="v-ui-dot" /></div>
+          <div className="v-verify-ui-label">来源核验</div>
+          <div className="v-verify-ui-source"><small>公开来源</small><strong>查看原文</strong><span>打开链接 ↗</span></div>
+          <div className="v-verify-ui-link" aria-hidden="true"><i /><i /><i /></div>
+          <div className="v-verify-ui-claim"><small>报告结论</small><strong>对应来源</strong><span>可追溯</span></div>
+          <div className="v-verify-ui-footer">原文　引用　结论</div>
+        </PhoneShell>
+        <div className="v-verify-paper v-verify-paper-front" aria-hidden="true"><span>结论</span><i /><i /></div>
+      </div>
+      <div className="v-verify-copy"><span className="v-chapter-index">02 核验</span><h2 id="v-story-verify-title">每个结论<br />找到来源</h2>
+        <div className="v-verify-rule"><span>原文</span><i /><span>引用</span><i /><span>结论</span></div>
+      </div>
+    </div></div>
+  </section>;
+}
+
+function MonitorChapter() {
+  return <section className="v-story-chapter v-story-monitor" id="monitor" aria-labelledby="v-story-monitor-title">
+    <div className="v-story-stage"><div className="v-monitor-layout">
+      <div className="v-monitor-head"><span className="v-chapter-index">03 监控</span><h2 id="v-story-monitor-title">持续追踪<br />只看变化</h2></div>
+      <div className="v-monitor-art"><div className="v-monitor-radar" aria-hidden="true"><i /><i /><i /></div>
+        <PhoneShell dark label="监控功能界面示意">
+          <div className="v-ui-top"><span>Vantage</span><span className="v-ui-dot" /></div>
+          <div className="v-monitor-ui-label">监控工作台</div>
+          <div className="v-monitor-ui-title">市场变化</div>
+          <div className="v-monitor-ui-track"><span /><span /><span /><span /></div>
+          <div className="v-monitor-ui-alert"><small>新变化</small><strong>发现需要关注的信号</strong><span>查看来源　→</span></div>
+          <div className="v-monitor-ui-foot"><span>去重</span><span>审核</span><span>跟进</span></div>
+        </PhoneShell>
+      </div>
+      <div className="v-monitor-aside"><span>发现变化</span><span>合并重复</span><span>人工确认</span></div>
+    </div></div>
+  </section>;
 }
 
 export default function Landing() {
@@ -180,21 +186,21 @@ export default function Landing() {
         </section>
       </div>
 
-      {chapters.map((chapter) => <StoryChapter chapter={chapter} key={chapter.id} />)}
+      <SearchChapter />
+      <VerifyChapter />
+      <MonitorChapter />
 
       <section className="v-evidence" id="evidence" aria-labelledby="v-evidence-title">
         <div className="v-section-container v-evidence-grid">
           <div className="v-reveal">
             <span className="v-kicker">单次真实任务</span>
             <h2 id="v-evidence-title">真实任务对比</h2>
-            <p>美国手机配件 两条必要线索</p>
             <Link className="v-pill v-pill-dark" to="/evidence">查看任务记录</Link>
           </div>
-          <div className="v-scorecard v-reveal" aria-label="单次案例的结果覆盖对比">
-            <div className="v-scorecard-top"><span>单次案例</span><span>美国手机配件</span></div>
-            <div className="v-score-row"><span>Vantage</span><strong>1<small>条</small></strong></div>
-            <div className="v-score-row"><span>Google 搜索逐页核验</span><strong>2<small>条</small></strong></div>
-            <p>单次案例 修复后待复测</p>
+          <div className="v-case-visual v-reveal" aria-label="真实任务对比入口">
+            <div><span>同一任务</span><strong>Vantage</strong><i /></div>
+            <div><span>同一任务</span><strong>人工检索</strong><i /></div>
+            <Link to="/evidence">查看完整对比 <span aria-hidden="true">↗</span></Link>
           </div>
         </div>
       </section>
