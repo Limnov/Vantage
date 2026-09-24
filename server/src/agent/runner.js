@@ -998,11 +998,13 @@ async function runAgent({
           args = JSON.parse(call.function?.arguments || '{}');
           if (context.agent === 'merchant_research' && toolName === 'search_market') {
             const previousSearches = operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length;
-            const hasScopedLead = Array.from(evidenceMap.values()).some(item => (
+            const hasScopedRiskLead = Array.from(evidenceMap.values()).some(item => (
               item.source_tool === 'search_market'
               && sourceScope({ goal, merchant: context.merchant, source: item }).status === 'in_scope'
+              && (/^https?:\/\/(?:www\.)?cpsc\.gov\//i.test(String(item.url || ''))
+                || /recall|fire hazard|burn hazard|召回|起火|灼伤/i.test(`${item.title || ''} ${item.excerpt || ''}`))
             ));
-            if (previousSearches === 1 && !hasScopedLead
+            if (previousSearches === 1 && !hasScopedRiskLead
               && /手机配件|手机周边|phone accessories|mobile accessories/i.test(String(context.merchant?.industry || ''))
               && /^(美国|us|usa|united states)$/i.test(String(context.merchant?.region || ''))
               && /风险|risk|recall|safety/i.test(goal)) {

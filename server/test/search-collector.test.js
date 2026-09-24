@@ -114,3 +114,18 @@ test('recent merchant search puts scoped primary evidence ahead of broad backgro
   assert.equal(result.data.results[0].scope_status, 'in_scope');
   assert.equal(result.data.results[1].scope_status, 'background');
 });
+
+test('recent US screen-protector launch is a scoped product lead without treating a global forecast as current', async () => {
+  const registry = createToolRegistry({
+    searchMarket: async () => [
+      { title: 'Global Phone Accessories Market Forecast', url: 'https://example.com/forecast', content: 'Worldwide market size through 2035', publishedDate: new Date().toISOString().slice(0, 10) },
+      { title: 'Belkin Introduces Titan SmartShield Pro Screen Protectors | Belkin US', url: 'https://www.belkin.com/pr-screen-protector-fixture.html', content: 'LOS ANGELES — September 9. New iPhone screen protectors now available on Amazon.com.', publishedDate: new Date().toISOString().slice(0, 10) }
+    ]
+  });
+  const result = await registry.execute('search_market', { query: 'US phone accessories launch', max_results: 2 }, {
+    agent: 'merchant_research', goal: '研究最近 30 天手机配件在美国的机会和风险', merchant: { industry: '手机配件', region: '美国' }
+  });
+  assert.equal(result.data.results[0].scope_status, 'in_scope');
+  assert.match(result.data.results[0].url, /belkin/);
+  assert.equal(result.data.results[1].scope_status, 'background');
+});

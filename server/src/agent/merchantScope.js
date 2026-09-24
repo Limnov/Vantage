@@ -33,7 +33,7 @@ function sourceScope({ goal, merchant = {}, source = {}, now = new Date() }) {
   const region = String(merchant.region || '').trim();
   const accessoryIndustry = /手机配件|手机周边|phone accessories|mobile accessories|smartphone accessories/i.test(industry);
   const categoryMatch = accessoryIndustry
-    ? /手机配件|手机壳|充电宝|移动电源|手机充电|无线充电|保护膜|phone accessories|mobile accessories|smartphone accessories|phone case|phone cover|power bank|portable charger|wireless charg|magsafe|screen protector|charging cable/i.test(`${title} ${lead}`)
+    ? /手机配件|手机壳|充电宝|移动电源|手机充电|无线充电|保护膜|phone accessories|mobile accessories|smartphone accessories|phone case|phone cover|power bank|portable charger|wireless charg|magsafe|screen protect|charging cable|iphone.{0,30}(?:case|strap|wallet)|(?:case|strap|wallet).{0,30}iphone/i.test(`${title} ${lead}`)
     : !industry || `${title} ${lead}`.toLocaleLowerCase().includes(industry.toLocaleLowerCase());
   if (!categoryMatch) return { status: 'background', reason: 'category_not_established' };
 
@@ -41,6 +41,7 @@ function sourceScope({ goal, merchant = {}, source = {}, now = new Date() }) {
   const regionMatch = usRegion
     ? /美国|united states|\bu\.?s\.?a?\b|\bamerican\b/i.test(`${title} ${url}`)
       || /^https?:\/\/(?:www\.)?cpsc\.gov\//i.test(url)
+      || /(?:\b(?:in|for|across)\s+(?:the\s+)?(?:united states|u\.s\.|usa)(?=\W|$)|\bus\s+(?:customers?|stores?|retailers?|pricing|availability)\b|\bLos Angeles\b)/i.test(lead)
     : !region || `${title} ${url}`.toLocaleLowerCase().includes(region.toLocaleLowerCase());
   if (!regionMatch) return { status: 'background', reason: 'region_not_established' };
 

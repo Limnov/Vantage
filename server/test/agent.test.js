@@ -1079,7 +1079,7 @@ test('merchant market searches include business context and clamp explicit time 
   assert.equal(searched[0].days, 30, 'the model cannot widen the user requested 30-day window');
 });
 
-test('a second search targets recent US accessory safety evidence when the first has no scoped lead', async () => {
+test('a second search targets recent US accessory safety evidence after an opportunity lead', async () => {
   const searched = [];
   let round = 0;
   await runAgent({
@@ -1087,7 +1087,15 @@ test('a second search targets recent US accessory safety evidence when the first
     goal: '研究最近 30 天手机配件在美国的机会和风险',
     context: { orgId: 1, agent: 'merchant_research', merchant: { industry: '手机配件', region: '美国' } },
     registry: createToolRegistry({
-      searchMarket: async input => { searched.push(input); return []; }
+      searchMarket: async input => {
+        searched.push(input);
+        return searched.length === 1 ? [{
+          title: 'Belkin US introduces iPhone 18 Pro screen protectors',
+          url: 'https://www.belkin.com/pr-screen-protector-fixture.html',
+          content: 'LOS ANGELES — new screen protectors are available for order in the United States.',
+          publishedDate: new Date().toISOString().slice(0, 10)
+        }] : [];
+      }
     }),
     store: { updateRun: async () => {}, appendStep: async () => {} },
     maxSteps: 4,
