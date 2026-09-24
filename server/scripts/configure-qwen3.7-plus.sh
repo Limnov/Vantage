@@ -42,7 +42,15 @@ printf '%s' "$api_key" | node -e '
 unset api_key
 
 sudo -n systemctl restart vantage-pi.service
-if ! curl -fsS --max-time 10 http://127.0.0.1:3004/health >/dev/null; then
+healthy=false
+for _ in {1..20}; do
+  if curl -fs --max-time 2 http://127.0.0.1:3004/health >/dev/null 2>&1; then
+    healthy=true
+    break
+  fi
+  sleep 1
+done
+if [[ "$healthy" != true ]]; then
   printf '服务重启后健康检查失败，请检查 vantage-pi.service。\n' >&2
   exit 1
 fi
