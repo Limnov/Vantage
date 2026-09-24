@@ -173,6 +173,7 @@ function createToolRegistry(overrides = {}) {
           evidence_id: id,
           title: shortText(page?.title || page?.ogTitle || matchedSource?.title, 300),
           url: url.href,
+          published_date: page?.publishedDate || matchedSource?.published_date || null,
           excerpt: content,
           untrusted_content: true
         }] : [],

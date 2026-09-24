@@ -88,6 +88,7 @@ test('merchant extraction only reads links from its own search and requires page
   assert.equal(result.ok, true);
   assert.equal(result.data.evidence[0].title, '来源标题');
   assert.equal(result.data.published_date, '2026-09-20');
+  assert.equal(result.data.evidence[0].published_date, '2026-09-20');
   assert.match(result.data.evidence[0].excerpt, /网页正文/);
 });
 
@@ -462,6 +463,8 @@ test('merchant research finalizes immediately after search and extraction budget
       assert.deepEqual(tools, []);
       assert.deepEqual(responseFormat, { type: 'json_object' });
       assert.match(messages.at(-1).content, /检索预算已用完/);
+      assert.match(messages.at(-1).content, /用户原始目标：研究美国手机配件市场/);
+      assert.match(messages.at(-1).content, /网页发布日期不等于其中数据的发生时间/);
       const answer = claims.map((item) => item.claim).join('\n\n');
       return { message: { content: JSON.stringify({
         title: '来源核验结果',
