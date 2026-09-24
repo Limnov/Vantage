@@ -139,6 +139,12 @@ function providerRequestBody(provider, { messages, tools, maxTokens, temperature
   if (reasoning && /^https?:\/\/(?:[^/]+\.)?openrouter\.ai\//i.test(`${provider.baseUrl}/`)) {
     body.reasoning = reasoning;
   }
+  if (/^qwen3\.7-plus(?:$|-)/i.test(provider.model)
+    && /^https:\/\/[^/]*\.aliyuncs\.com\/compatible-mode\/v1\/?$/i.test(provider.baseUrl)) {
+    // DashScope defaults to thinking mode; tool decisions and JSON output need
+    // a bounded visible answer rather than spending this budget on hidden tokens.
+    body.enable_thinking = false;
+  }
   if (responseFormat) body.response_format = responseFormat;
   if (Array.isArray(tools) && tools.length > 0) {
     body.tools = tools;

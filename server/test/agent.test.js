@@ -1182,6 +1182,37 @@ test('LLM adapter sends reasoning controls only to OpenRouter endpoints', async 
   }
 });
 
+test('LLM adapter requests non-thinking Qwen3.7 Plus on DashScope', async () => {
+  const keys = ['AI_API_KEY', 'AI_BASE_URL', 'AI_MODEL', 'AI_RETRY_ATTEMPTS', 'BAILIAN_API_KEY', 'DEEPSEEK_API_KEY', 'MINIMAX_API_KEY'];
+  const previous = new Map(keys.map(key => [key, process.env[key]]));
+  for (const key of ['BAILIAN_API_KEY', 'DEEPSEEK_API_KEY', 'MINIMAX_API_KEY']) delete process.env[key];
+  Object.assign(process.env, {
+    AI_API_KEY: 'fixture-api-key-123456',
+    AI_BASE_URL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    AI_MODEL: 'qwen3.7-plus',
+    AI_RETRY_ATTEMPTS: '0'
+  });
+  const originalPost = axios.post;
+  let body;
+  axios.post = async (_url, requestBody) => {
+    body = requestBody;
+    return { data: { choices: [{ message: { content: '{}' } }], usage: { total_tokens: 1 } } };
+  };
+  try {
+    await chatWithTools({ messages: [{ role: 'user', content: 'json' }], tools: [{ type: 'function', function: { name: 'example', parameters: { type: 'object' } } }], responseFormat: { type: 'json_object' } });
+    assert.equal(body.model, 'qwen3.7-plus');
+    assert.equal(body.enable_thinking, false);
+    assert.equal(body.reasoning, undefined);
+    assert.equal(body.tools.length, 1);
+  } finally {
+    axios.post = originalPost;
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
 test('LLM adapter keeps one hard deadline across JSON-mode fallback and retries', async () => {
   const keys = ['AI_API_KEY', 'AI_BASE_URL', 'AI_MODEL', 'AI_TIMEOUT', 'AI_RETRY_ATTEMPTS', 'BAILIAN_API_KEY', 'DEEPSEEK_API_KEY', 'MINIMAX_API_KEY'];
   const previous = new Map(keys.map(key => [key, process.env[key]]));
