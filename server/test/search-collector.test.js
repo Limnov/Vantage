@@ -129,3 +129,20 @@ test('recent US screen-protector launch is a scoped product lead without treatin
   assert.match(result.data.results[0].url, /belkin/);
   assert.equal(result.data.results[1].scope_status, 'background');
 });
+
+test('recent US storefront product availability is scoped while a global USD listing is not', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const registry = createToolRegistry({
+    searchMarket: async () => [
+      { title: 'Global screen protector launch', url: 'https://global.example/launch', content: 'Available worldwide at $44.99. Shop now.', publishedDate: today },
+      { title: 'Custom screen protectors | Brand', url: 'https://brand.example/company/blog/new-screen-protectors', content: 'Brand US Home Logo. New screen protectors available now for $44.99. Shop now.', publishedDate: today }
+    ]
+  });
+  const result = await registry.execute('search_market', { query: 'US screen protector launch', max_results: 2 }, {
+    agent: 'merchant_research', goal: '研究最近 30 天美国手机配件新品', merchant: { industry: '手机配件', region: '美国' }
+  });
+  assert.match(result.data.results[0].url, /brand\.example/);
+  assert.equal(result.data.results[0].scope_status, 'in_scope');
+  assert.equal(result.data.results[1].scope_status, 'background');
+  assert.equal(result.data.results[1].scope_reason, 'region_not_established');
+});

@@ -38,10 +38,16 @@ function sourceScope({ goal, merchant = {}, source = {}, now = new Date() }) {
   if (!categoryMatch) return { status: 'background', reason: 'category_not_established' };
 
   const usRegion = /^(美国|us|usa|united states)$/i.test(region);
+  // A US storefront with a USD price and an available purchase action is a US
+  // product lead; a USD price alone on a global announcement is not enough.
+  const usStorefrontAvailability = /\b(?:US|USA|United States)\s+(?:Home|Store|Shop)\b/i.test(lead)
+    && /\$\s*\d/.test(lead)
+    && /\b(?:available now|shop now|order now|in stock)\b/i.test(lead);
   const regionMatch = usRegion
     ? /美国|united states|\bu\.?s\.?a?\b|\bamerican\b/i.test(`${title} ${url}`)
       || /^https?:\/\/(?:www\.)?cpsc\.gov\//i.test(url)
       || /(?:\b(?:in|for|across)\s+(?:the\s+)?(?:united states|u\.s\.|usa)(?=\W|$)|\bus\s+(?:customers?|stores?|retailers?|pricing|availability)\b|\bLos Angeles\b)/i.test(lead)
+      || usStorefrontAvailability
     : !region || `${title} ${url}`.toLocaleLowerCase().includes(region.toLocaleLowerCase());
   if (!regionMatch) return { status: 'background', reason: 'region_not_established' };
 
