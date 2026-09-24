@@ -863,7 +863,7 @@ test('merchant research keeps a recent US accessory safety warning as a cited ri
         summary: '近期有充电宝召回。',
         answer: '近期有充电宝召回。',
         key_points: ['近期有充电宝召回。'],
-        signal_type: 'risk',
+        signal_type: 'neutral',
         sentiment: 'negative',
         confidence: 'high',
         evidence_ids: ['page-recall', 'page-global-forecast'],
@@ -881,6 +881,7 @@ test('merchant research keeps a recent US accessory safety warning as a cited ri
   assert.deepEqual(result.claim_citations[0].evidence_ids, ['page-recall']);
   assert.equal(result.confidence, 'low');
   assert.match(result.answer, /CPSC/);
+  assert.match(result.answer, /机会方面，本次有限检索未形成可核验的结论/);
   assert.match(result.answer, /本次有限检索未形成可核验的结论/);
   assert.doesNotMatch(result.answer, /未发现其他独立/);
 });

@@ -370,7 +370,8 @@ function stabilizeMerchantFinal(final, evidenceMap, goal, merchant) {
     }
     final.key_points = final.claim_citations.map((claim) => claim.claim).slice(0, 5);
     final.answer = final.claim_citations.map((claim) => claim.claim).join('\n\n').substring(0, 2000);
-    if (final.signal_type === 'risk' && /机会|opportunit/i.test(goal)) {
+    if (/机会|opportunit/i.test(goal)
+      && !final.claim_citations.some(item => /机会|opportunit/i.test(item.claim))) {
       final.answer = `${final.answer}\n\n机会方面，本次有限检索未形成可核验的结论。`.substring(0, 2000);
     }
     final.summary = final.claim_citations.map((claim) => claim.claim).slice(0, 2).join('；').substring(0, 1200);
