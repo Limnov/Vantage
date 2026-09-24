@@ -613,6 +613,7 @@ async function runAgent({
   const operations = [];
   const notificationProposals = [];
   const successfulCalls = new Map();
+  const extractedMerchantUrls = new Set();
   let mutationEpoch = 0;
   const maxToolCallsPerStep = boundedInteger(
     process.env.AGENT_MAX_TOOL_CALLS_PER_STEP,
@@ -1033,6 +1034,9 @@ async function runAgent({
             args = addMerchantSearchContext(args, context.merchant, goal);
           }
           const fingerprint = `${toolName}:${stableJson(args)}`;
+          const merchantExtractUrl = context.agent === 'merchant_research' && toolName === 'extract_source'
+            ? String(args.url || '').trim().split('#')[0]
+            : '';
           const cached = successfulCalls.get(fingerprint);
           const previous = toolName === 'propose_notification' || cached?.mutationEpoch !== mutationEpoch
             ? null
@@ -1043,6 +1047,8 @@ async function runAgent({
               ...previous.result,
               meta: { ...(previous.result.meta || {}), replayed: true, original_step: previous.stepNo }
             };
+          } else if (merchantExtractUrl && extractedMerchantUrls.has(merchantExtractUrl)) {
+            result = { ok: false, error: { code: 'research_source_already_extracted', message: '该来源本轮已核验，请引用已有证据或选择另一个来源' } };
           } else if (allowedTools && !allowedTools.has(toolName)) {
             result = { ok: false, error: { code: 'tool_not_allowed', message: '商户研究只能调用只读研究工具' } };
           } else if (context.agent === 'merchant_research' && toolName === 'search_market'
@@ -1068,6 +1074,7 @@ async function runAgent({
                   : undefined
               });
             if (result.ok) {
+              if (merchantExtractUrl) extractedMerchantUrls.add(merchantExtractUrl);
               const toolSpec = typeof registry.spec === 'function' ? registry.spec(toolName) : null;
               const readOnly = toolSpec?.readOnly !== false;
               if (!readOnly) mutationEpoch += 1;

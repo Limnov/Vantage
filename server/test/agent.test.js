@@ -487,6 +487,55 @@ test('merchant research finalizes immediately after search and extraction budget
   assert.equal(result.claim_citations.length, 2);
 });
 
+test('merchant research does not spend another extraction on the same URL with different options', async () => {
+  const firstUrl = 'https://example.com/first';
+  const secondUrl = 'https://example.org/second';
+  const extractedUrls = [];
+  let round = 0;
+  const result = await runAgent({
+    runId: 'merchant-deduplicate-source',
+    goal: '研究手机配件新品来源',
+    context: { orgId: 1, userId: 2, agent: 'merchant_research' },
+    registry: {
+      definitions: () => [],
+      list: () => ['search_market', 'extract_source'],
+      spec: () => ({ readOnly: true }),
+      execute: async (name, args) => {
+        if (name === 'search_market') return { ok: true, data: { evidence: [firstUrl, secondUrl].map((url, index) => ({
+          evidence_id: `search-${index}`, title: `来源 ${index}`, url, excerpt: '手机配件来源'
+        })) } };
+        extractedUrls.push(args.url);
+        return { ok: true, data: { evidence: [{
+          evidence_id: args.url === firstUrl ? 'page-first' : 'page-second',
+          title: '新品来源', url: args.url, excerpt: '已核验的新品资料'
+        }] } };
+      }
+    },
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    maxSteps: 6,
+    complete: async ({ messages }) => {
+      round += 1;
+      if (round === 1) return { message: { tool_calls: [{ id: 'search', function: { name: 'search_market', arguments: '{"query":"phone accessory launch"}' } }] } };
+      if (round <= 4) {
+        if (round === 4) assert.match(messages.at(-1).content, /research_source_already_extracted/);
+        const url = round === 4 ? secondUrl : firstUrl;
+        return { message: { tool_calls: [{ id: `extract-${round}`, function: {
+          name: 'extract_source', arguments: JSON.stringify({ url, max_chars: round === 3 ? 12000 : 8000 })
+        } }] } };
+      }
+      return { message: { content: JSON.stringify({
+        title: '核验结果', summary: '核验到新品来源。', answer: '核验到新品来源。',
+        key_points: ['核验到新品来源。'], signal_type: 'neutral', sentiment: 'neutral',
+        confidence: 'low', evidence_ids: ['page-second'],
+        claim_citations: [{ claim: '已核验新品来源。', evidence_ids: ['page-second'] }], proposed_actions: []
+      }) } };
+    }
+  });
+  assert.deepEqual(extractedUrls, [firstUrl, secondUrl]);
+  assert.equal(result.answer_status, 'grounded_answer');
+  assert.deepEqual(result.evidence_ids, ['page-second']);
+});
+
 test('merchant finalization timeout persists a source-only report without another model call', async () => {
   const events = [];
   let round = 0;
