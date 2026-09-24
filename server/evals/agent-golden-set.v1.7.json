@@ -1,6 +1,6 @@
 {
   "name": "Vantage Agent Golden Set",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "updated_at": "2026-09-25",
   "fixture_only": true,
   "data_policy": "All users, organizations, reports, market facts, and source excerpts are synthetic. No customer data, live provider calls, network access, or external side effects are used.",
@@ -198,6 +198,7 @@
       "task_type": "provider_timeout",
       "risk": "medium",
       "scenario": "merchant_finalization_timeout",
+      "max_steps": 5,
       "goal": "研究最近 30 天手机配件在美国的机会与风险。",
       "agent": "merchant_research",
       "merchant_context": { "industry": "手机配件", "region": "美国" },

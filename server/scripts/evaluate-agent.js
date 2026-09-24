@@ -330,7 +330,7 @@ async function evaluateCase(testCase) {
     },
     registry,
     store: memoryStore(events),
-    maxSteps: 6,
+    maxSteps: testCase.max_steps || 6,
     complete: scriptedCompletion(testCase, trace)
   });
   const allCalls = observedToolCalls(events);

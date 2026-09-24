@@ -13,7 +13,7 @@ const defaultStore = require('./store');
 
 const DEFAULT_MAX_TOOL_CALLS_PER_STEP = 4;
 const DEFAULT_TOOL_CONTEXT_MAX_CHARS = 20000;
-const MERCHANT_RESEARCH_LIMITS = Object.freeze({ maxSearches: 2, maxExtractions: 2, maxSteps: 7, maxFinalizationRetries: 1 });
+const MERCHANT_RESEARCH_LIMITS = Object.freeze({ maxSearches: 3, maxExtractions: 4, maxSteps: 10, maxFinalizationRetries: 1 });
 
 function hasScopedRiskLead(evidenceMap, goal, merchant) {
   return Array.from(evidenceMap.values()).some(item => (
@@ -1046,14 +1046,14 @@ async function runAgent({
             result = { ok: false, error: { code: 'tool_not_allowed', message: '商户研究只能调用只读研究工具' } };
           } else if (context.agent === 'merchant_research' && toolName === 'search_market'
             && operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length >= MERCHANT_RESEARCH_LIMITS.maxSearches) {
-            result = { ok: false, error: { code: 'research_search_limit', message: '本轮研究最多执行 2 次搜索，请使用现有来源完成核验与总结' } };
+            result = { ok: false, error: { code: 'research_search_limit', message: `本轮研究最多执行 ${MERCHANT_RESEARCH_LIMITS.maxSearches} 次搜索，请使用现有来源完成核验与总结` } };
           } else if (merchantNeedsTwoSidedSearch && toolName === 'extract_source'
             && operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length === 1
             && !hasScopedRiskLead(evidenceMap, goal, context.merchant)) {
             result = { ok: false, error: { code: 'research_search_first', message: '机会与风险任务请先完成第二次不同方向的搜索，再核验原文' } };
           } else if (context.agent === 'merchant_research' && toolName === 'extract_source'
             && operations.filter(item => item.tool === 'extract_source' && item.ok && !item.replayed).length >= MERCHANT_RESEARCH_LIMITS.maxExtractions) {
-            result = { ok: false, error: { code: 'research_extract_limit', message: '本轮研究最多核验 2 个来源，请使用现有证据完成总结' } };
+            result = { ok: false, error: { code: 'research_extract_limit', message: `本轮研究最多核验 ${MERCHANT_RESEARCH_LIMITS.maxExtractions} 个来源，请使用现有证据完成总结` } };
           } else {
             result = toolName === 'propose_notification' && notificationProposals.length > 0
               ? { ok: false, error: { code: 'proposal_limit', message: '每轮任务最多一个通知建议；请在下一轮提出另一个建议' } }

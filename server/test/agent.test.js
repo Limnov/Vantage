@@ -362,7 +362,7 @@ test('merchant research caps searches within a run to protect trial quota', asyn
       })) } }
       : { message: { content: JSON.stringify({ answer: '未经证实的结论' }) } })
   });
-  assert.equal(searches, 2);
+  assert.equal(searches, 3);
   assert.equal(result.operations[3].error.code, 'research_search_limit');
   assert.doesNotMatch(result.answer, /未经证实的结论/);
 });
@@ -451,15 +451,15 @@ test('merchant research finalizes immediately after search and extraction budget
     store: { updateRun: async () => {}, appendStep: async () => {} },
     complete: async ({ messages, tools, responseFormat }) => {
       round += 1;
-      if (round <= 4) {
-        const name = round <= 2 ? 'search_market' : 'extract_source';
+      if (round <= 7) {
+        const name = round <= 3 ? 'search_market' : 'extract_source';
         return { message: { tool_calls: [{
           id: `research_${round}`,
           function: { name, arguments: JSON.stringify({ query: `手机配件 美国 ${round}` }) }
         }] } };
       }
-      assert.equal(round, 5, 'do not spend extra model turns after research quotas are exhausted');
-      assert.deepEqual([searchCount, extractionCount], [2, 2]);
+      assert.equal(round, 8, 'do not spend extra model turns after research quotas are exhausted');
+      assert.deepEqual([searchCount, extractionCount], [3, 4]);
       assert.deepEqual(tools, []);
       assert.deepEqual(responseFormat, { type: 'json_object' });
       assert.match(messages.at(-1).content, /检索预算已用完/);
@@ -480,9 +480,9 @@ test('merchant research finalizes immediately after search and extraction budget
       }) } };
     }
   });
-  assert.equal(round, 5);
-  assert.equal(searchCount, 2);
-  assert.equal(extractionCount, 2);
+  assert.equal(round, 8);
+  assert.equal(searchCount, 3);
+  assert.equal(extractionCount, 4);
   assert.equal(result.answer_status, 'grounded_answer');
   assert.equal(result.claim_citations.length, 2);
 });
