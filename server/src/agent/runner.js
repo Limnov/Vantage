@@ -246,6 +246,11 @@ function normalizeClaimCitations(value, knownIds) {
   });
 }
 
+function unsupportedSearchCoverageClaim(claim) {
+  const text = String(claim || '');
+  return /(?:未发现|未找到|没有找到|未检索到).*(?:其他|市场增长|正面机会|机会证据|公开动态)|主要公开动态为/.test(text);
+}
+
 function normalizeFinal(text, evidenceMap) {
   const parsed = parseJsonObject(text);
   const raw = parsed && typeof parsed === 'object' ? parsed : {};
@@ -326,6 +331,7 @@ function stabilizeMerchantFinal(final, evidenceMap, goal, merchant) {
   if (explicitSearchWindowDays(goal) !== null) {
     const originalCitationCount = final.claim_citations.reduce((sum, claim) => sum + claim.evidence_ids.length, 0);
     const accepted = final.claim_citations.flatMap(claim => {
+      if (unsupportedSearchCoverageClaim(claim.claim)) return [];
       const evidenceIds = claim.evidence_ids.filter(id => {
         const source = evidenceMap.get(id);
         return source?.evidence_level === 'fulltext'
@@ -355,6 +361,9 @@ function stabilizeMerchantFinal(final, evidenceMap, goal, merchant) {
     }
     final.key_points = final.claim_citations.map((claim) => claim.claim).slice(0, 5);
     final.answer = final.claim_citations.map((claim) => claim.claim).join('\n\n').substring(0, 2000);
+    if (final.signal_type === 'risk' && /机会|opportunit/i.test(goal)) {
+      final.answer = `${final.answer}\n\n机会方面，本次有限检索未形成可核验的结论。`.substring(0, 2000);
+    }
     final.summary = final.claim_citations.map((claim) => claim.claim).slice(0, 2).join('；').substring(0, 1200);
     final.answer_status = 'grounded_answer';
     return final;
@@ -998,7 +1007,7 @@ async function runAgent({
               && /^(美国|us|usa|united states)$/i.test(String(context.merchant?.region || ''))
               && /风险|risk|recall|safety/i.test(goal)) {
               // 第二次搜索使用具体配件和美国监管原始资料；不增加搜索次数。
-              args.query = 'CPSC power bank phone charger recall United States';
+              args.query = 'site:cpsc.gov/Recalls/ power bank wireless charger United States';
             }
             args = addMerchantSearchContext(args, context.merchant, goal);
           }

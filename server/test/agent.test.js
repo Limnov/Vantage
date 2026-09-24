@@ -867,16 +867,22 @@ test('merchant research keeps a recent US accessory safety warning as a cited ri
         sentiment: 'negative',
         confidence: 'high',
         evidence_ids: ['page-recall', 'page-global-forecast'],
-        claim_citations: [{ claim: '美国 CPSC 近期通报充电宝过热起火风险。', evidence_ids: ['page-recall', 'page-global-forecast'] }],
+        claim_citations: [
+          { claim: '美国 CPSC 近期通报充电宝过热起火风险。', evidence_ids: ['page-recall', 'page-global-forecast'] },
+          { claim: '最近30天内未发现其他独立的市场增长数据。', evidence_ids: ['page-recall'] }
+        ],
         proposed_actions: []
       }) } };
     }
   });
   assert.equal(result.answer_status, 'grounded_answer');
   assert.deepEqual(result.evidence_ids, ['page-recall']);
+  assert.equal(result.claim_citations.length, 1);
   assert.deepEqual(result.claim_citations[0].evidence_ids, ['page-recall']);
   assert.equal(result.confidence, 'low');
   assert.match(result.answer, /CPSC/);
+  assert.match(result.answer, /本次有限检索未形成可核验的结论/);
+  assert.doesNotMatch(result.answer, /未发现其他独立/);
 });
 
 test('a confirmed paused-monitor action runs through the registry without an LLM decision', async () => {
@@ -1095,7 +1101,7 @@ test('a second search targets recent US accessory safety evidence when the first
     }
   });
   assert.equal(searched.length, 2);
-  assert.match(searched[1].query, /CPSC power bank phone charger recall United States/);
+  assert.match(searched[1].query, /site:cpsc\.gov\/Recalls\/ power bank wireless charger United States/);
   assert.doesNotMatch(searched[1].query, /counterfeit news/);
   assert.equal(searched[1].days, 30);
 });
