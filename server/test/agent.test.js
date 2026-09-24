@@ -1081,6 +1081,7 @@ test('merchant market searches include business context and clamp explicit time 
 
 test('a second search targets recent US accessory safety evidence after an opportunity lead', async () => {
   const searched = [];
+  const offeredTools = [];
   let round = 0;
   await runAgent({
     runId: 'merchant-scoped-risk-search',
@@ -1099,7 +1100,8 @@ test('a second search targets recent US accessory safety evidence after an oppor
     }),
     store: { updateRun: async () => {}, appendStep: async () => {} },
     maxSteps: 4,
-    complete: async () => {
+    complete: async ({ tools }) => {
+      offeredTools.push(tools.map(tool => tool.function.name));
       round += 1;
       if (round <= 2) return { message: { tool_calls: [{
         id: `search_${round}`,
@@ -1109,7 +1111,8 @@ test('a second search targets recent US accessory safety evidence after an oppor
     }
   });
   assert.equal(searched.length, 2);
-  assert.match(searched[0].query, /phone case screen protector new product launch United States/);
+  assert.equal(offeredTools[1].includes('extract_source'), false, 'the first source cannot consume an extraction reserved for risk evidence');
+  assert.match(searched[0].query, /phone case screen protector new product launch press release United States/);
   assert.match(searched[1].query, /CPSC power bank phone charger recall United States/);
   assert.doesNotMatch(searched[1].query, /counterfeit news/);
   assert.equal(searched[1].days, 30);

@@ -15,6 +15,15 @@ const DEFAULT_MAX_TOOL_CALLS_PER_STEP = 4;
 const DEFAULT_TOOL_CONTEXT_MAX_CHARS = 20000;
 const MERCHANT_RESEARCH_LIMITS = Object.freeze({ maxSearches: 2, maxExtractions: 2, maxSteps: 7, maxFinalizationRetries: 1 });
 
+function hasScopedRiskLead(evidenceMap, goal, merchant) {
+  return Array.from(evidenceMap.values()).some(item => (
+    item.source_tool === 'search_market'
+    && sourceScope({ goal, merchant, source: item }).status === 'in_scope'
+    && (/^https?:\/\/(?:www\.)?cpsc\.gov\//i.test(String(item.url || ''))
+      || /recall|fire hazard|burn hazard|召回|起火|灼伤/i.test(`${item.title || ''} ${item.excerpt || ''}`))
+  ));
+}
+
 function boundedInteger(value, fallback, min, max) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) return fallback;
@@ -631,6 +640,10 @@ async function runAgent({
   let formatRepairPending = false;
   let formatRepairAttempts = 0;
   let merchantFinalizationAttempts = 0;
+  const merchantNeedsTwoSidedSearch = context.agent === 'merchant_research'
+    && explicitSearchWindowDays(goal) !== null
+    && /机会|opportunit/i.test(goal)
+    && /风险|risk/i.test(goal);
 
   if (typeof store.isCancelled === 'function' && await store.isCancelled(runId)) {
     const error = new Error('run cancelled by user');
@@ -651,6 +664,8 @@ async function runAgent({
         && Array.from(evidenceMap.values()).some(item => item.evidence_level === 'fulltext');
       const merchantSearchCount = operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length;
       const merchantExtractCount = operations.filter(item => item.tool === 'extract_source' && item.ok && !item.replayed).length;
+      const merchantRiskSearchPending = merchantNeedsTwoSidedSearch && merchantSearchCount === 1
+        && !hasScopedRiskLead(evidenceMap, goal, context.merchant);
       const merchantResearchBudgetExhausted = context.agent === 'merchant_research'
         && merchantSearchCount >= MERCHANT_RESEARCH_LIMITS.maxSearches
         && merchantExtractCount >= MERCHANT_RESEARCH_LIMITS.maxExtractions;
@@ -674,7 +689,8 @@ async function runAgent({
       const availableTool = (name) => (!allowedTools || allowedTools.has(name))
         && !(context.agent === 'merchant_research' && (
           (name === 'search_market' && merchantSearchCount >= MERCHANT_RESEARCH_LIMITS.maxSearches)
-          || (name === 'extract_source' && merchantExtractCount >= MERCHANT_RESEARCH_LIMITS.maxExtractions)
+          || (name === 'extract_source' && (merchantExtractCount >= MERCHANT_RESEARCH_LIMITS.maxExtractions
+            || merchantRiskSearchPending))
         ));
       const availableToolDefinitions = formatRepairPending || forceFinal || confirmedActionDispatched ? [] : registry.definitions()
         .filter((tool) => availableTool(tool.function?.name));
@@ -1005,15 +1021,9 @@ async function runAgent({
               && /\b(?:market|trends?|outlook|forecast)\b|市场|趋势|预测/i.test(String(args.query || ''))
               && !/\b(?:case|screen protector|power bank|charger|launch|release|introduc|unveil)\b|手机壳|贴膜|充电宝|上市|发布/i.test(String(args.query || ''))) {
               // 宽泛市场预测会淹没近期产品信号；缩窄首轮查询，仍由日期参数限定时间窗。
-              args.query = 'phone case screen protector new product launch United States';
+              args.query = 'phone case screen protector new product launch press release United States';
             }
-            const hasScopedRiskLead = Array.from(evidenceMap.values()).some(item => (
-              item.source_tool === 'search_market'
-              && sourceScope({ goal, merchant: context.merchant, source: item }).status === 'in_scope'
-              && (/^https?:\/\/(?:www\.)?cpsc\.gov\//i.test(String(item.url || ''))
-                || /recall|fire hazard|burn hazard|召回|起火|灼伤/i.test(`${item.title || ''} ${item.excerpt || ''}`))
-            ));
-            if (previousSearches === 1 && !hasScopedRiskLead
+            if (previousSearches === 1 && !hasScopedRiskLead(evidenceMap, goal, context.merchant)
               && usAccessories
               && /风险|risk|recall|safety/i.test(goal)) {
               // 第二次搜索使用具体配件和美国监管原始资料；不增加搜索次数。
@@ -1037,6 +1047,10 @@ async function runAgent({
           } else if (context.agent === 'merchant_research' && toolName === 'search_market'
             && operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length >= MERCHANT_RESEARCH_LIMITS.maxSearches) {
             result = { ok: false, error: { code: 'research_search_limit', message: '本轮研究最多执行 2 次搜索，请使用现有来源完成核验与总结' } };
+          } else if (merchantNeedsTwoSidedSearch && toolName === 'extract_source'
+            && operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length === 1
+            && !hasScopedRiskLead(evidenceMap, goal, context.merchant)) {
+            result = { ok: false, error: { code: 'research_search_first', message: '机会与风险任务请先完成第二次不同方向的搜索，再核验原文' } };
           } else if (context.agent === 'merchant_research' && toolName === 'extract_source'
             && operations.filter(item => item.tool === 'extract_source' && item.ok && !item.replayed).length >= MERCHANT_RESEARCH_LIMITS.maxExtractions) {
             result = { ok: false, error: { code: 'research_extract_limit', message: '本轮研究最多核验 2 个来源，请使用现有证据完成总结' } };
