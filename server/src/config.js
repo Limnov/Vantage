@@ -2,7 +2,10 @@
  * Vantage 后端 - 统一配置
  */
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const envPath = process.env.VANTAGE_RUNTIME_ENV_PATH
+  ? path.resolve(process.env.VANTAGE_RUNTIME_ENV_PATH)
+  : path.join(__dirname, '../.env');
+require('dotenv').config({ path: envPath });
 const { validateAdminBootstrapConfig } = require('./security/bootstrap');
 
 const JWT_PLACEHOLDERS = new Set([
