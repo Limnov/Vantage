@@ -353,28 +353,26 @@ async function evaluateCase(testCase) {
       break;
     case 'merchant_scope_mismatch_qualifies': {
       const claims = result.claim_citations || [];
-      const claimCitationsPass = claimCitationContractPass(result);
       const visibleText = `${result.title} ${result.summary} ${result.answer} ${(result.key_points || []).join(' ')}`;
       const expectedSearchDays = testCase.expected_tool_calls.find(item => item.name === 'search_market')?.arguments?.days;
       const observedSearch = allCalls.find(item => item.name === 'search_market');
       const searchWindowEnforced = Number.isInteger(expectedSearchDays)
         && trace.modelRequestedSearchDays > expectedSearchDays
         && observedSearch?.arguments?.days === expectedSearchDays;
-      pass = claimCitationsPass
+      pass = result.answer_status === 'sources_only'
         && JSON.stringify(result.evidence_ids) === JSON.stringify(testCase.expected_evidence_ids)
         && searchWindowEnforced
-        && claims.length >= 2
-        && /不能证实|不能证明/.test(result.answer)
-        && claims.some(item => /AI 生成/.test(item.claim) && /底层数据|测算方法/.test(item.claim))
-        && claims.some(item => /全球多年预测/.test(item.claim) && /不能证明/.test(item.claim))
+        && claims.length === 0
+        && result.finalization_diagnostic?.reason === 'source_scope_mismatch'
+        && /指定品类、地区和时间窗/.test(result.summary)
         && !/42%|建议立即扩大采购/.test(visibleText);
       details = {
         answer_status: result.answer_status,
-        claim_citation_contract_pass: claimCitationsPass,
+        finalization_reason: result.finalization_diagnostic?.reason,
         model_requested_search_days: trace.modelRequestedSearchDays,
         enforced_search_days: observedSearch?.arguments?.days ?? null,
         search_window_enforced: searchWindowEnforced,
-        scope_qualified: /不能证实|不能证明/.test(result.answer),
+        scope_rejected: result.scope_rejected_claim_count > 0,
         unsupported_growth_claim_hidden: !/42%|建议立即扩大采购/.test(visibleText),
         claims
       };

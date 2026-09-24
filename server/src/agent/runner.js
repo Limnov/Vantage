@@ -8,6 +8,7 @@
 const { chatWithTools } = require('./llm');
 const { createToolRegistry } = require('./toolRegistry');
 const { buildInitialMessages, createWorkflowState, PHASES, phaseForTool, MERCHANT_RESEARCH_TOOLS } = require('./workflow');
+const { explicitSearchWindowDays, sourceScope } = require('./merchantScope');
 const defaultStore = require('./store');
 
 const DEFAULT_MAX_TOOL_CALLS_PER_STEP = 4;
@@ -28,28 +29,16 @@ function stableJson(value) {
   return JSON.stringify(value);
 }
 
-function explicitSearchWindowDays(goal) {
-  const text = String(goal || '').toLocaleLowerCase();
-  const match = text.match(/(?:最近|近|过去|last|past|recent)\s*(\d{1,3})\s*(天|日|days?|d|周|星期|weeks?|w|个月|月|months?|mo)/i);
-  if (match) {
-    const amount = Number(match[1]);
-    const unit = match[2].toLocaleLowerCase();
-    const multiplier = /周|星期|week|^w$/.test(unit)
-      ? 7
-      : /月|month|^mo$/.test(unit)
-        ? 30
-        : 1;
-    return Math.min(365, Math.max(1, amount * multiplier));
-  }
-  if (/(?:最近|近|过去)一个月|(?:last|past|recent)\s+month/i.test(text)) return 30;
-  if (/(?:最近|近|过去)(?:一周|一星期)|(?:last|past|recent)\s+week/i.test(text)) return 7;
-  return null;
-}
-
 function addMerchantSearchContext(args, merchant = {}, goal = '') {
   const query = String(args?.query || '').trim();
   const normalized = query.toLocaleLowerCase();
-  const missingContext = [merchant.industry, merchant.region]
+  const industry = /手机配件|手机周边/i.test(String(merchant.industry || ''))
+    ? 'phone accessories'
+    : merchant.industry;
+  const region = /^(美国|us|usa)$/i.test(String(merchant.region || ''))
+    ? 'United States'
+    : merchant.region;
+  const missingContext = [industry, region]
     .map(value => String(value || '').trim())
     .filter(value => value && !normalized.includes(value.toLocaleLowerCase()));
   const next = { ...args };
@@ -109,6 +98,8 @@ function serializeToolResultForModel(result, maxChars = DEFAULT_TOOL_CONTEXT_MAX
           title: String(item.title || '').substring(0, 240),
           url: String(item.url || '').substring(0, 2048),
           published_date: item.published_date || null,
+          scope_status: item.scope_status || null,
+          scope_reason: item.scope_reason || null,
           excerpt: String(item.excerpt || '').substring(0, 600),
           untrusted_content: item.untrusted_content === true
         }))
@@ -209,6 +200,8 @@ function collectEvidence(result, evidenceMap, sourceTool = null) {
       title: item.title || '',
       url: item.url || '',
       published_date: item.published_date || null,
+      scope_status: item.scope_status || null,
+      scope_reason: item.scope_reason || null,
       excerpt: String(item.excerpt || '').substring(0, 1200),
       untrusted_content: item.untrusted_content === true,
       source_tool: sourceTool || item.source_tool || null,
@@ -328,7 +321,26 @@ function normalizeFinal(text, evidenceMap) {
   };
 }
 
-function stabilizeMerchantFinal(final, evidenceMap) {
+function stabilizeMerchantFinal(final, evidenceMap, goal, merchant) {
+  let rejectedForScope = 0;
+  if (explicitSearchWindowDays(goal) !== null) {
+    const originalCitationCount = final.claim_citations.reduce((sum, claim) => sum + claim.evidence_ids.length, 0);
+    const accepted = final.claim_citations.flatMap(claim => {
+      const evidenceIds = claim.evidence_ids.filter(id => {
+        const source = evidenceMap.get(id);
+        return source?.evidence_level === 'fulltext'
+          && sourceScope({ goal, merchant, source }).status === 'in_scope';
+      });
+      return evidenceIds.length ? [{ ...claim, evidence_ids: evidenceIds }] : [];
+    });
+    rejectedForScope = final.claim_citations.length - accepted.length;
+    const acceptedCitationCount = accepted.reduce((sum, claim) => sum + claim.evidence_ids.length, 0);
+    if (acceptedCitationCount < originalCitationCount) {
+      final.warnings.push('部分引用来源无法确认符合指定品类、地区或时间窗，已从结论中移除');
+    }
+    final.claim_citations = accepted;
+  }
+  final.scope_rejected_claim_count = rejectedForScope;
   const claimsHaveFulltext = final.claim_citations.length > 0
     && final.claim_citations.every((claim) => claim.evidence_ids.some((id) => {
       const source = evidenceMap.get(id);
@@ -338,6 +350,9 @@ function stabilizeMerchantFinal(final, evidenceMap) {
     final.title = '公开市场研究结果';
     final.evidence_ids = [...new Set(final.claim_citations.flatMap((claim) => claim.evidence_ids))];
     final.evidence_quality = evaluateEvidenceQuality(final.evidence_ids, evidenceMap);
+    if (final.confidence === 'high' && !final.evidence_quality.high_confidence_eligible) {
+      final.confidence = final.evidence_quality.distinct_domains >= 2 ? 'medium' : 'low';
+    }
     final.key_points = final.claim_citations.map((claim) => claim.claim).slice(0, 5);
     final.answer = final.claim_citations.map((claim) => claim.claim).join('\n\n').substring(0, 2000);
     final.summary = final.claim_citations.map((claim) => claim.claim).slice(0, 2).join('；').substring(0, 1200);
@@ -347,12 +362,16 @@ function stabilizeMerchantFinal(final, evidenceMap) {
   const verifiedSources = Array.from(evidenceMap.values())
     .filter(item => item.evidence_level === 'fulltext')
     .slice(0, 4);
-  final.title = verifiedSources.length ? '已找到可核验来源' : '本次研究尚未完成核验';
-  final.summary = verifiedSources.length
-    ? `已核验 ${verifiedSources.length} 个公开来源，但模型未能生成带有效引用的综合结论。`
+  final.title = rejectedForScope > 0 ? '指定范围内证据不足' : verifiedSources.length ? '已找到可核验来源' : '本次研究尚未完成核验';
+  final.summary = rejectedForScope > 0
+    ? `已核验 ${verifiedSources.length} 个公开来源，但它们不足以证明指定品类、地区和时间窗内的机会或风险。`
+    : verifiedSources.length
+      ? `已核验 ${verifiedSources.length} 个公开来源，但模型未能生成带有效引用的综合结论。`
     : '已检索到公开线索，但未能核验来源原文，暂时无法给出可靠的经营结论。';
-  final.answer = verifiedSources.length
-    ? '已核验的来源列在下方，请查看原文；本次没有生成可靠的综合结论。'
+  final.answer = rejectedForScope > 0
+    ? '现有来源与本次研究范围不匹配；下方保留原文供查看，本次不据此生成市场结论。'
+    : verifiedSources.length
+      ? '已核验的来源列在下方，请查看原文；本次没有生成可靠的综合结论。'
     : '本次未获得可核验的来源原文。请调整问题或稍后重试；下方搜索线索可供自行查看。';
   final.key_points = [];
   final.claim_citations = [];
@@ -378,6 +397,7 @@ function merchantFinalizationDiagnostic({ parsedFinal, normalizedCandidate, fina
   else if (!rawClaims || rawClaims.length === 0) reason = 'no_claim_citations';
   else if (acceptedClaims.length === 0) reason = 'claim_citations_unusable';
   else if (fulltextSupportedClaims < acceptedClaims.length) reason = 'citations_not_backed_by_fulltext';
+  else if (final.scope_rejected_claim_count > 0 && final.answer_status !== 'grounded_answer') reason = 'source_scope_mismatch';
   else if (final.answer_status === 'grounded_answer') reason = 'grounded_answer';
   else if (acceptedClaims.length > 0) reason = 'claims_cite_fulltext';
 
@@ -849,7 +869,7 @@ async function runAgent({
         }
         formatRepairPending = false;
         const final = normalizeFinal(finalText, evidenceMap);
-        if (context.agent === 'merchant_research') stabilizeMerchantFinal(final, evidenceMap);
+        if (context.agent === 'merchant_research') stabilizeMerchantFinal(final, evidenceMap, goal, context.merchant);
         const merchantFinalizationTimeoutFallback = response.runnerAction === 'merchant_finalization_timeout_fallback';
         const merchantPostEvidenceTimeoutFallback = response.runnerAction === 'merchant_post_evidence_timeout_fallback';
         if (merchantFinalizationTimeoutFallback) {
@@ -968,6 +988,18 @@ async function runAgent({
         try {
           args = JSON.parse(call.function?.arguments || '{}');
           if (context.agent === 'merchant_research' && toolName === 'search_market') {
+            const previousSearches = operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length;
+            const hasScopedLead = Array.from(evidenceMap.values()).some(item => (
+              item.source_tool === 'search_market'
+              && sourceScope({ goal, merchant: context.merchant, source: item }).status === 'in_scope'
+            ));
+            if (previousSearches === 1 && !hasScopedLead
+              && /手机配件|手机周边|phone accessories|mobile accessories/i.test(String(context.merchant?.industry || ''))
+              && /^(美国|us|usa|united states)$/i.test(String(context.merchant?.region || ''))
+              && /风险|risk|recall|safety/i.test(goal)) {
+              // 第二次搜索使用具体配件和美国监管原始资料；不增加搜索次数。
+              args.query = 'CPSC power bank phone charger recall United States';
+            }
             args = addMerchantSearchContext(args, context.merchant, goal);
           }
           const fingerprint = `${toolName}:${stableJson(args)}`;

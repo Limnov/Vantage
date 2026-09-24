@@ -758,7 +758,7 @@ test('merchant research repairs a missing citation using bounded verified-source
   }]);
 });
 
-test('merchant research surfaces only individually cited claims, not unsupported free-form text', async () => {
+test('merchant research does not turn out-of-scope background into a recent market answer', async () => {
   let round = 0;
   const result = await runAgent({
     runId: 'merchant-claim-citation-surface',
@@ -818,18 +818,65 @@ test('merchant research surfaces only individually cited claims, not unsupported
     }
   });
 
-  const expectedClaims = [
-    '该页面自称由 AI 生成且未展示底层数据或测算方法，因此只能作为待核实线索。',
-    '该全球多年预测不能证明美国近 30 天手机配件市场的变化。'
-  ];
   assert.equal(round, 3);
-  assert.equal(result.answer_status, 'grounded_answer');
-  assert.deepEqual(result.key_points, expectedClaims);
-  assert.deepEqual(result.claim_citations.map((item) => item.claim), expectedClaims);
-  assert.deepEqual(result.evidence_ids, ['page-ai-generated', 'page-global-forecast']);
-  assert.equal(result.answer, expectedClaims.join('\n\n'));
-  assert.equal(result.summary, expectedClaims.join('；'));
+  assert.equal(result.answer_status, 'sources_only');
+  assert.deepEqual(result.claim_citations, []);
+  assert.match(result.warnings.join(' '), /指定品类、地区或时间窗/);
   assert.doesNotMatch(`${result.title} ${result.summary} ${result.answer} ${result.key_points.join(' ')}`, /42%|扩大采购/);
+});
+
+test('merchant research keeps a recent US accessory safety warning as a cited risk', async () => {
+  let round = 0;
+  const publishedDate = new Date().toISOString().slice(0, 10);
+  const result = await runAgent({
+    runId: 'merchant-in-scope-risk',
+    goal: '研究最近 30 天手机配件在美国市场的机会和风险。',
+    context: { orgId: 1, userId: 2, agent: 'merchant_research', merchant: { industry: '手机配件', region: '美国' } },
+    registry: {
+      definitions: () => [],
+      list: () => ['search_market', 'extract_source'],
+      spec: () => ({ readOnly: true }),
+      execute: async (name) => ({ ok: true, data: { evidence: [{
+        evidence_id: name === 'extract_source' ? 'page-recall' : 'search-recall',
+        title: 'Power Banks Recalled Due to Fire Hazards',
+        url: 'https://www.cpsc.gov/Recalls/2026/power-bank-fixture',
+        excerpt: 'The power banks can overheat and ignite. The U.S. CPSC announced a recall.',
+        published_date: publishedDate
+      }, ...(name === 'extract_source' ? [{
+        evidence_id: 'page-global-forecast',
+        title: 'Global Mobile Accessories Market Forecast 2026-2034',
+        url: 'https://forecast.example/global-accessories',
+        excerpt: 'Global forecast based on older estimates.',
+        published_date: publishedDate
+      }] : [])] } })
+    },
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    maxSteps: 4,
+    complete: async () => {
+      round += 1;
+      if (round < 3) return { message: { tool_calls: [{
+        id: `research_${round}`,
+        function: { name: round === 1 ? 'search_market' : 'extract_source', arguments: '{}' }
+      }] } };
+      return { message: { content: JSON.stringify({
+        title: '美国手机配件风险',
+        summary: '近期有充电宝召回。',
+        answer: '近期有充电宝召回。',
+        key_points: ['近期有充电宝召回。'],
+        signal_type: 'risk',
+        sentiment: 'negative',
+        confidence: 'high',
+        evidence_ids: ['page-recall', 'page-global-forecast'],
+        claim_citations: [{ claim: '美国 CPSC 近期通报充电宝过热起火风险。', evidence_ids: ['page-recall', 'page-global-forecast'] }],
+        proposed_actions: []
+      }) } };
+    }
+  });
+  assert.equal(result.answer_status, 'grounded_answer');
+  assert.deepEqual(result.evidence_ids, ['page-recall']);
+  assert.deepEqual(result.claim_citations[0].evidence_ids, ['page-recall']);
+  assert.equal(result.confidence, 'low');
+  assert.match(result.answer, /CPSC/);
 });
 
 test('a confirmed paused-monitor action runs through the registry without an LLM decision', async () => {
@@ -1021,9 +1068,36 @@ test('merchant market searches include business context and clamp explicit time 
     }
   });
   assert.equal(searched.length, 1);
-  assert.match(searched[0].query, /手机配件/);
-  assert.match(searched[0].query, /美国/);
+  assert.match(searched[0].query, /phone accessories/i);
+  assert.match(searched[0].query, /United States/i);
   assert.equal(searched[0].days, 30, 'the model cannot widen the user requested 30-day window');
+});
+
+test('a second search targets recent US accessory safety evidence when the first has no scoped lead', async () => {
+  const searched = [];
+  let round = 0;
+  await runAgent({
+    runId: 'merchant-scoped-risk-search',
+    goal: '研究最近 30 天手机配件在美国的机会和风险',
+    context: { orgId: 1, agent: 'merchant_research', merchant: { industry: '手机配件', region: '美国' } },
+    registry: createToolRegistry({
+      searchMarket: async input => { searched.push(input); return []; }
+    }),
+    store: { updateRun: async () => {}, appendStep: async () => {} },
+    maxSteps: 4,
+    complete: async () => {
+      round += 1;
+      if (round <= 2) return { message: { tool_calls: [{
+        id: `search_${round}`,
+        function: { name: 'search_market', arguments: JSON.stringify({ query: round === 1 ? 'broad global forecast' : 'counterfeit news' }) }
+      }] } };
+      return { message: { content: JSON.stringify({ title: '证据不足', summary: '未找到来源', answer: '未找到来源' }) } };
+    }
+  });
+  assert.equal(searched.length, 2);
+  assert.match(searched[1].query, /CPSC power bank phone charger recall United States/);
+  assert.doesNotMatch(searched[1].query, /counterfeit news/);
+  assert.equal(searched[1].days, 30);
 });
 
 test('failed research remains a research result with evidence warnings', async () => {

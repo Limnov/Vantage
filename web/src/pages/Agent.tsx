@@ -761,7 +761,9 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                           >
                             {s.title || s.url}
                             <span>
-                              {s.evidence_level === "fulltext"
+                              {s.scope_status === "background"
+                                ? "仅作背景 · 范围待核实"
+                                : s.evidence_level === "fulltext"
                                 ? "已读取原文"
                                 : "搜索摘要"}
                             </span>

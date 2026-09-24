@@ -93,3 +93,24 @@ test('merchant research uses general search even when the model requests news', 
     services.collect = originalCollect;
   }
 });
+
+test('recent merchant search puts scoped primary evidence ahead of broad background', async () => {
+  const registry = createToolRegistry({
+    searchMarket: async () => [
+      { title: 'Global Mobile Accessories Market Forecast', url: 'https://example.com/global', content: 'Global forecast through 2034', publishedDate: new Date().toISOString().slice(0, 10) },
+      { title: 'US Smartphone Market Share 2024', url: 'https://example.com/2024', content: 'Historic smartphone shipments', publishedDate: '2024-12-31' },
+      { title: 'Power Banks Recalled Due to Fire Hazards', url: 'https://www.cpsc.gov/Recalls/2026/power-bank-fixture', content: 'U.S. CPSC announced a recall of power banks', publishedDate: new Date().toISOString().slice(0, 10) }
+    ]
+  });
+  const result = await registry.execute('search_market', {
+    query: 'phone accessories US risk', max_results: 2
+  }, {
+    agent: 'merchant_research',
+    goal: '研究最近 30 天手机配件在美国市场的机会和风险。',
+    merchant: { industry: '手机配件', region: '美国' }
+  });
+  assert.equal(result.ok, true);
+  assert.match(result.data.results[0].url, /cpsc\.gov/);
+  assert.equal(result.data.results[0].scope_status, 'in_scope');
+  assert.equal(result.data.results[1].scope_status, 'background');
+});

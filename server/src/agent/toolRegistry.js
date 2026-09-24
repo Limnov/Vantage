@@ -124,7 +124,20 @@ function createToolRegistry(overrides = {}) {
       }
       const raw = await dependencies.searchMarket(input, context);
       const items = Array.isArray(raw) ? raw : (Array.isArray(raw?.results) ? raw.results : []);
-      const results = items.slice(0, input.max_results).map((item, index) => {
+      const { sourceScope } = require('./merchantScope');
+      const ranked = context.agent === 'merchant_research'
+        ? items.map((item, index) => ({ item, index, scope: sourceScope({
+          goal: context.goal,
+          merchant: context.merchant,
+          source: {
+            title: item.title,
+            url: item.url,
+            excerpt: item.content || item.snippet,
+            published_date: item.publishedDate || item.published_date
+          }
+        }) })).sort((a, b) => Number(b.scope.status === 'in_scope') - Number(a.scope.status === 'in_scope') || a.index - b.index)
+        : items.map((item, index) => ({ item, index, scope: null }));
+      const results = ranked.slice(0, input.max_results).map(({ item, scope }, index) => {
         const title = shortText(item.title, 300);
         const url = shortText(item.url, 2048);
         const excerpt = shortText(item.content || item.snippet, 1200);
@@ -135,6 +148,8 @@ function createToolRegistry(overrides = {}) {
           title,
           url,
           published_date: item.publishedDate || item.published_date || null,
+          scope_status: scope?.status || null,
+          scope_reason: scope?.reason || null,
           excerpt,
           untrusted_content: true
         };
@@ -144,8 +159,8 @@ function createToolRegistry(overrides = {}) {
         search_mode: context.agent === 'merchant_research' ? 'general' : input.search_mode,
         count: results.length,
         results,
-        evidence: results.map(({ evidence_id, title, url, published_date, excerpt, untrusted_content }) => ({
-          evidence_id, title, url, published_date, excerpt, untrusted_content
+        evidence: results.map(({ evidence_id, title, url, published_date, scope_status, scope_reason, excerpt, untrusted_content }) => ({
+          evidence_id, title, url, published_date, scope_status, scope_reason, excerpt, untrusted_content
         }))
       };
     },
@@ -164,16 +179,29 @@ function createToolRegistry(overrides = {}) {
         : await dependencies.extractSource({ ...input, url: url.href });
       const content = shortText(page?.content, input.max_chars);
       const id = evidenceId('page', url.href);
+      const publishedDate = page?.publishedDate || matchedSource?.published_date || null;
+      const scope = require('./merchantScope').sourceScope({
+        goal: context.goal,
+        merchant: context.merchant,
+        source: {
+          title: page?.title || page?.ogTitle || matchedSource?.title,
+          url: url.href,
+          excerpt: content,
+          published_date: publishedDate
+        }
+      });
       return {
         url: url.href,
         title: shortText(page?.title || page?.ogTitle || matchedSource?.title, 300),
-        published_date: page?.publishedDate || matchedSource?.published_date || null,
+        published_date: publishedDate,
         content_length: page?.contentLength || content.length,
         evidence: content ? [{
           evidence_id: id,
           title: shortText(page?.title || page?.ogTitle || matchedSource?.title, 300),
           url: url.href,
-          published_date: page?.publishedDate || matchedSource?.published_date || null,
+          published_date: publishedDate,
+          scope_status: scope.status,
+          scope_reason: scope.reason,
           excerpt: content,
           untrusted_content: true
         }] : [],
