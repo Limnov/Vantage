@@ -7,14 +7,81 @@ import '../landing.css';
 
 const sourceUrl = 'https://github.com/Limnov/Vantage';
 
+const chapters = [
+  { id: 'search', number: '01', title: '市场搜索', cards: [
+    ['任务', '品类 市场 时间'], ['工具', '搜索 调用'], ['结果', '原始链接'], ['追踪', '执行记录'],
+  ] },
+  { id: 'verify', number: '02', title: '来源核验', cards: [
+    ['原文', 'CPSC 官方通报'], ['日期', '2026 09 03'], ['覆盖', '1条 共需2条'], ['状态', '修复后待复测'],
+  ] },
+  { id: 'monitor', number: '03', title: '持续监控', cards: [
+    ['告警', '4条演示数据'], ['通知', '0条真实发送'], ['监控', '生产启用0个'], ['评分', '暂无长期样本'],
+  ] },
+] as const;
+
+function StoryDevice({ kind }: { kind: typeof chapters[number]['id'] }) {
+  if (kind === 'search') return (
+    <div className="v-device v-device-search">
+      <div className="v-device-bar"><span>VANTAGE AGENT</span><span>只读 Demo</span></div>
+      <img src="/landing-demo-agent-mobile.png" alt="Vantage Agent 只读 Demo 的实际手机界面" loading="lazy" />
+    </div>
+  );
+  if (kind === 'verify') return (
+    <div className="v-device v-device-verify" aria-label="真实案例报告摘要">
+      <div className="v-device-bar"><span>报告 39</span><span>生产案例</span></div>
+      <div className="v-report-inner">
+        <span className="v-report-index">美国 手机配件</span>
+        <h3>充电宝<br />安全通报</h3>
+        <div className="v-report-source"><span>CPSC 官方原文</span><b>已核验</b></div>
+        <div className="v-report-lines"><i /><i /><i /></div>
+        <div className="v-report-result"><strong>1条</strong><span>已覆盖<br />共需2条</span></div>
+        <Link to="/evidence">查看完整记录</Link>
+      </div>
+    </div>
+  );
+  return (
+    <div className="v-device v-device-monitor" aria-label="只读 Demo 告警界面摘要">
+      <div className="v-device-bar"><span>告警中心</span><span>只读 Demo</span></div>
+      <div className="v-alert-inner">
+        <h3>4条告警</h3>
+        <div className="v-alert-item"><span>风险</span><strong>履约时效波动</strong><small>待处理</small></div>
+        <div className="v-alert-item"><span>风险</span><strong>渠道价格竞争加剧</strong><small>待处理</small></div>
+        <div className="v-alert-item"><span>机会</span><strong>轻量化配件关注度提升</strong><small>待处理</small></div>
+        <div className="v-alert-foot">示例数据 未发送通知</div>
+      </div>
+    </div>
+  );
+}
+
+function StoryChapter({ chapter }: { chapter: typeof chapters[number] }) {
+  return (
+    <section className={`v-story-chapter v-story-${chapter.id}`} id={chapter.id} aria-labelledby={`v-story-${chapter.id}-title`}>
+      <div className="v-story-stage">
+        <div className="v-story-intro"><span>{chapter.number}</span><h2 id={`v-story-${chapter.id}-title`}>{chapter.title}</h2></div>
+        <div className="v-story-grid">
+          <div className="v-story-side v-story-side-left">
+            {chapter.cards.slice(0, 2).map(([label, value]) => <div className="v-story-card" key={label}><span>{label}</span><strong>{value}</strong><i aria-hidden="true" /></div>)}
+          </div>
+          <StoryDevice kind={chapter.id} />
+          <div className="v-story-side v-story-side-right">
+            {chapter.cards.slice(2).map(([label, value]) => <div className="v-story-card" key={label}><span>{label}</span><strong>{value}</strong><i aria-hidden="true" /></div>)}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [darkSection, setDarkSection] = useState(false);
 
   useEffect(() => {
     const scene = document.querySelector<HTMLElement>('.v-hero-scene');
     const hero = document.querySelector<HTMLElement>('.v-hero');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const storySections = Array.from(document.querySelectorAll<HTMLElement>('.v-story-chapter'));
     let frame = 0;
     const updateScene = () => {
       frame = 0;
@@ -24,6 +91,14 @@ export default function Landing() {
       const progress = Math.min(1, Math.max(0, -bounds.top / travel));
       hero.style.setProperty('--hero-progress', reducedMotion.matches ? '0' : progress.toFixed(3));
       setScrolled(bounds.bottom < 90);
+      storySections.forEach((section) => {
+        const area = section.getBoundingClientRect();
+        const distance = Math.max(1, area.height - window.innerHeight);
+        const chapterProgress = Math.min(1, Math.max(0, -area.top / distance));
+        section.style.setProperty('--chapter-progress', reducedMotion.matches ? '1' : chapterProgress.toFixed(3));
+      });
+      const monitor = document.querySelector('.v-story-monitor')?.getBoundingClientRect();
+      setDarkSection(Boolean(monitor && monitor.top < 90 && monitor.bottom > 90));
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(updateScene);
@@ -62,15 +137,15 @@ export default function Landing() {
 
   return (
     <main className="public-site v-landing">
-      <header className={'v-nav-shell' + (scrolled ? ' is-scrolled' : '')}>
+      <header className={'v-nav-shell' + (scrolled ? ' is-scrolled' : '') + (darkSection ? ' is-dark' : '')}>
         <div className="v-nav-inner">
           <Link className="v-brand" to="/" onClick={closeMenu} aria-label="Vantage 首页">
             <img src="/vantage-logo-white.png" alt="" />
             <span>Vantage</span>
           </Link>
           <nav id="vantage-site-nav" className={'v-nav-links' + (menuOpen ? ' is-open' : '')} aria-label="产品导航">
-            <a href="#product" onClick={closeMenu}>产品</a>
-            <a href="#capabilities" onClick={closeMenu}>功能</a>
+            <a href="#search" onClick={closeMenu}>产品</a>
+            <a href="#verify" onClick={closeMenu}>功能</a>
             <Link to="/evidence" onClick={closeMenu}>案例</Link>
             <a href={sourceUrl} target="_blank" rel="noreferrer" onClick={closeMenu}>源码</a>
           </nav>
@@ -94,7 +169,7 @@ export default function Landing() {
             <h1 id="v-hero-title"><span>跨境市场情报</span><span className="v-hero-accent">Agent 工作台</span></h1>
             <div className="v-hero-actions">
               <Link className="v-pill v-pill-light" to="/demo">体验 Demo</Link>
-              <a className="v-text-link" href="#product">查看产品</a>
+              <a className="v-text-link" href="#search">查看产品</a>
             </div>
           </div>
           <div className="v-hero-lens" aria-hidden="true">
@@ -105,61 +180,7 @@ export default function Landing() {
         </section>
       </div>
 
-      <section className="v-product" id="product" aria-labelledby="v-product-title">
-        <div className="v-section-container">
-          <div className="v-product-heading v-reveal">
-            <div><span className="v-kicker">产品界面</span><h2 id="v-product-title">正式工作台</h2></div>
-            <p>Agent 经典版 报告 监控 告警</p>
-          </div>
-          <div className="v-product-stage v-reveal">
-            <div className="v-product-topline"><span><i /> VANTAGE</span><span>只读演示</span></div>
-            <div className="v-product-screen">
-              <picture>
-                <source media="(max-width: 640px)" srcSet="/landing-demo-agent-mobile.png" />
-                <img src="/landing-demo-agent.png" alt="Vantage 正式工作台中的只读 Demo 对话与报告画面" loading="lazy" />
-              </picture>
-            </div>
-            <div className="v-product-caption">
-              <span>正式界面 只读演示数据</span>
-              <Link to="/demo">打开 Demo</Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="v-capabilities" id="capabilities" aria-labelledby="v-capabilities-title">
-        <div className="v-section-container">
-          <div className="v-capabilities-heading v-reveal">
-            <span className="v-kicker">核心功能</span>
-            <h2 id="v-capabilities-title">搜索<br />核验<br />监控</h2>
-          </div>
-          <div className="v-feature-grid">
-            <article className="v-feature v-feature-search v-reveal">
-              <div className="v-feature-visual v-search-visual" aria-hidden="true">
-                <div className="v-search-query"><span>美国 手机配件</span><span>⌕</span></div>
-                <div className="v-search-result"><i /><span /><b /></div>
-                <div className="v-search-result"><i /><span /><b /></div>
-                <div className="v-search-result"><i /><span /><b /></div>
-              </div>
-              <div><h3>市场搜索</h3><p>品类 市场 时间范围</p></div>
-            </article>
-            <article className="v-feature v-feature-verify v-reveal">
-              <div className="v-feature-visual v-verify-visual" aria-hidden="true">
-                <div className="v-verify-document"><span>ORIGINAL SOURCE</span><strong>原始来源</strong><i /><i /><i /></div>
-                <div className="v-verify-stamp">✓<small>已核验</small></div>
-              </div>
-              <div><h3>来源核验</h3><p>原文 日期 引用</p></div>
-            </article>
-            <article className="v-feature v-feature-monitor v-reveal">
-              <div className="v-feature-visual v-monitor-visual" aria-hidden="true">
-                <div className="v-monitor-line"><span /><span /><span /><span /></div>
-                <div className="v-monitor-card"><b>新告警</b><span>来源 时间 状态</span></div>
-              </div>
-              <div><h3>持续监控</h3><p>报告 告警 审批</p></div>
-            </article>
-          </div>
-        </div>
-      </section>
+      {chapters.map((chapter) => <StoryChapter chapter={chapter} key={chapter.id} />)}
 
       <section className="v-evidence" id="evidence" aria-labelledby="v-evidence-title">
         <div className="v-section-container v-evidence-grid">
