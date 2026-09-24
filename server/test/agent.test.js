@@ -1182,13 +1182,13 @@ test('LLM adapter sends reasoning controls only to OpenRouter endpoints', async 
   }
 });
 
-test('LLM adapter requests non-thinking Qwen3.7 Plus on DashScope', async () => {
+test('LLM adapter requests non-thinking Qwen3.7 Plus on Token Plan endpoint', async () => {
   const keys = ['AI_API_KEY', 'AI_BASE_URL', 'AI_MODEL', 'AI_RETRY_ATTEMPTS', 'BAILIAN_API_KEY', 'DEEPSEEK_API_KEY', 'MINIMAX_API_KEY'];
   const previous = new Map(keys.map(key => [key, process.env[key]]));
   for (const key of ['BAILIAN_API_KEY', 'DEEPSEEK_API_KEY', 'MINIMAX_API_KEY']) delete process.env[key];
   Object.assign(process.env, {
     AI_API_KEY: 'fixture-api-key-123456',
-    AI_BASE_URL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    AI_BASE_URL: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
     AI_MODEL: 'qwen3.7-plus',
     AI_RETRY_ATTEMPTS: '0'
   });

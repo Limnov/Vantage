@@ -11,25 +11,14 @@ if [[ ! -f "$runtime_env" ]]; then
   exit 1
 fi
 
-printf '选择百炼 API Key 所属地域：\n'
-printf '  1) 华北2（北京，默认）\n  2) 新加坡\n  3) 美国（弗吉尼亚）\n  4) 中国香港\n'
-read -r -p '输入序号 [1]: ' region
-case "${region:-1}" in
-  1) base_url='https://dashscope.aliyuncs.com/compatible-mode/v1' ;;
-  2) base_url='https://dashscope-intl.aliyuncs.com/compatible-mode/v1' ;;
-  3) base_url='https://dashscope-us.aliyuncs.com/compatible-mode/v1' ;;
-  4) base_url='https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1' ;;
-  *) printf '无效地域序号。\n' >&2; exit 1 ;;
-esac
+base_url='https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'
+printf '将配置菜鸟黑客松 Token Plan：qwen3.7-plus\n'
+printf '接口地址：%s\n' "$base_url"
 
-read -r -s -p '输入百炼按量付费 API Key（输入不回显）: ' api_key
+read -r -s -p '输入黑客松 Token Plan 专属 API Key（输入不回显）: ' api_key
 printf '\n'
-if [[ ${#api_key} -lt 12 || "$api_key" == *[[:space:]]* ]]; then
+if [[ "$api_key" != sk-sp-* || ${#api_key} -lt 12 || "$api_key" == *[[:space:]]* ]]; then
   printf 'API Key 格式不正确，未修改配置。\n' >&2
-  exit 1
-fi
-if [[ "$api_key" == sk-sp-* ]]; then
-  printf 'Token/Coding Plan Key 不能用于应用后端；请使用百炼按量付费 API Key。\n' >&2
   exit 1
 fi
 
@@ -44,7 +33,7 @@ printf '%s' "$api_key" | node -e '
   const key = fs.readFileSync(0, "utf8").trim();
   if (key.length < 12) throw new Error("API Key is too short");
   runtime.updateRuntimeConfig({
-    AI_PROVIDER_NAME: "Alibaba Cloud Model Studio",
+    AI_PROVIDER_NAME: "Cainiao Hackathon Token Plan",
     AI_API_KEY: key,
     AI_BASE_URL: process.argv[1],
     AI_MODEL: "qwen3.7-plus"
