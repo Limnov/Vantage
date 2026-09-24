@@ -998,6 +998,15 @@ async function runAgent({
           args = JSON.parse(call.function?.arguments || '{}');
           if (context.agent === 'merchant_research' && toolName === 'search_market') {
             const previousSearches = operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length;
+            const usAccessories = /手机配件|手机周边|phone accessories|mobile accessories/i.test(String(context.merchant?.industry || ''))
+              && /^(美国|us|usa|united states)$/i.test(String(context.merchant?.region || ''));
+            if (previousSearches === 0 && usAccessories && explicitSearchWindowDays(goal)
+              && /机会|opportunit/i.test(goal) && /风险|risk/i.test(goal)
+              && /\b(?:market|trends?|outlook|forecast)\b|市场|趋势|预测/i.test(String(args.query || ''))
+              && !/\b(?:case|screen protector|power bank|charger|launch|release|introduc|unveil)\b|手机壳|贴膜|充电宝|上市|发布/i.test(String(args.query || ''))) {
+              // 宽泛市场预测会淹没近期产品信号；缩窄首轮查询，仍由日期参数限定时间窗。
+              args.query = 'phone case screen protector new product launch United States';
+            }
             const hasScopedRiskLead = Array.from(evidenceMap.values()).some(item => (
               item.source_tool === 'search_market'
               && sourceScope({ goal, merchant: context.merchant, source: item }).status === 'in_scope'
@@ -1005,11 +1014,10 @@ async function runAgent({
                 || /recall|fire hazard|burn hazard|召回|起火|灼伤/i.test(`${item.title || ''} ${item.excerpt || ''}`))
             ));
             if (previousSearches === 1 && !hasScopedRiskLead
-              && /手机配件|手机周边|phone accessories|mobile accessories/i.test(String(context.merchant?.industry || ''))
-              && /^(美国|us|usa|united states)$/i.test(String(context.merchant?.region || ''))
+              && usAccessories
               && /风险|risk|recall|safety/i.test(goal)) {
               // 第二次搜索使用具体配件和美国监管原始资料；不增加搜索次数。
-              args.query = 'site:cpsc.gov/Recalls/ power bank wireless charger United States';
+              args.query = 'CPSC power bank phone charger recall United States';
             }
             args = addMerchantSearchContext(args, context.merchant, goal);
           }

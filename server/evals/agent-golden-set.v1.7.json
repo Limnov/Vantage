@@ -1,6 +1,6 @@
 {
   "name": "Vantage Agent Golden Set",
-  "version": "1.7.3",
+  "version": "1.7.4",
   "updated_at": "2026-09-25",
   "fixture_only": true,
   "data_policy": "All users, organizations, reports, market facts, and source excerpts are synthetic. No customer data, live provider calls, network access, or external side effects are used.",
@@ -203,7 +203,7 @@
       "merchant_context": { "industry": "手机配件", "region": "美国" },
       "expected_tool_calls": [
         { "name": "search_market", "arguments": { "query": "US phone accessories lead one 手机配件 美国 United States", "search_mode": "general", "max_results": 2, "days": 30, "region": "美国" } },
-        { "name": "search_market", "arguments": { "query": "site:cpsc.gov/Recalls/ power bank wireless charger United States phone accessories", "search_mode": "general", "max_results": 2, "days": 30, "region": "美国" } },
+        { "name": "search_market", "arguments": { "query": "CPSC power bank phone charger recall United States phone accessories", "search_mode": "general", "max_results": 2, "days": 30, "region": "美国" } },
         { "name": "extract_source", "arguments": { "url": "https://timeout.example/source-one" } },
         { "name": "extract_source", "arguments": { "url": "https://timeout.example/source-two" } }
       ],

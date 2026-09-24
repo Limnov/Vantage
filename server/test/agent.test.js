@@ -1109,7 +1109,8 @@ test('a second search targets recent US accessory safety evidence after an oppor
     }
   });
   assert.equal(searched.length, 2);
-  assert.match(searched[1].query, /site:cpsc\.gov\/Recalls\/ power bank wireless charger United States/);
+  assert.match(searched[0].query, /phone case screen protector new product launch United States/);
+  assert.match(searched[1].query, /CPSC power bank phone charger recall United States/);
   assert.doesNotMatch(searched[1].query, /counterfeit news/);
   assert.equal(searched[1].days, 30);
 });

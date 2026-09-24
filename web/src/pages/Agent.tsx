@@ -83,7 +83,7 @@ const examples: Array<{
   {
     title: "研究一个市场",
     detail: "实时检索手机配件 × 美国市场并核验来源",
-    prompt: "研究最近 30 天手机配件在美国市场的机会和风险，核验关键来源。",
+    prompt: "研究最近 30 天美国手机配件市场：找一条手机壳或贴膜新品线索、一条充电宝安全通报，分别核验原文并说明选品机会与合规风险。",
     mode: "merchant_research",
     industry: "手机配件",
     region: "美国",
