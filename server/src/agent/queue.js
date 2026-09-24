@@ -109,7 +109,8 @@ class AgentQueue {
         watchlistId: metadata.watchlist_id || null,
         source: metadata.source || 'queue', previousReport,
         agent: metadata.agent || null,
-        merchant: metadata.merchant || null
+        merchant: metadata.merchant || null,
+        confirmedAction: metadata.confirmed_action || null
       }
     };
   }

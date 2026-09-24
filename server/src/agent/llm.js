@@ -5,6 +5,7 @@
  * axios 的原始错误直接抛给上层。这里负责：
  * - 对暂时性错误做有限重试；
  * - 在已配置的 Provider 之间自动降级；
+ * - 对一次模型决策的重试、格式降级和 Provider 切换应用统一硬时限；
  * - 将上游错误脱敏并结构化，供 Agent 轨迹和 WebUI 展示。
  */
 
@@ -13,6 +14,9 @@ const { getProviderConfigs, isRealKey } = require('../ai/providerConfig');
 
 const RETRYABLE_STATUSES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 const FAILOVER_STATUSES = new Set([400, 401, 402, 403, 404, 408, 409, 425, 429, 500, 502, 503, 504]);
+// Axios timeout is an inactivity timeout. This wall-clock cap also bounds streaming
+// responses and is shared across JSON-mode fallback, retries, and provider failover.
+const DEFAULT_AGENT_CALL_DEADLINE_MS = 120_000;
 
 class AIProviderError extends Error {
   constructor({ provider, status = null, code = 'ai_provider_request_failed', message, retryable = false, cause = null }) {
@@ -101,6 +105,22 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function normalizeTotalTimeoutMs(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_AGENT_CALL_DEADLINE_MS;
+  return Math.max(1, Math.min(300_000, parsed));
+}
+
+function createDeadlineError(provider, deadlineMs, cause = null) {
+  return new AIProviderError({
+    provider,
+    code: 'ai_provider_timeout',
+    message: `AI provider call exceeded its ${deadlineMs} ms total deadline`,
+    retryable: false,
+    cause
+  });
+}
+
 function canFailover(error) {
   if (error?.code === 'ai_invalid_response') return true;
   const status = statusOf(error);
@@ -108,7 +128,7 @@ function canFailover(error) {
   return Boolean(error?.retryable || isNetworkRetryable(error));
 }
 
-function providerRequestBody(provider, { messages, tools, maxTokens, temperature }) {
+function providerRequestBody(provider, { messages, tools, maxTokens, temperature, responseFormat, reasoning }) {
   const body = {
     model: provider.model,
     max_tokens: maxTokens,
@@ -116,6 +136,10 @@ function providerRequestBody(provider, { messages, tools, maxTokens, temperature
     messages,
     ...provider.extraBody
   };
+  if (reasoning && /^https?:\/\/(?:[^/]+\.)?openrouter\.ai\//i.test(`${provider.baseUrl}/`)) {
+    body.reasoning = reasoning;
+  }
+  if (responseFormat) body.response_format = responseFormat;
   if (Array.isArray(tools) && tools.length > 0) {
     body.tools = tools;
     body.tool_choice = 'auto';
@@ -124,9 +148,12 @@ function providerRequestBody(provider, { messages, tools, maxTokens, temperature
   return body;
 }
 
-async function requestWithProvider(provider, params) {
+async function requestWithProvider(provider, params, deadline, deadlineMs) {
   const attempts = retryAttempts();
   for (let attempt = 0; attempt <= attempts; attempt += 1) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) throw createDeadlineError(provider, deadlineMs);
+    const signal = AbortSignal.timeout(remainingMs);
     try {
       const response = await axios.post(
         `${String(provider.baseUrl || '').replace(/\/+$/, '')}/chat/completions`,
@@ -136,7 +163,8 @@ async function requestWithProvider(provider, params) {
             Authorization: `Bearer ${provider.apiKey}`,
             'Content-Type': 'application/json'
           },
-          timeout: provider.timeout || 60000
+          timeout: Math.min(provider.timeout || 60000, remainingMs),
+          signal
         }
       );
 
@@ -160,6 +188,21 @@ async function requestWithProvider(provider, params) {
         model: provider.model
       };
     } catch (rawError) {
+      const message = upstreamMessage(rawError);
+      if (params.responseFormat
+        && [400, 422].includes(statusOf(rawError))
+        && /response[\s_-]?format|json[\s_-]?(object|mode)|structured[\s_-]?output/i.test(message)) {
+        // JSON mode is optional across OpenAI-compatible providers. Retry once without it
+        // when the configured model/endpoint explicitly rejects the capability. Share the
+        // same absolute deadline so compatibility fallback cannot double the wall time.
+        return requestWithProvider(provider, { ...params, responseFormat: undefined }, deadline, deadlineMs);
+      }
+      if (signal.aborted || Date.now() >= deadline) {
+        const error = createDeadlineError(provider, deadlineMs, rawError);
+        error.attempt = attempt + 1;
+        error.maxAttempts = attempts + 1;
+        throw error;
+      }
       const error = rawError instanceof AIProviderError
         ? rawError
         : toProviderError(provider, rawError);
@@ -167,7 +210,9 @@ async function requestWithProvider(provider, params) {
       error.maxAttempts = attempts + 1;
 
       if (!error.retryable || attempt >= attempts) throw error;
-      await sleep(retryAfterMs(rawError, attempt));
+      const delay = retryAfterMs(rawError, attempt);
+      if (deadline - Date.now() <= delay) throw createDeadlineError(provider, deadlineMs, rawError);
+      await sleep(delay);
     }
   }
 
@@ -186,7 +231,7 @@ function providerAttemptsMessage(errors) {
  * 每一轮由模型选择工具。若当前 Provider 无额度、暂时限流或不可用，
  * 只在已配置的 Provider 范围内切换，不会偷偷使用未配置的凭据。
  */
-async function chatWithTools({ messages, tools, maxTokens = 1400, temperature = 0.2 }) {
+async function chatWithTools({ messages, tools, maxTokens = 1400, temperature = 0.2, responseFormat, totalTimeoutMs, reasoning }) {
   const providers = getProviderConfigs()
     .filter((provider) => isRealKey(provider.apiKey))
     .sort((a, b) => a.priority - b.priority);
@@ -199,9 +244,12 @@ async function chatWithTools({ messages, tools, maxTokens = 1400, temperature = 
   }
 
   const errors = [];
+  const deadlineMs = normalizeTotalTimeoutMs(totalTimeoutMs);
+  const deadline = Date.now() + deadlineMs;
   for (const provider of providers) {
+    if (Date.now() >= deadline) break;
     try {
-      return await requestWithProvider(provider, { messages, tools, maxTokens, temperature });
+      return await requestWithProvider(provider, { messages, tools, maxTokens, temperature, responseFormat, reasoning }, deadline, deadlineMs);
     } catch (error) {
       errors.push(error);
       if (!canFailover(error)) break;

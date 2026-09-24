@@ -13,6 +13,7 @@ pnpm-debug.log*
 # ─── 构建产物 ──────────────────────────────────────────────
 web/dist/
 server/dist/
+server/evals/live/
 build/
 *.tsbuildinfo
 

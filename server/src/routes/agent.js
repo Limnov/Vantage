@@ -29,6 +29,21 @@ router.get('/capabilities', (req, res) => res.json({ items: require('../agent/to
 
 const RUN_STATUSES = new Set(['queued', 'running', 'completed', 'failed', 'cancelled']);
 const MERCHANT_AGENT = 'merchant_research';
+const merchantFollowupLocks = new Map();
+
+async function withMerchantFollowupLock(key, operation) {
+  const previous = merchantFollowupLocks.get(key) || Promise.resolve();
+  let release;
+  const current = new Promise(resolve => { release = resolve; });
+  merchantFollowupLocks.set(key, current);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (merchantFollowupLocks.get(key) === current) merchantFollowupLocks.delete(key);
+  }
+}
 
 function merchantField(value, maxLength) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength + 1) : '';
@@ -182,6 +197,100 @@ router.post('/merchant-research', requireOrgRole('owner', 'admin', 'member'), as
     conversation_id: conversationId,
     status: 'queued',
     poll: `/api/agent/runs/${runId}`
+  });
+}));
+
+// 用户在真实研究结果上明确确认后，由 Runner 执行这一条受限的暂停监控动作；
+// 不再让模型临场决定是否创建，也不接受客户端提交任意工具名或写参数。
+router.post('/merchant-research/follow-up-monitor', requireOrgRole('owner', 'admin', 'member'), asyncHandler(async (req, res) => {
+  const conversationId = typeof req.body?.conversationId === 'string' ? req.body.conversationId.trim() : '';
+  const orgId = resolveOrgId(req);
+  if (!orgId) return res.status(400).json({ error: 'organization context required (send X-Org-ID)' });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conversationId)) {
+    return res.status(400).json({ error: 'invalid_conversation_id' });
+  }
+
+  return withMerchantFollowupLock(`${orgId}:${req.user.id}:${conversationId}`, async () => {
+    const previous = await queryOne(
+      `SELECT id,metadata,result_json FROM agent_runs
+       WHERE org_id=? AND user_id=? AND status='completed'
+         AND json_extract(metadata,'$.agent')=?
+         AND json_extract(metadata,'$.conversation_id')=?
+       ORDER BY rowid DESC LIMIT 1`,
+      [orgId, req.user.id, MERCHANT_AGENT, conversationId]
+    );
+    if (!previous) return res.status(404).json({ error: 'conversation_not_found' });
+    let previousMetadata = {};
+    let previousResult = {};
+    try { previousMetadata = JSON.parse(previous.metadata || '{}'); } catch {}
+    try { previousResult = JSON.parse(previous.result_json || '{}'); } catch {}
+    const hasVerifiedFulltext = Array.isArray(previousResult.evidence)
+      && previousResult.evidence.some(item => item?.evidence_level === 'fulltext');
+    if (!hasVerifiedFulltext) return res.status(409).json({ error: 'verified_source_required' });
+
+    const industry = merchantField(previousMetadata.merchant?.industry, 40);
+    const region = merchantField(previousMetadata.merchant?.region, 60);
+    if (!industry || industry.length > 40 || !region || region.length > 60) {
+      return res.status(409).json({ error: 'merchant_context_required' });
+    }
+
+    const existing = await queryOne(
+      `SELECT r.id,r.status,
+         EXISTS(SELECT 1 FROM agent_steps s WHERE s.run_id=r.id AND s.kind='tool'
+           AND s.name='create_watchlist' AND s.status='success') AS action_succeeded
+       FROM agent_runs r
+       WHERE r.org_id=? AND r.user_id=?
+         AND json_extract(r.metadata,'$.source_run_id')=?
+         AND json_extract(r.metadata,'$.agent')='merchant_followup_monitor'
+       ORDER BY r.rowid DESC LIMIT 1`,
+      [orgId, req.user.id, previous.id]
+    );
+    if (existing && (['queued', 'running'].includes(existing.status) || Number(existing.action_succeeded) === 1)) {
+      return res.status(202).json({
+        run_id: existing.id,
+        conversation_id: conversationId,
+        status: existing.status,
+        idempotent: true,
+        poll: `/api/agent/runs/${existing.id}`
+      });
+    }
+
+    const monitorName = `${region}${industry}市场观察`.substring(0, 200);
+    const monitorQuery = `${region} ${industry} 新品 价格 需求 渠道 政策`.substring(0, 500);
+    const goal = `基于上一份市场研究报告，为${industry}在${region}市场创建后续监控。`;
+    await consumeTrialQuota(req.user.id, 'agent_runs');
+    const runId = randomUUID();
+    await createRun({
+      id: runId,
+      orgId,
+      userId: req.user.id,
+      goal,
+      metadata: {
+        source: 'qmuse-followup',
+        agent: 'merchant_followup_monitor',
+        merchant: { industry, region },
+        conversation_id: conversationId,
+        source_run_id: previous.id,
+        previous_run_id: previous.id,
+        confirmed_action: {
+          tool: 'create_watchlist',
+          arguments: {
+            name: monitorName,
+            type: 'topic',
+            query: monitorQuery,
+            schedule: '0 9 * * 1',
+            enabled: false
+          }
+        }
+      }
+    });
+    await agentQueue.enqueue(runId);
+    return res.status(202).json({
+      run_id: runId,
+      conversation_id: conversationId,
+      status: 'queued',
+      poll: `/api/agent/runs/${runId}`
+    });
   });
 }));
 

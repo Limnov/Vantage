@@ -40,6 +40,10 @@ export const agentApi = {
     api.get('/agent/runs', { params }).then((r) => r.data),
   start: (data: { goal: string; watchlistId?: number; agent?: string; conversationId?: string }) =>
     api.post('/agent/runs', data).then((r) => r.data),
+  startMerchantResearch: (data: { question: string; industry: string; region: string; conversationId?: string }) =>
+    api.post('/agent/merchant-research', data).then((r) => r.data),
+  createPausedResearchMonitor: (data: { conversationId: string }) =>
+    api.post('/agent/merchant-research/follow-up-monitor', data).then((r) => r.data),
   get: (id: string) => api.get(`/agent/runs/${id}`).then((r) => r.data),
   cancel: (id: string) => api.post(`/agent/runs/${id}/cancel`).then((r) => r.data),
   approve: (runId: string, actionId: string) =>

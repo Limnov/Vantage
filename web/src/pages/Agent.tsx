@@ -66,7 +66,14 @@ const labels: Record<string, string> = {
   extract_source: "核验原文",
   propose_notification: "提出通知建议",
 };
-const examples = [
+const examples: Array<{
+  title: string;
+  detail: string;
+  prompt: string;
+  mode?: "merchant_research";
+  industry?: string;
+  region?: string;
+}> = [
   {
     title: "建立持续监控",
     detail: "把关注的市场变成可追踪的信号",
@@ -75,8 +82,11 @@ const examples = [
   },
   {
     title: "研究一个市场",
-    detail: "搜索、核验来源，形成情报结论",
-    prompt: "研究最近 30 天北美便携储能市场的机会和风险，核验关键来源。",
+    detail: "实时检索手机配件 × 美国市场并核验来源",
+    prompt: "研究最近 30 天手机配件在美国市场的机会和风险，核验关键来源。",
+    mode: "merchant_research",
+    industry: "手机配件",
+    region: "美国",
   },
   {
     title: "处理待办告警",
@@ -262,6 +272,9 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
   const [active, setActive] = useState<string | null>(null);
   const [turns, setTurns] = useState<Run[]>([]);
   const [goal, setGoal] = useState("");
+  const [researchMode, setResearchMode] = useState(false);
+  const [industry, setIndustry] = useState("手机配件");
+  const [region, setRegion] = useState("美国");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -275,6 +288,11 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
     ["owner", "admin"].includes(currentOrg?.my_role || currentOrg?.role || "");
   const running = turns.find((r) => ["queued", "running"].includes(r.status));
   const busy = sending || Boolean(running);
+  const researchReady =
+    !researchMode ||
+    (Boolean(industry.trim()) &&
+      Boolean(region.trim()) &&
+      goal.trim().length <= 500);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -348,21 +366,67 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns.length, running?.steps?.length]);
-  const send = async () => {
-    if (!goal.trim() || busy || !currentOrgId) return;
-    const text = goal.trim();
+  const startTask = async (
+    text: string,
+    merchantResearch = researchMode,
+    followupRun?: Run,
+  ) => {
+    if (!text.trim() || busy || !currentOrgId) return;
+    const taskText = text.trim();
+    if (merchantResearch && (!industry.trim() || !region.trim())) {
+      setError("请先填写研究品类和目标市场。");
+      return;
+    }
+    if (merchantResearch && taskText.length > 500) {
+      setError("实时市场研究的问题最多 500 个字符，请缩短后重试。");
+      return;
+    }
     setSending(true);
     setError("");
     try {
-      const r = await agentApi.start({
-        goal: text,
-        conversationId: active || undefined,
-      });
+      const currentRun =
+        turns[turns.length - 1] || history.find((r) => threadOf(r) === active);
+      const isMerchantConversation =
+        currentRun?.metadata?.agent === "merchant_research";
+      const conversationId = followupRun?.metadata?.conversation_id ||
+        (active && (!merchantResearch || isMerchantConversation)
+          ? active
+          : undefined);
+      const r = followupRun
+        ? await agentApi.createPausedResearchMonitor({ conversationId: conversationId || "" })
+        : merchantResearch
+          ? await agentApi.startMerchantResearch({
+            question: taskText,
+            industry: industry.trim(),
+            region: region.trim(),
+            conversationId,
+          })
+          : await agentApi.start({
+              goal: taskText,
+              conversationId,
+            });
       if (!alive.current) return;
       setGoal("");
       setTurns((prev) => [
         ...prev,
-        { id: r.run_id, goal: text, status: "queued" },
+        {
+          id: r.run_id,
+          goal: taskText,
+          status: "queued",
+          metadata: {
+            agent: followupRun
+              ? "merchant_followup_monitor"
+              : merchantResearch
+                ? "merchant_research"
+                : undefined,
+            merchant: followupRun
+              ? followupRun.metadata?.merchant
+              : merchantResearch
+              ? { industry: industry.trim(), region: region.trim() }
+              : undefined,
+            conversation_id: r.conversation_id,
+          },
+        },
       ]);
       setActive(r.conversation_id || active || r.run_id);
       setRevision((v) => v + 1);
@@ -371,6 +435,15 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
     } finally {
       if (alive.current) setSending(false);
     }
+  };
+  const send = () => startTask(goal);
+  const createPausedMonitor = (run: Run) => {
+    const merchant = run.metadata?.merchant || {};
+    const targetIndustry = merchant.industry || industry || "手机配件";
+    const targetRegion = merchant.region || region || "美国";
+    const prompt = `基于上一份市场研究报告，为${targetIndustry}在${targetRegion}市场创建一条后续监控。`;
+    setResearchMode(false);
+    void startTask(prompt, false, run);
   };
   const act = async (run: Run, action: any, approve: boolean) => {
     setActionBusy(action.id);
@@ -401,6 +474,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
             setTurns([]);
             setGoal("");
             setError("");
+            setResearchMode(false);
           }}
           disabled={sending || user?.is_demo}
         >
@@ -425,6 +499,13 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                 setActive(threadOf(r));
                 setTurns([]);
                 setError("");
+                const merchantResearch =
+                  r.metadata?.agent === "merchant_research";
+                setResearchMode(merchantResearch);
+                if (merchantResearch) {
+                  setIndustry(r.metadata?.merchant?.industry || "手机配件");
+                  setRegion(r.metadata?.merchant?.region || "美国");
+                }
               }}
               disabled={sending || user?.is_demo}
             >
@@ -495,7 +576,14 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                   <button
                     key={example.title}
                     disabled={user?.is_demo}
-                    onClick={() => setGoal(example.prompt)}
+                    onClick={() => {
+                      setGoal(example.prompt);
+                      setResearchMode(example.mode === "merchant_research");
+                      if (example.mode === "merchant_research") {
+                        setIndustry(example.industry || "手机配件");
+                        setRegion(example.region || "美国");
+                      }
+                    }}
                   >
                     <div>
                       <strong>{example.title}</strong>
@@ -553,30 +641,91 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                   </div>
                 )}
                 {run.error && (
-                  <Alert
-                    showIcon
-                    type={run.status === "cancelled" ? "info" : "error"}
-                    message={
-                      run.status === "cancelled"
-                        ? "任务已停止，已完成的操作保留。"
-                        : run.error
-                    }
-                    action={
-                      run.status === "failed" ? (
-                        <Button size="small" onClick={() => setGoal(run.goal)}>
-                          重新编辑
-                        </Button>
-                      ) : undefined
-                    }
-                  />
+                  <>
+                    <Alert
+                      showIcon
+                      type={run.status === "cancelled" ? "info" : "error"}
+                      message={
+                        run.status === "cancelled"
+                          ? "任务已停止，已完成的操作保留。"
+                          : run.error
+                      }
+                      action={
+                        run.status === "failed" ? (
+                          <Button size="small" onClick={() => setGoal(run.goal)}>
+                            重新编辑
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                    {run.metadata?.agent === "merchant_research" &&
+                      run.status === "failed" && (
+                        <div className="static-research-fallback">
+                          <Tag>静态备用 · 固定示例</Tag>
+                          <p>
+                            本次实时研究没有成功，不会用静态内容替代实时结论。排练时可通过只读 Demo 查看固定示例数据。
+                          </p>
+                          <a href="/demo" target="_blank" rel="noreferrer">
+                            打开只读 Demo
+                          </a>
+                        </div>
+                      )}
+                  </>
                 )}
                 {run.result && (
                   <div className="final-result">
-                    <h3>{run.result.title}</h3>
+                    {run.metadata?.agent === "merchant_research" && (
+                      <div className="research-result-label">
+                        <Tag>实时公开研究</Tag>
+                        <span>
+                          {run.result.answer_status === "grounded_answer"
+                            ? "至少一条引用匹配本轮读取的原文 · 请对照来源复核结论"
+                            : "本轮来源见下方 · 当前未形成带原文引用的综合结论"}
+                        </span>
+                      </div>
+                    )}
+                    <h3>
+                      {run.result.title ||
+                        (run.metadata?.agent === "merchant_research"
+                          ? "实时研究结果"
+                          : "任务已完成")}
+                    </h3>
                     <p className="answer-text">
                       {run.result.answer || run.result.summary}
                     </p>
-                    {run.result.key_points?.length > 0 && (
+                    {run.metadata?.agent === "merchant_research" &&
+                      run.result.claim_citations?.length > 0 && (
+                        <div className="claim-citation-list" aria-label="主张对应来源">
+                          {run.result.claim_citations.map((item: any, index: number) => (
+                            <div className="claim-citation-item" key={`${index}-${item.claim}`}>
+                              <p>{item.claim}</p>
+                              <div>
+                                <small>依据来源</small>
+                                {item.evidence_ids.map((evidenceId: string) => {
+                                  const source = (run.result.evidence || []).find(
+                                    (entry: any) => entry.evidence_id === evidenceId,
+                                  );
+                                  return source ? (
+                                    <a
+                                      key={evidenceId}
+                                      href={safeLink(source.url)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      {source.title || source.url}
+                                    </a>
+                                  ) : (
+                                    <span key={evidenceId}>来源不可用</span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    {run.result.key_points?.length > 0 &&
+                      !(run.metadata?.agent === "merchant_research" &&
+                        run.result.claim_citations?.length > 0) && (
                       <ul>
                         {run.result.key_points.map((p: string, i: number) => (
                           <li key={i}>{p}</li>
@@ -588,6 +737,18 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                         {run.result.warnings.join("；")}
                       </div>
                     )}
+                    {run.metadata?.agent === "merchant_research" &&
+                      run.result.answer_status !== "grounded_answer" && (
+                        <div className="static-research-fallback">
+                          <Tag>静态备用 · 固定示例</Tag>
+                          <p>
+                            本次实时研究未形成带有效原文引用的综合结论，固定 Demo 仅用于排练流程，不代表当前市场事实。
+                          </p>
+                          <a href="/demo" target="_blank" rel="noreferrer">
+                            打开只读 Demo
+                          </a>
+                        </div>
+                      )}
                     {run.result.evidence?.length > 0 && (
                       <div className="source-list">
                         <small>参考来源</small>
@@ -645,6 +806,25 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                         导出结果
                       </Button>
                     </div>
+                    {run.metadata?.agent === "merchant_research" &&
+                      run.result.report_id &&
+                      run.result.evidence?.some(
+                        (item: any) => item.evidence_level === "fulltext",
+                      ) &&
+                      !user?.is_demo && (
+                        <div className="research-followup">
+                          <span>研究结果已保存。下一步可创建一条默认暂停的跟踪监控。</span>
+                          <Popconfirm
+                            title="创建默认暂停的后续监控？"
+                            description="会新增组织内的监控记录，但不会启动调度或发送通知。"
+                            okText="创建暂停监控"
+                            cancelText="取消"
+                            onConfirm={() => createPausedMonitor(run)}
+                          >
+                            <Button disabled={busy}>创建暂停监控</Button>
+                          </Popconfirm>
+                        </div>
+                      )}
                   </div>
                 )}
                 {run.actions?.map((action) => (
@@ -699,6 +879,69 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
             />
           )}
           {!currentOrgId && <Empty description="请选择一个组织以开始工作" />}
+          <div className="composer-mode-bar">
+            {user?.is_demo ? (
+              <Tag>Demo · 固定示例 · 只读</Tag>
+            ) : researchMode ? (
+              <span>
+                <Tag>实时市场研究</Tag>
+                <small>会调用已配置模型与 Tavily 的公开来源搜索</small>
+              </span>
+            ) : (
+              <span>
+                <Tag>Agent 通用任务</Tag>
+                <small>研究、监控、报告与告警</small>
+              </span>
+            )}
+            {!user?.is_demo && (
+              <Button
+                type="link"
+                size="small"
+                disabled={sending || Boolean(running)}
+                onClick={() => {
+                  const next = !researchMode;
+                  if (
+                    next &&
+                    active &&
+                    !turns.some((r) => r.metadata?.agent === "merchant_research")
+                  ) {
+                    setActive(null);
+                    setTurns([]);
+                  }
+                  setResearchMode(next);
+                  if (next) {
+                    setIndustry((value) => value || "手机配件");
+                    setRegion((value) => value || "美国");
+                    setGoal((value) =>
+                      value || "研究最近 30 天目标市场的机会和风险，核验关键来源。",
+                    );
+                  }
+                }}
+              >
+                {researchMode ? "切换回通用任务" : "开始实时市场研究"}
+              </Button>
+            )}
+          </div>
+          {researchMode && !user?.is_demo && (
+            <div className="research-context-form">
+              <Input
+                aria-label="研究品类"
+                placeholder="研究品类，例如：手机配件"
+                value={industry}
+                maxLength={40}
+                disabled={sending}
+                onChange={(event) => setIndustry(event.target.value)}
+              />
+              <Input
+                aria-label="目标市场"
+                placeholder="目标市场，例如：美国"
+                value={region}
+                maxLength={60}
+                disabled={sending}
+                onChange={(event) => setRegion(event.target.value)}
+              />
+            </div>
+          )}
           <div className="composer">
             <Input.TextArea
               aria-label="描述任务"
@@ -710,7 +953,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               autoSize={{ minRows: 2, maxRows: 6 }}
-              maxLength={4000}
+              maxLength={researchMode ? 500 : 4000}
               disabled={sending || !currentOrgId || user?.is_demo}
               onKeyDown={(e) => {
                 if (
@@ -727,21 +970,34 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
               <span>
                 {busy
                   ? "任务执行中，可停止后继续"
-                  : "研究市场 · 管理监控 · 处理告警"}
+                  : researchMode
+                    ? "实时搜索不会使用静态 Demo 数据"
+                    : "研究市场 · 管理监控 · 处理告警"}
               </span>
               <Button
                 type="primary"
                 aria-label="发送任务"
                 shape="circle"
                 icon={<ArrowUpOutlined />}
-                disabled={busy || !goal.trim() || !currentOrgId || user?.is_demo}
+                disabled={
+                  busy ||
+                  !goal.trim() ||
+                  !currentOrgId ||
+                  user?.is_demo ||
+                  !researchReady
+                }
                 loading={sending}
                 onClick={send}
               />
             </div>
           </div>
           <div className="composer-note">
-            Enter 发送 · Shift + Enter 换行<span>关键决策请核验来源</span>
+            Enter 发送 · Shift + Enter 换行
+            <span>
+              {researchMode
+                ? "实时请求会消耗已配置服务额度 · 关键判断请复核原文"
+                : "关键决策请核验来源"}
+            </span>
           </div>
         </div>
       </main>
