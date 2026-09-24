@@ -53,15 +53,18 @@ function normalizeReport(row) {
 
 function createDefaultDependencies() {
   return {
-    async searchMarket(input) {
+    async searchMarket(input, context = {}) {
       const { collect } = require('../services');
+      // 商户任务要做品类与市场面研究：用通用网页搜索，而不是新闻垂直源。
+      const searchMode = context.agent === 'merchant_research' ? 'general' : input.search_mode;
       return collect({
         query: input.query,
-        search_mode: input.search_mode
+        search_mode: searchMode
       }, {
         maxResults: input.max_results,
         days: input.days,
-        region: input.region
+        region: input.region,
+        searchDepth: context.agent === 'merchant_research' ? 'basic' : undefined
       });
     },
 
@@ -119,7 +122,7 @@ function createToolRegistry(overrides = {}) {
       if (context.userId) {
         await require('../security/trial').consumeTrialQuota(context.userId, 'searches');
       }
-      const raw = await dependencies.searchMarket(input);
+      const raw = await dependencies.searchMarket(input, context);
       const items = Array.isArray(raw) ? raw : (Array.isArray(raw?.results) ? raw.results : []);
       const results = items.slice(0, input.max_results).map((item, index) => {
         const title = shortText(item.title, 300);
@@ -138,7 +141,7 @@ function createToolRegistry(overrides = {}) {
       });
       return {
         query: input.query,
-        search_mode: input.search_mode,
+        search_mode: context.agent === 'merchant_research' ? 'general' : input.search_mode,
         count: results.length,
         results,
         evidence: results.map(({ evidence_id, title, url, published_date, excerpt, untrusted_content }) => ({

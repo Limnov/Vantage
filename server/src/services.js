@@ -154,11 +154,11 @@ async function runWatchlist(watchlistId, options = {}) {
  */
 const SEARCH_STRATEGIES = {
   // 时效性新闻查询：最新 14 天的新闻报道
-  // 适合：政策变动、市场动态、突发事件
+  // 适合：明确关注新闻事件、政策动态或突发事件的查询
   news: {
     topic: 'news',
     days: 14,
-    searchDepth: 'advanced'
+    searchDepth: 'basic'
   },
   // 产品/型号查询：不限时间（产品周期 1-2 年）
   // 适合：评测、规格、价格、产品发布信息
@@ -172,13 +172,13 @@ const SEARCH_STRATEGIES = {
   general: {
     topic: 'general',
     days: undefined,
-    searchDepth: 'advanced'
+    searchDepth: 'basic'
   }
 };
 
 /**
  * 采集（Tavily 优先，Vantage-API 降级）
- * - Tavily：结构化数据采集，advanced 模式
+ * - Tavily：结构化数据采集，默认 basic 模式
  * - Vantage-API：本地 SearXNG，Tavily 失败时降级
  */
 async function collect(item, options = {}) {
@@ -193,6 +193,7 @@ async function collect(item, options = {}) {
   const strategy = { ...SEARCH_STRATEGIES[mode] };
   if (options.days !== undefined && options.days !== null) strategy.days = options.days;
   if (options.region) strategy.region = options.region;
+  if (options.searchDepth) strategy.searchDepth = options.searchDepth;
   let source = 'tavily';
 
   // 1. 优先 Tavily
@@ -202,6 +203,9 @@ async function collect(item, options = {}) {
       ...strategy,
       minRelevance: 0.3
     });
+    if (results.length === 0) {
+      throw new Error('Tavily returned no relevant results');
+    }
     results.forEach(r => { r.__source_collector = `tavily:${mode}`; });
   } catch (err) {
     logger.warn('Tavily failed, falling back to Vantage-API', { error: err.message });

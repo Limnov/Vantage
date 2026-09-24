@@ -1,6 +1,6 @@
 /**
  * Tavily 采集器
- * - Vantage 当前的唯一搜索引擎（2026-06-04 起替代旧搜索引擎）
+ * - 主搜索引擎；失败或无相关结果时由 services.js 切换到 Vantage-API
  * - 适合结构化数据采集
  */
 
@@ -37,7 +37,7 @@ async function extract(url) {
  * @param {string} query
  * @param {object} options
  *   - maxResults
- *   - searchDepth: 'basic' | 'advanced'（默认 advanced，对型号/产品查询更准）
+ *   - searchDepth: 'basic' | 'advanced'（默认 basic，降低延迟和额度消耗）
  *   - topic
  *   - days
  *   - region
@@ -60,7 +60,7 @@ async function search(query, options = {}) {
 
   const {
     maxResults = 5,
-    searchDepth = 'advanced',
+    searchDepth = 'basic',
     topic = 'general',
     days = null,
     region = null,
@@ -68,7 +68,6 @@ async function search(query, options = {}) {
   } = options;
 
   const params = {
-    api_key: tavilyApiKey,
     query,
     max_results: maxResults,
     search_depth: searchDepth,
@@ -76,11 +75,29 @@ async function search(query, options = {}) {
     include_answer: false,
     include_raw_content: false
   };
-  if (days) params.days = days;
-  if (region) params.region = region;
+
+  const dayCount = Number(days);
+  if (Number.isInteger(dayCount) && dayCount > 0) {
+    const today = new Date();
+    const startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    const endDate = new Date(startDate);
+    startDate.setUTCDate(startDate.getUTCDate() - dayCount);
+    endDate.setUTCDate(endDate.getUTCDate() + 1);
+    params.start_date = startDate.toISOString().slice(0, 10);
+    params.end_date = endDate.toISOString().slice(0, 10);
+    // 保留没有可识别发布日期的结果，但让下游知道日期未知。
+    params.include_published_date = true;
+    params.filter_by_published_date = false;
+  }
+
+  const country = normalizeCountry(region);
+  if (country && topic === 'general') params.country = country;
 
   try {
-    const resp = await axios.post('https://api.tavily.com/search', params, { timeout: 20000 });
+    const resp = await axios.post('https://api.tavily.com/search', params, {
+      headers: { Authorization: `Bearer ${tavilyApiKey}` },
+      timeout: 30000
+    });
     const data = resp.data || {};
 
     const raw = (data.results || []).map(r => {
@@ -122,20 +139,37 @@ async function search(query, options = {}) {
     return relevant.map(({ _relevance, ...rest }) => rest);
   } catch (err) {
     logger.warn('Tavily search failed', { query, error: err.message });
-    return [];
+    // 让 services.collect 捕获失败并启动 Vantage-API 备用搜索。
+    throw err;
   }
+}
+
+function normalizeCountry(region) {
+  const value = String(region || '').trim().toLocaleLowerCase().replace(/\./g, '');
+  const aliases = {
+    '美国': 'united states', 'us': 'united states', 'usa': 'united states', 'united states': 'united states',
+    '英国': 'united kingdom', 'uk': 'united kingdom', 'united kingdom': 'united kingdom',
+    '加拿大': 'canada', 'canada': 'canada', '澳大利亚': 'australia', 'australia': 'australia',
+    '德国': 'germany', 'germany': 'germany', '法国': 'france', 'france': 'france',
+    '日本': 'japan', 'japan': 'japan', '新加坡': 'singapore', 'singapore': 'singapore',
+    '中国': 'china', 'china': 'china', '印度': 'india', 'india': 'india',
+    '韩国': 'south korea', 'south korea': 'south korea', '墨西哥': 'mexico', 'mexico': 'mexico',
+    '巴西': 'brazil', 'brazil': 'brazil', '西班牙': 'spain', 'spain': 'spain',
+    '意大利': 'italy', 'italy': 'italy', '荷兰': 'netherlands', 'netherlands': 'netherlands',
+    '阿联酋': 'united arab emirates', 'united arab emirates': 'united arab emirates',
+    '台湾': 'taiwan', 'taiwan': 'taiwan'
+  };
+  return aliases[value] || null;
 }
 
 /**
  * 计算单条结果与查询的相关性
  *
- * 算法（v2 — 2026-06-04）：
- * 1. 拆 query 为有意义的 token（>=2 字符的字母数字）
- * 2. 完整匹配 → 1.0
- * 3. 查询包含数字 token（如型号/年份）时：
+ * 算法：优先使用 Tavily 语义分数，辅以拉丁词和中文双字词覆盖率。
+ * 查询包含数字 token（如型号/年份）时：
  *    - 数字 token 至少要命中一个，否则视为不相关
  *    - 这一条是为了避免「查 9800X3D 却返回 5800X3D」这种错位结果
- * 4. 总命中率 = 命中 token / 总 token
+ * 完整匹配 → 1.0；数字型号不匹配时始终拒绝，避免语义分数误放行。
  *
  * 例：
  *   query="9800X3D"               tokens=['9800x3d'], numeric=['9800x3d']
@@ -160,20 +194,35 @@ function calculateRelevance(result, query) {
   // 1) 完整匹配直接 1.0
   if (text.includes(queryLower)) return 1.0;
 
-  // 2) 拆 token
-  const tokens = queryLower.split(/[^a-z0-9]+/).filter(t => t.length >= 2);
-  if (tokens.length === 0) return 0;
+  // 拉丁文本按单词拆分，中文按双字片段拆分，兼容中文和中英混合查询。
+  const tokens = queryLower.match(/[a-z0-9]+/g) || [];
+  const cjkRuns = queryLower.match(/[\u3400-\u9fff]+/g) || [];
+  for (const run of cjkRuns) {
+    if (run.length <= 2) tokens.push(run);
+    else {
+      for (let index = 0; index < run.length - 1; index += 1) {
+        tokens.push(run.slice(index, index + 2));
+      }
+    }
+  }
+  const uniqueTokens = Array.from(new Set(tokens)).filter(token => token.length >= 1);
 
-  // 3) 数字 token 必须命中（防止型号/年份类查询的错位结果）
-  const numericTokens = tokens.filter(t => /\d/.test(t));
+  // 数字 token 必须命中（防止型号/年份类查询的错位结果）。
+  const numericTokens = (queryLower.match(/[a-z0-9]+/g) || []).filter(token => /\d/.test(token));
   if (numericTokens.length > 0) {
     const numericMatched = numericTokens.filter(t => text.includes(t)).length;
     if (numericMatched === 0) return 0;
   }
 
-  // 4) 总命中率
-  const matched = tokens.filter(t => text.includes(t)).length;
-  return matched / tokens.length;
+  const lexicalRelevance = uniqueTokens.length
+    ? uniqueTokens.filter(token => text.includes(token)).length / uniqueTokens.length
+    : 0;
+  const semanticScore = Number(result.score);
+  // 允许强语义匹配补足跨语言/同义词结果，避免低分的宽泛匹配压过关键词筛选。
+  const trustedSemanticRelevance = Number.isFinite(semanticScore) && semanticScore >= 0.55
+    ? semanticScore
+    : 0;
+  return Math.max(lexicalRelevance, trustedSemanticRelevance);
 }
 
-module.exports = { search, extract, calculateRelevance };
+module.exports = { search, extract, calculateRelevance, normalizeCountry };

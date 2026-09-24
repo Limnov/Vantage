@@ -1,6 +1,6 @@
 /**
  * Vantage-API 采集器
- * - 替代 Tavily，使用本地 SearXNG + 内容提取
+ * - Tavily 失败或无相关结果时的备用搜索，使用本地 SearXNG
  * - 无需外部 API Key，无额度限制
  * - 2026-06-11 创建
  */
@@ -26,9 +26,13 @@ async function search(query, options = {}) {
     days = null
   } = options;
 
+  const timeRange = Number(days) > 0
+    ? (Number(days) <= 1 ? 'day' : Number(days) <= 7 ? 'week' : Number(days) <= 31 ? 'month' : 'year')
+    : null;
+
   try {
     // 1. 搜索（直接用 SearXNG snippet，不走 enrichResults 以保持速度）
-    const rawResults = await multiEngineSearch(query, engines, 'auto', days ? `day` : null);
+    const rawResults = await multiEngineSearch(query, engines, 'auto', timeRange);
     if (!rawResults || rawResults.length === 0) {
       logger.warn('Vantage-API search returned 0 results', { query, engines });
       return [];

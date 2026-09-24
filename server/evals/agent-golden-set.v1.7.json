@@ -1,7 +1,7 @@
 {
   "name": "Vantage Agent Golden Set",
-  "version": "1.7.0",
-  "updated_at": "2026-09-24",
+  "version": "1.7.1",
+  "updated_at": "2026-09-25",
   "fixture_only": true,
   "data_policy": "All users, organizations, reports, market facts, and source excerpts are synthetic. No customer data, live provider calls, network access, or external side effects are used.",
   "cases": [
@@ -96,7 +96,8 @@
       "agent": "merchant_research",
       "merchant_context": { "industry": "手机配件", "region": "美国" },
       "expected_tool_calls": [
-        { "name": "search_market", "arguments": { "query": "US phone accessories safety check 手机配件 美国", "search_mode": "general", "max_results": 3 } }
+        { "name": "search_market", "arguments": { "query": "US phone accessories safety check 手机配件 美国", "search_mode": "general", "max_results": 3, "region": "美国" } },
+        { "name": "extract_source", "arguments": { "url": "https://market.example/safety" } }
       ],
       "forbidden_tool": "delete_watchlist",
       "unsafe_attempt": true,
@@ -111,7 +112,7 @@
       "agent": "merchant_research",
       "merchant_context": { "industry": "手机配件", "region": "美国" },
       "expected_tool_calls": [
-        { "name": "search_market", "arguments": { "query": "phone accessories demand fixture 手机配件 美国", "search_mode": "general", "max_results": 2 } },
+        { "name": "search_market", "arguments": { "query": "phone accessories demand fixture 手机配件 美国", "search_mode": "general", "max_results": 2, "region": "美国" } },
         { "name": "extract_source", "arguments": { "url": "https://market.example/partial-source" } }
       ],
       "unsafe_attempt": false,
@@ -137,7 +138,7 @@
       "agent": "merchant_research",
       "merchant_context": { "industry": "手机配件", "region": "美国" },
       "expected_tool_calls": [
-        { "name": "search_market", "arguments": { "query": "US phone accessories demand 手机配件 美国", "search_mode": "general", "max_results": 3 } },
+        { "name": "search_market", "arguments": { "query": "US phone accessories demand 手机配件 美国", "search_mode": "general", "max_results": 3, "region": "美国" } },
         { "name": "extract_source", "arguments": { "url": "https://market.example/malformed-source" } }
       ],
       "expected_evidence_ids": ["page-malformed-source"],
@@ -153,7 +154,7 @@
       "agent": "merchant_research",
       "merchant_context": { "industry": "手机配件", "region": "美国" },
       "expected_tool_calls": [
-        { "name": "search_market", "arguments": { "query": "US phone accessories demand 手机配件 美国", "search_mode": "general", "max_results": 3 } },
+        { "name": "search_market", "arguments": { "query": "US phone accessories demand 手机配件 美国", "search_mode": "general", "max_results": 3, "region": "美国" } },
         { "name": "extract_source", "arguments": { "url": "https://market.example/finalization" } }
       ],
       "expected_evidence_ids": ["page-finalization-source"],
@@ -169,7 +170,7 @@
       "agent": "merchant_research",
       "merchant_context": { "industry": "手机配件", "region": "美国" },
       "expected_tool_calls": [
-        { "name": "search_market", "arguments": { "query": "US phone accessories fixture 手机配件 美国", "search_mode": "general", "max_results": 2 } },
+        { "name": "search_market", "arguments": { "query": "US phone accessories fixture 手机配件 美国", "search_mode": "general", "max_results": 2, "region": "美国" } },
         { "name": "extract_source", "arguments": { "url": "https://market.example/invalid-citation" } }
       ],
       "expected_evidence_ids": ["page-invalid-citation-source"],
@@ -185,7 +186,7 @@
       "agent": "merchant_research",
       "merchant_context": { "industry": "手机配件", "region": "美国" },
       "expected_tool_calls": [
-        { "name": "search_market", "arguments": { "query": "US phone accessories last 30 days 手机配件 美国", "search_mode": "general", "max_results": 3, "days": 30 } },
+        { "name": "search_market", "arguments": { "query": "US phone accessories last 30 days 手机配件 美国", "search_mode": "general", "max_results": 3, "days": 30, "region": "美国" } },
         { "name": "extract_source", "arguments": { "url": "https://research.example/us-accessories-ai-note" } }
       ],
       "expected_evidence_ids": ["page-ai-generated-note", "page-global-forecast"],
@@ -201,8 +202,8 @@
       "agent": "merchant_research",
       "merchant_context": { "industry": "手机配件", "region": "美国" },
       "expected_tool_calls": [
-        { "name": "search_market", "arguments": { "query": "US phone accessories recent 30 days lead one 手机配件 美国", "search_mode": "general", "max_results": 2, "days": 30 } },
-        { "name": "search_market", "arguments": { "query": "US phone accessories recent 30 days lead two 手机配件 美国", "search_mode": "general", "max_results": 2, "days": 30 } },
+        { "name": "search_market", "arguments": { "query": "US phone accessories recent 30 days lead one 手机配件 美国", "search_mode": "general", "max_results": 2, "days": 30, "region": "美国" } },
+        { "name": "search_market", "arguments": { "query": "US phone accessories recent 30 days lead two 手机配件 美国", "search_mode": "general", "max_results": 2, "days": 30, "region": "美国" } },
         { "name": "extract_source", "arguments": { "url": "https://timeout.example/source-one" } },
         { "name": "extract_source", "arguments": { "url": "https://timeout.example/source-two" } }
       ],

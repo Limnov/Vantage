@@ -53,6 +53,9 @@ function addMerchantSearchContext(args, merchant = {}, goal = '') {
     .map(value => String(value || '').trim())
     .filter(value => value && !normalized.includes(value.toLocaleLowerCase()));
   const next = { ...args };
+  if (!String(next.region || '').trim() && String(merchant.region || '').trim()) {
+    next.region = String(merchant.region).trim();
+  }
   if (missingContext.length) {
     const suffix = missingContext.join(' ');
     const baseLimit = Math.max(0, 500 - suffix.length - 1);
