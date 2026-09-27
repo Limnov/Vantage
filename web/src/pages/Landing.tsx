@@ -37,6 +37,23 @@ function SearchChapter() {
   </section>;
 }
 
+function SearchApiChapter() {
+  return <section className="v-story-chapter v-story-api" id="search-api" aria-labelledby="v-story-api-title">
+    <div className="v-story-stage"><div className="v-api-layout">
+      <div className="v-api-copy">
+        <span className="v-chapter-index">VANTAGE SEARCH API</span>
+        <h2 id="v-story-api-title">搜索决定<br />输入质量</h2>
+      </div>
+      <div className="v-api-composition" role="img" aria-label="Search API 搜索流程示意">
+        <div className="v-api-query"><span>研究目标</span><strong>市场变化</strong><i /></div>
+        <div className="v-api-core"><span>VANTAGE</span><strong>SEARCH<br />API</strong><div className="v-api-core-ring" /></div>
+        <div className="v-api-output"><span>公开来源</span><div><i /><b>候选网页</b></div><div><i /><b>原文内容</b></div><div><i /><b>来源链接</b></div></div>
+      </div>
+      <div className="v-api-capabilities"><span>多引擎检索</span><span>去重重排</span><span>原文提取</span><small>可选接入 Agent</small></div>
+    </div></div>
+  </section>;
+}
+
 function VerifyChapter() {
   return <section className="v-story-chapter v-story-verify" id="verify" aria-labelledby="v-story-verify-title">
     <div className="v-story-stage"><div className="v-verify-layout">
@@ -78,6 +95,23 @@ function MonitorChapter() {
   </section>;
 }
 
+function FeishuChapter() {
+  return <section className="v-story-chapter v-story-feishu" id="feishu" aria-labelledby="v-story-feishu-title">
+    <div className="v-story-stage"><div className="v-feishu-layout">
+      <div className="v-feishu-copy"><span className="v-chapter-index">飞书 WEBHOOK</span><h2 id="v-story-feishu-title">通知<br />先审批</h2>
+        <div className="v-feishu-flow"><span>Agent 提议</span><i /><span>人工批准</span><i /><span>Webhook 发送</span></div>
+      </div>
+      <div className="v-feishu-art" role="img" aria-label="飞书通知审批与发送流程示意">
+        <div className="v-feishu-halo" />
+        <div className="v-feishu-proposal"><small>AGENT</small><strong>发现市场变化</strong><span>建议发送通知</span></div>
+        <div className="v-feishu-approval"><span>人工审批</span><strong>批准后发送</strong><i /></div>
+        <div className="v-feishu-message"><div className="v-feishu-message-top"><span className="v-feishu-icon">飞</span><span>飞书群机器人</span><i /></div><strong>市场变化提醒</strong><p>报告与来源已准备好</p><span className="v-feishu-message-link">查看报告 <b>↗</b></span></div>
+      </div>
+      <span className="v-feishu-note">发送流程示意</span>
+    </div></div>
+  </section>;
+}
+
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -103,8 +137,10 @@ export default function Landing() {
         const chapterProgress = Math.min(1, Math.max(0, -area.top / distance));
         section.style.setProperty('--chapter-progress', reducedMotion.matches ? '1' : chapterProgress.toFixed(3));
       });
-      const monitor = document.querySelector('.v-story-monitor')?.getBoundingClientRect();
-      setDarkSection(Boolean(monitor && monitor.top < 90 && monitor.bottom > 90));
+      setDarkSection(Array.from(document.querySelectorAll('.v-story-monitor')).some((section) => {
+        const bounds = section.getBoundingClientRect();
+        return bounds.top < 90 && bounds.bottom > 90;
+      }));
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(updateScene);
@@ -151,7 +187,8 @@ export default function Landing() {
           </Link>
           <nav id="vantage-site-nav" className={'v-nav-links' + (menuOpen ? ' is-open' : '')} aria-label="产品导航">
             <a href="#search" onClick={closeMenu}>产品</a>
-            <a href="#verify" onClick={closeMenu}>功能</a>
+            <a href="#search-api" onClick={closeMenu}>Search API</a>
+            <a href="#feishu" onClick={closeMenu}>飞书通知</a>
             <Link to="/evidence" onClick={closeMenu}>案例</Link>
             <a href={sourceUrl} target="_blank" rel="noreferrer" onClick={closeMenu}>源码</a>
           </nav>
@@ -183,12 +220,15 @@ export default function Landing() {
             <div className="v-lens-core"><img src="/vantage-logo-white.png" alt="" /></div>
             <div className="v-lens-scan" />
           </div>
+          <div className="v-hero-word" aria-hidden="true">VANTAGE</div>
         </section>
       </div>
 
       <SearchChapter />
+      <SearchApiChapter />
       <VerifyChapter />
       <MonitorChapter />
+      <FeishuChapter />
 
       <section className="v-evidence" id="evidence" aria-labelledby="v-evidence-title">
         <div className="v-section-container v-evidence-grid">
