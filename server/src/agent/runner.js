@@ -916,14 +916,21 @@ async function runAgent({
           final.warnings.push('已有核验原文但后续模型决策超时，Runner 已回退为只展示已核验来源');
         }
         if (context.agent === 'merchant_research' && final.forecast) {
-          const acceptedEvidence = final.answer_status === 'grounded_answer'
-            && !merchantFinalizationTimeoutFallback && !merchantPostEvidenceTimeoutFallback
+          const canForecast = final.answer_status === 'grounded_answer'
+            && !merchantFinalizationTimeoutFallback && !merchantPostEvidenceTimeoutFallback;
+          const acceptedEvidence = canForecast
             ? new Map(Array.from(evidenceMap.entries()).filter(([, source]) => (
               explicitSearchWindowDays(goal) === null
               || sourceScope({ goal, merchant: context.merchant, source }).status === 'in_scope'
             )))
             : new Map();
           final.forecast = normalizeForecast(parsedFinal?.forecast, acceptedEvidence);
+          if (!canForecast && final.forecast) {
+            final.forecast.question = '本次请求的短期预测';
+            final.forecast.reason = final.scope_rejected_claim_count > 0
+              ? '现有来源不能证明指定品类、地区和时间窗内的变化，暂不提供预测结论'
+              : '本轮未形成可核验的事实结论，暂不提供预测结论';
+          }
         }
         if (context.agent === 'merchant_research') {
           final.finalization_diagnostic = merchantFinalizationDiagnostic({

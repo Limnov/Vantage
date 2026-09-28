@@ -907,6 +907,8 @@ test('merchant research does not turn out-of-scope background into a recent mark
   assert.deepEqual(result.claim_citations, []);
   assert.equal(result.forecast.status, 'insufficient_evidence');
   assert.equal(result.forecast.baseline, undefined);
+  assert.equal(result.forecast.question, '本次请求的短期预测');
+  assert.match(result.forecast.reason, /指定品类、地区和时间窗/);
   assert.match(result.warnings.join(' '), /指定品类、地区或时间窗/);
   assert.doesNotMatch(`${result.title} ${result.summary} ${result.answer} ${result.key_points.join(' ')}`, /42%|扩大采购/);
 });
