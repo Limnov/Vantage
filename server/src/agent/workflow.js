@@ -14,6 +14,7 @@ const PHASES = Object.freeze({
   COMPLETED: 'completed',
   FAILED: 'failed'
 });
+const { forecastRequested } = require('./forecast');
 
 const TOOL_PHASES = Object.freeze({
   search_market: PHASES.SEARCHING,
@@ -59,6 +60,10 @@ function buildSystemPrompt(context = {}) {
     '商户市场研究先搜索再核验：只要搜索到可提取来源，至少调用一次 extract_source，并在拿到 page_ 原文 ID 后再总结市场机会或风险；若原文提取失败，要明确说明无法核验，不得仅凭搜索摘要下结论。',
     '只有至少引用两个独立域名、且核验过一份来源原文时，才可以给出 high 置信度；否则使用 medium 或 low。',
     '每条关键事实都必须能由 evidence_ids 中的证据支持；不要把 evidence_id 重复写进 key_points 文本。证据不足时明确说明，不要用推测替代事实。',
+    ...(context.forecastRequested ? [
+      '用户要求短期预测。预测必须与已发生事实分开，只做 7 到 90 天的情景判断，不编造精确概率、销量或价格。先检索当前信号，能取得历史报告时对比过去变化；basis_evidence_ids 只能引用本轮工具返回的证据。',
+      'forecast 填写具体问题、时间范围、基准/上行/下行情景、关键假设、可追踪信号和使判断失效的条件。预测是推断，不要把来源对现状的报道说成对未来的证明；证据不足时直接说明无法预测。'
+    ] : ['当前任务不要求预测，forecast 写 null。']),
     'propose_notification 只生成待确认建议，不会发送飞书消息。不要声称消息已经发送。',
     '最终只输出 JSON，不要输出 Markdown 代码围栏：',
     JSON.stringify({
@@ -70,6 +75,18 @@ function buildSystemPrompt(context = {}) {
       sentiment: 'positive | neutral | negative',
       confidence: 'high | medium | low',
       evidence_ids: ['实际工具返回的 evidence_id'],
+      forecast: context.forecastRequested ? {
+        question: '未来 30 天要观察的具体问题',
+        horizon_days: 30,
+        baseline: '最可能的情景判断',
+        upside: '条件改善时的情景',
+        downside: '条件恶化时的情景',
+        assumptions: ['判断依赖的假设'],
+        watch_signals: ['之后可核验的变化信号'],
+        invalidation: '出现什么情况就应撤回判断',
+        confidence: 'low | medium',
+        basis_evidence_ids: ['本轮工具返回的 evidence_id']
+      } : null,
       claim_citations: context.agent === 'merchant_research'
         ? [{ claim: '一条可核验的事实、推断或待确认事项', evidence_ids: ['支持该条主张的 evidence_id'] }]
         : undefined,
@@ -101,7 +118,7 @@ function buildInitialMessages(goal, context = {}) {
       industry: context.merchant?.industry || '', region: context.merchant?.region || ''
     })}`
     : '';
-  const messages = [{ role: 'system', content: buildSystemPrompt(context) }];
+  const messages = [{ role: 'system', content: buildSystemPrompt({ ...context, forecastRequested: forecastRequested(goal) }) }];
 
   // 多轮会话：把上一轮的结论作为对话历史注入，模型可以在此基础上追问
   const prev = context.previousReport;

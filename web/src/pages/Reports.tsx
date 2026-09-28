@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { reportsApi } from '../api';
+import ForecastCard from '../components/ForecastCard';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -275,6 +276,8 @@ function ReportDetail({ report }: { report: any }) {
           </Paragraph>
         </Card>
       )}
+
+      <ForecastCard forecast={report.raw_data?.forecast} evidence={report.raw_data?.evidence} />
 
       {/* 来源 */}
       <Card

@@ -116,7 +116,7 @@ router.get('/:id/export', requireAuth, async (req, res) => {
       id: item.id, agent_run_id: item.agent_run_id || null, title: item.title, query: item.query,
       summary: item.summary, key_points: keyPoints,
       signal_type: item.signal_type, sentiment: item.sentiment,
-      sources, answer: rawData.answer || '',
+      sources, answer: rawData.answer || '', forecast: rawData.forecast || null,
       report_date: item.report_date, created_at: item.created_at
     }, null, 2));
   }
@@ -135,6 +135,21 @@ router.get('/:id/export', requireAuth, async (req, res) => {
     item.summary || '',
     '',
     ...(rawData.answer ? ['## AI 简短回答', '', rawData.answer, ''] : []),
+    ...(rawData.forecast ? [
+      '## 短期情景判断', '',
+      `**问题：** ${rawData.forecast.question || ''}`,
+      `**期限：** ${rawData.forecast.horizon_days || ''} 天`,
+      '',
+      ...(rawData.forecast.status === 'scenario' ? [
+        `- 基准：${rawData.forecast.baseline || ''}`,
+        `- 上行：${rawData.forecast.upside || ''}`,
+        `- 下行：${rawData.forecast.downside || ''}`,
+        `- 观察：${(rawData.forecast.watch_signals || []).join('；')}`,
+        `- 失效条件：${rawData.forecast.invalidation || ''}`,
+        '',
+        '_基于公开信号的情景判断，非统计概率预测；待后续验证。_',
+      ] : [rawData.forecast.reason || '证据不足，未生成预测结论。', '']),
+    ] : []),
     '## 关键洞察',
     '',
     ...(keyPoints.length ? keyPoints.map((p, i) => `${i + 1}. ${p}`) : ['_无_']),

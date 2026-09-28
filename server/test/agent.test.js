@@ -12,6 +12,7 @@ const {
   serializeToolResultForModel
 } = require('../src/agent/runner');
 const { PHASES, phaseForTool, buildInitialMessages } = require('../src/agent/workflow');
+const { normalizeForecast, forecastRequested } = require('../src/agent/forecast');
 const { chatWithTools } = require('../src/agent/llm');
 
 test('runner parses one complete JSON object from wrapped model output safely', () => {
@@ -168,6 +169,34 @@ test('runtime caps high confidence when evidence is only search snippets', () =>
   assert.equal(result.confidence, 'medium');
   assert.match(result.warnings.join(' '), /extract_source/);
   assert.match(result.warnings.join(' '), /下调置信度/);
+});
+
+test('short-term forecast keeps scenarios separate and rejects weak evidence', () => {
+  const now = new Date('2026-09-29T00:00:00.000Z');
+  const evidence = new Map([
+    ['page_a', { evidence_id: 'page_a', url: 'https://a.example/report', evidence_level: 'fulltext', published_date: '2026-09-25' }],
+    ['search_b', { evidence_id: 'search_b', url: 'https://b.example/news', evidence_level: 'snippet', published_date: '2026-09-24' }]
+  ]);
+  const proposal = {
+    question: '美国手机配件未来 30 天的新品动向', horizon_days: 30,
+    baseline: '新品线索继续出现', upside: '更多零售渠道上架', downside: '安全通报增加',
+    assumptions: ['现有渠道保持稳定'], watch_signals: ['新品上架公告'],
+    invalidation: '主要渠道停止上架', confidence: 'high',
+    basis_evidence_ids: ['page_a', 'search_b', 'invented']
+  };
+  const supported = normalizeForecast(proposal, evidence, now);
+  assert.equal(supported.status, 'scenario');
+  assert.equal(supported.confidence, 'low');
+  assert.deepEqual(supported.basis_evidence_ids, ['page_a', 'search_b']);
+  assert.equal(supported.valid_until, '2026-10-29T00:00:00.000Z');
+  assert.equal(supported.probability, undefined);
+
+  const limited = normalizeForecast(proposal, new Map([['page_a', evidence.get('page_a')]]), now);
+  assert.equal(limited.status, 'insufficient_evidence');
+  assert.equal(limited.baseline, undefined);
+  assert.equal(forecastRequested('预测未来 30 天的变化'), true);
+  assert.equal(forecastRequested('查看我的工作区'), false);
+  assert.match(buildInitialMessages('预测未来 30 天的变化')[0].content, /forecast/);
 });
 
 test('agent runner can complete a tool call loop with a fake model', async () => {
@@ -811,7 +840,7 @@ test('merchant research does not turn out-of-scope background into a recent mark
   let round = 0;
   const result = await runAgent({
     runId: 'merchant-claim-citation-surface',
-    goal: '研究美国手机配件近 30 天的市场变化。',
+    goal: '研究美国手机配件近 30 天的市场变化，并预测未来 30 天。',
     context: { orgId: 1, userId: 2, agent: 'merchant_research', merchant: { industry: '手机配件', region: '美国' } },
     registry: {
       definitions: () => [],
@@ -862,6 +891,12 @@ test('merchant research does not turn out-of-scope background into a recent mark
             evidence_ids: ['page-global-forecast']
           }
         ],
+        forecast: {
+          question: '未来 30 天是否增长', horizon_days: 30,
+          baseline: '继续增长', upside: '大幅增长', downside: '增长放缓',
+          watch_signals: ['实际销量'], invalidation: '销量下跌',
+          basis_evidence_ids: ['page-ai-generated', 'page-global-forecast']
+        },
         proposed_actions: []
       }) } };
     }
@@ -870,6 +905,8 @@ test('merchant research does not turn out-of-scope background into a recent mark
   assert.equal(round, 3);
   assert.equal(result.answer_status, 'sources_only');
   assert.deepEqual(result.claim_citations, []);
+  assert.equal(result.forecast.status, 'insufficient_evidence');
+  assert.equal(result.forecast.baseline, undefined);
   assert.match(result.warnings.join(' '), /指定品类、地区或时间窗/);
   assert.doesNotMatch(`${result.title} ${result.summary} ${result.answer} ${result.key_points.join(' ')}`, /42%|扩大采购/);
 });
@@ -933,6 +970,55 @@ test('merchant research keeps a recent US accessory safety warning as a cited ri
   assert.match(result.answer, /机会方面，本次有限检索未形成可核验的结论/);
   assert.match(result.answer, /本次有限检索未形成可核验的结论/);
   assert.doesNotMatch(result.answer, /未发现其他独立/);
+});
+
+test('merchant forecast is shown only with current in-scope sources and a verified report', async () => {
+  let round = 0;
+  let savedReport = null;
+  const date = new Date().toISOString().slice(0, 10);
+  const sources = [
+    { evidence_id: 'page-launch', title: 'US phone case launch', url: 'https://brand.example/us-phone-case', excerpt: 'Phone case available now for customers in the United States.', published_date: date },
+    { evidence_id: 'page-recall', title: 'Power banks recalled in US', url: 'https://www.cpsc.gov/Recalls/2026/power-bank-fixture', excerpt: 'The U.S. CPSC announced a power bank recall.', published_date: date }
+  ];
+  const result = await runAgent({
+    runId: 'merchant-forecast-grounded',
+    goal: '研究最近 30 天美国手机配件市场，并预测未来 30 天的选品变化。',
+    context: { orgId: 1, userId: 2, agent: 'merchant_research', merchant: { industry: '手机配件', region: '美国' } },
+    registry: {
+      definitions: () => [], list: () => ['search_market', 'extract_source'], spec: () => ({ readOnly: true }),
+      execute: async (name) => ({ ok: true, data: { evidence: name === 'extract_source' ? sources : sources.map((item, index) => ({ ...item, evidence_id: `search-${index}` })) } })
+    },
+    store: {
+      updateRun: async () => {}, appendStep: async () => {},
+      saveAgentReport: async ({ result: report }) => { savedReport = report; return { reportId: 77, actions: [] }; }
+    },
+    maxSteps: 4,
+    complete: async () => {
+      round += 1;
+      if (round < 3) return { message: { tool_calls: [{ id: `step-${round}`, function: { name: round === 1 ? 'search_market' : 'extract_source', arguments: '{}' } }] } };
+      return { message: { content: JSON.stringify({
+        title: '近期来源与短期展望', summary: '已有新品与召回线索。', answer: '已有新品与召回线索。',
+        key_points: ['已有新品与召回线索。'], signal_type: 'neutral', sentiment: 'neutral', confidence: 'medium',
+        evidence_ids: ['page-launch', 'page-recall'],
+        claim_citations: [
+          { claim: '美国市场出现手机壳新品线索。', evidence_ids: ['page-launch'] },
+          { claim: '美国监管方发布充电宝召回。', evidence_ids: ['page-recall'] }
+        ],
+        forecast: {
+          question: '未来 30 天选品信号如何变化', horizon_days: 30,
+          baseline: '继续观察新品和安全信号', upside: '更多合规新品上架', downside: '召回风险扩大',
+          assumptions: ['上架渠道正常'], watch_signals: ['新品上架', '监管召回'],
+          invalidation: '相关来源撤回或更新', confidence: 'medium',
+          basis_evidence_ids: ['page-launch', 'page-recall']
+        }, proposed_actions: []
+      }) } };
+    }
+  });
+  assert.equal(result.answer_status, 'grounded_answer');
+  assert.equal(result.forecast.status, 'scenario');
+  assert.equal(result.forecast.confidence, 'medium');
+  assert.deepEqual(result.forecast.basis_evidence_ids, ['page-launch', 'page-recall']);
+  assert.equal(savedReport.forecast.status, 'scenario');
 });
 
 test('a confirmed paused-monitor action runs through the registry without an LLM decision', async () => {

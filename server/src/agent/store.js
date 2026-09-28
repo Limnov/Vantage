@@ -316,6 +316,7 @@ async function saveAgentReport({
         ? result.evidence_ids
         : [],
       evidence: reportEvidence.slice(0, 20),
+      forecast: result?.forecast || null,
       warnings: Array.isArray(result?.warnings) ? result.warnings : [],
       proposed_actions: Array.isArray(result?.proposed_actions)
         ? result.proposed_actions

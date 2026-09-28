@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import { agentApi, api } from "../api";
 import { useAuth } from "../lib/auth";
+import ForecastCard from "../components/ForecastCard";
 
 type Run = {
   id: string;
@@ -84,6 +85,14 @@ const examples: Array<{
     title: "研究一个市场",
     detail: "实时检索手机配件 × 美国市场并核验来源",
     prompt: "研究最近 30 天美国手机配件市场：找一条手机壳或贴膜新品线索、一条充电宝安全通报，分别核验原文并说明选品机会与合规风险。",
+    mode: "merchant_research",
+    industry: "手机配件",
+    region: "美国",
+  },
+  {
+    title: "判断短期趋势",
+    detail: "基于公开信号给出情景和失效条件",
+    prompt: "研究最近 30 天美国手机配件市场的可核验变化，并对未来 30 天的选品机会给出基准、上行和下行情景。列出依据、关键假设、要持续观察的信号，以及什么情况会推翻判断；证据不足就明确说无法预测。",
     mode: "merchant_research",
     industry: "手机配件",
     region: "美国",
@@ -693,6 +702,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                     <p className="answer-text">
                       {run.result.answer || run.result.summary}
                     </p>
+                    <ForecastCard forecast={run.result.forecast} evidence={run.result.evidence} />
                     {run.metadata?.agent === "merchant_research" &&
                       run.result.claim_citations?.length > 0 && (
                         <div className="claim-citation-list" aria-label="主张对应来源">
