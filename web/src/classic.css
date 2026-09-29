@@ -855,24 +855,25 @@
   margin-top: 8px;
 }
 
-/* ─── 统一工作台外壳（飞书式单侧边栏，无顶栏） ─── */
-.uni-app {
+/* ─── 统一工作台外壳：飞书式三栏，分隔条可拖拽 ─── */
+.uni-shell {
+  display: flex;
   height: 100vh;
   overflow: hidden;
+  background: var(--v-bg);
 }
-.uni-sider.ant-layout-sider {
-  background: var(--v-surface);
-  display: flex;
-  flex-direction: column;
-}
-.uni-sider .ant-layout-sider-children {
+
+/* 第一栏：导航 */
+.uni-nav {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: var(--v-surface);
+  overflow: hidden;
 }
-.uni-sider-top {
+.uni-nav-top {
   padding: 14px 12px 10px;
-  border-bottom: 1px solid var(--v-border-soft);
   flex-shrink: 0;
 }
 .uni-brand {
@@ -892,6 +893,8 @@
   font-weight: 600;
   color: var(--v-text);
   letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .uni-org-switch.ant-btn {
   justify-content: flex-start;
@@ -925,41 +928,13 @@
   cursor: not-allowed;
   opacity: 0.6;
 }
-.uni-threads {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 12px 10px 6px;
-}
-.uni-threads .new-conversation.ant-btn {
-  min-height: 36px;
-  border-radius: 6px;
-}
-.uni-threads .sidebar-label {
-  margin: 14px 8px 6px;
-}
-.uni-thread-list {
+.uni-nav-menu {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 4px 0;
 }
-.uni-day-label {
-  padding: 8px 10px 3px;
-  font-size: 11px;
-  color: var(--v-text-3);
-}
-.uni-thread-list .history-item {
-  padding: 9px 10px;
-}
-.uni-nav {
-  flex-shrink: 0;
-  border-top: 1px solid var(--v-border-soft);
-  padding: 6px 0;
-  max-height: 42%;
-  overflow-y: auto;
-}
-.uni-nav .ant-menu {
+.uni-nav-menu .ant-menu {
   background: transparent;
 }
 .uni-group-title {
@@ -967,7 +942,7 @@
   letter-spacing: 1px;
   color: var(--v-text-3);
 }
-.uni-sider-bottom {
+.uni-nav-bottom {
   flex-shrink: 0;
   border-top: 1px solid var(--v-border-soft);
   padding: 8px 12px 10px;
@@ -985,26 +960,170 @@
 .uni-avatar-button.ant-btn .ant-avatar {
   background: var(--v-accent);
 }
-.uni-content.ant-layout-content {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: var(--v-bg);
+
+/* 分隔条：可拖拽调宽 */
+.uni-split {
+  flex-shrink: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
 }
-.uni-content-inner {
-  height: 100%;
+.uni-split:hover,
+body.uni-resizing .uni-split {
+  background: var(--v-accent);
+}
+body.uni-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+body.uni-resizing * {
+  pointer-events: none;
+}
+
+/* 第二栏：列表 */
+.uni-list {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--v-surface-2);
+}
+.uni-list-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 8px;
+}
+.uni-list-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--v-text);
+}
+.uni-new-thread.ant-btn {
+  border-radius: 6px;
+}
+.uni-list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 12px;
+}
+.uni-list-loading {
+  padding: 20px;
+  text-align: center;
+}
+.uni-day-label {
+  padding: 8px 10px 3px;
+  font-size: 11px;
+  color: var(--v-text-3);
+}
+.uni-list .history-item {
+  border: 0;
+  background: transparent;
+  color: var(--a-muted, var(--v-text-2));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  width: 100%;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 13px;
+}
+.uni-list .history-item:hover {
+  background: var(--v-surface-3);
+  color: var(--v-text);
+}
+.uni-list .history-item.selected {
+  background: var(--v-accent-soft);
+  color: var(--v-accent);
+}
+.uni-list .history-item > span:nth-child(2) {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.uni-list .status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 100%;
+  background: var(--v-text-3);
+  flex-shrink: 0;
+}
+.uni-list .status-dot.running,
+.uni-list .status-dot.queued {
+  background: var(--v-accent);
+}
+.uni-list .status-dot.failed,
+.uni-list .status-dot.cancelled {
+  background: var(--v-risk);
+}
+.uni-list .history-empty {
+  color: var(--v-text-3);
+  font-size: 12px;
+  line-height: 1.8;
+  padding: 12px 10px;
+  margin: 0;
+}
+.uni-record {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 9px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+.uni-record:hover {
+  background: var(--v-surface-3);
+}
+.uni-record-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--v-text);
+}
+.uni-record-title > span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.uni-record-title .anticon {
+  color: var(--v-text-3);
+  flex-shrink: 0;
+}
+.uni-record-meta {
+  font-size: 11px;
+  color: var(--v-text-3);
+  padding-left: 22px;
+}
+
+/* 第三栏：主工作区 */
+.uni-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   overflow: auto;
   padding: 16px 24px 24px;
 }
-/* Agent 页在统一外壳里占满内容区，不再自带侧栏 */
-.uni-content-inner .workspace-layout-solo {
-  height: calc(100vh - 56px);
-  min-height: 420px;
+/* Agent 对话自带列布局，铺满不留内边距 */
+.uni-main-bleed {
+  padding: 0;
+  overflow: hidden;
 }
-.uni-content-inner .conversation-topline {
+.uni-main-bleed .workspace-layout-solo {
+  height: 100vh;
+  min-height: 0;
+}
+.uni-main-bleed .conversation-topline {
   padding: 16px 36px 10px;
-}
-.uni-threads .new-conversation.ant-btn:disabled {
-  opacity: 0.55;
-  color: #ffffff;
 }

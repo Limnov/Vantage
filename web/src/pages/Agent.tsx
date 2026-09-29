@@ -347,6 +347,7 @@ export default function Agent({
     };
   }, [active, revision]);
   useEffect(() => {
+    if (!turns.length) return;
     bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns.length, running?.steps?.length]);
   const startTask = async (

@@ -1,4 +1,4 @@
-import { Layout, Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typography, Avatar, Badge, Divider } from 'antd';
+import { Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typography, Avatar, Badge, Spin } from 'antd';
 const { Text } = Typography;
 import {
   DashboardOutlined, EyeOutlined, FileTextOutlined, WarningOutlined, SettingOutlined,
@@ -9,11 +9,10 @@ import {
   FileSearchOutlined, PlusOutlined, MessageOutlined
 } from '@ant-design/icons';
 import { Routes, Route, Link, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
-import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
+import { lazy, Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
-import { searchApi, alertsApi, agentApi } from './api';
+import { searchApi, alertsApi, agentApi, watchlistApi, reportsApi } from './api';
 import { useAuth } from './lib/auth';
-import { Breadcrumb } from './components/Breadcrumb';
 import { HelpModal } from './components/HelpModal';
 import { APP_VERSION } from './version';
 import Agent from './pages/Agent';
@@ -31,8 +30,6 @@ const Bots = lazy(() => import('./pages/Bots'));
 const AlertRoutes = lazy(() => import('./pages/AlertRoutes'));
 const Members = lazy(() => import('./pages/Members'));
 const About = lazy(() => import('./pages/About'));
-
-const { Content } = Layout;
 
 interface Props {
   themeMode: 'light' | 'dark';
@@ -60,7 +57,37 @@ function dayGroupLabel(iso?: string): string {
   return d.format('YYYY 年 M 月 D 日');
 }
 
-// Agent 路由包装：从 URL 读取当前会话
+const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+/** 可拖拽列宽：pointer 拖拽 + localStorage 记忆 */
+function usePaneWidth(storageKey: string, def: number, min: number, max: number) {
+  const [width, setWidth] = useState<number>(() => {
+    const stored = Number(localStorage.getItem(storageKey));
+    return stored >= min && stored <= max ? stored : def;
+  });
+  const widthRef = useRef(width);
+  widthRef.current = width;
+  const startDrag = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = widthRef.current;
+    const move = (ev: PointerEvent) => setWidth(clamp(startW + ev.clientX - startX, min, max));
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      document.body.classList.remove('uni-resizing');
+    };
+    document.body.classList.add('uni-resizing');
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }, [min, max]);
+  useEffect(() => {
+    localStorage.setItem(storageKey, String(width));
+  }, [storageKey, width]);
+  return [width, startDrag] as const;
+}
+
+// Agent 路由包装：会话 ID 存在 URL 中
 function AgentRoute({ onConfigure }: { onConfigure: () => void }) {
   const { threadId } = useParams<{ threadId?: string }>();
   const navigate = useNavigate();
@@ -68,7 +95,7 @@ function AgentRoute({ onConfigure }: { onConfigure: () => void }) {
     <Agent
       onConfigure={onConfigure}
       thread={threadId || null}
-      onThreadChange={(id) => navigate(id ? `/app/t/${id}` : '/app', { replace: false })}
+      onThreadChange={(id) => navigate(id ? `/app/t/${id}` : '/app')}
     />
   );
 }
@@ -87,16 +114,39 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
   const [pendingAlertItems, setPendingAlertItems] = useState<any[]>([]);
   const [orgSwitching, setOrgSwitching] = useState(false);
 
-  // 会话历史（侧边栏）
+  // 三栏宽度（导航固定，列表与主区之间、导航与列表之间可拖）
+  const [navWidth, startNavDrag] = usePaneWidth('vantage.uni.nav', 216, 168, 320);
+  const [listWidth, startListDrag] = usePaneWidth('vantage.uni.list', 288, 220, 460);
+
+  // 会话历史
   const [threads, setThreads] = useState<Run[]>([]);
   const [threadsTotal, setThreadsTotal] = useState(0);
   const [threadsLoading, setThreadsLoading] = useState(false);
   const [historyRevision, setHistoryRevision] = useState(0);
+  // 列表栏业务记录
+  const [records, setRecords] = useState<any[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
 
   const inAgent = location.pathname === '/app' || location.pathname.startsWith('/app/');
   const activeThread = inAgent && location.pathname.startsWith('/app/t/')
     ? location.pathname.slice('/app/t/'.length)
     : null;
+
+  const listKind: 'threads' | 'dashboard' | 'watchlist' | 'reports' | 'alerts' | null =
+    inAgent ? 'threads'
+      : location.pathname === '/dashboard' ? 'dashboard'
+      : location.pathname === '/watchlist' ? 'watchlist'
+      : location.pathname === '/reports' ? 'reports'
+      : location.pathname === '/alerts' ? 'alerts'
+      : null;
+
+  const listTitle =
+    listKind === 'threads' ? '对话'
+      : listKind === 'dashboard' ? '最近动态'
+      : listKind === 'watchlist' ? '监控目标'
+      : listKind === 'reports' ? '情报报告'
+      : listKind === 'alerts' ? '告警'
+      : '';
 
   const loadThreads = useCallback(async (append = false) => {
     setThreadsLoading(true);
@@ -110,17 +160,40 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
         return [...prev, ...items.filter(i => !seen.has(threadOf(i)))];
       });
     } catch {
-      // 侧边栏历史失败不打断主流程
+      // 侧栏历史失败不打断主流程
     } finally {
       setThreadsLoading(false);
     }
   }, [threads.length]);
 
-  useEffect(() => {
-    void loadThreads();
-  }, [historyRevision, currentOrgId, loadThreads]);
+  const loadRecords = useCallback(async () => {
+    if (!listKind || listKind === 'threads') return;
+    setRecordsLoading(true);
+    try {
+      if (listKind === 'watchlist') {
+        const r = await watchlistApi.list({ page: 1, pageSize: 50 });
+        setRecords(r.items || []);
+      } else if (listKind === 'reports' || listKind === 'dashboard') {
+        const r = await reportsApi.list({ page: 1, pageSize: listKind === 'dashboard' ? 5 : 30 });
+        setRecords(r.items || []);
+      } else if (listKind === 'alerts') {
+        const r = await alertsApi.list({ page: 1, pageSize: 30 });
+        setRecords(r.items || []);
+      }
+    } catch {
+      setRecords([]);
+    } finally {
+      setRecordsLoading(false);
+    }
+  }, [listKind]);
 
-  // 待处理告警数量（侧边栏铃铛）
+  useEffect(() => {
+    if (listKind === 'threads') void loadThreads();
+    else if (listKind) void loadRecords();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listKind, historyRevision, currentOrgId]);
+
+  // 待处理告警数量
   const loadPendingAlerts = useCallback(async () => {
     if (!currentOrgId) return;
     try {
@@ -230,7 +303,7 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
               <div style={{ fontSize: 11, color: 'var(--v-text-3)', marginTop: 2 }}>{dayjs(a.created_at).format('MM-DD HH:mm')}</div>
             </div>
           ),
-          onClick: () => navigate('/alerts')
+          onClick: () => navigate(`/alerts?focus=${a.id}`)
         })))
   ];
 
@@ -272,29 +345,25 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
             {searchResults.results?.reports?.length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ padding: '6px 8px', fontSize: 11, color: token.colorTextTertiary, fontWeight: 600, letterSpacing: 0.5 }}>情报报告</div>
-                {searchResults.results.reports?.map((r: any) => {
-                  const sigIcon = r.signal_type === 'opportunity' ? <RiseOutlined /> :
-                                  r.signal_type === 'risk' ? <FallOutlined /> : null;
-                  return (
-                    <div key={`r-${r.id}`} onClick={() => { navigate('/reports'); setSearchOpen(false); setSearchQ(''); }}
-                      style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer' }}>
-                      <Space>
-                        {sigIcon || <FileTextOutlined />}
-                        <span style={{ fontWeight: 500 }}>{r.title}</span>
-                      </Space>
-                      <div style={{ fontSize: 11, color: token.colorTextTertiary, marginTop: 2, paddingLeft: 22 }}>
-                        {r.summary?.substring(0, 60)}...
-                      </div>
+                {searchResults.results.reports?.map((r: any) => (
+                  <div key={`r-${r.id}`} onClick={() => { navigate(`/reports?open=${r.id}`); setSearchOpen(false); setSearchQ(''); }}
+                    style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer' }}>
+                    <Space>
+                      {r.signal_type === 'opportunity' ? <RiseOutlined /> : r.signal_type === 'risk' ? <FallOutlined /> : <FileTextOutlined />}
+                      <span style={{ fontWeight: 500 }}>{r.title}</span>
+                    </Space>
+                    <div style={{ fontSize: 11, color: token.colorTextTertiary, marginTop: 2, paddingLeft: 22 }}>
+                      {r.summary?.substring(0, 60)}...
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
             {searchResults.results?.alerts?.length > 0 && (
               <div>
                 <div style={{ padding: '6px 8px', fontSize: 11, color: token.colorTextTertiary, fontWeight: 600, letterSpacing: 0.5 }}>告警</div>
                 {searchResults.results.alerts?.map((a: any) => (
-                  <div key={`a-${a.id}`} onClick={() => { navigate('/alerts'); setSearchOpen(false); setSearchQ(''); }}
+                  <div key={`a-${a.id}`} onClick={() => { navigate(`/alerts?focus=${a.id}`); setSearchOpen(false); setSearchQ(''); }}
                     style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer' }}>
                     <Space>
                       <WarningOutlined style={{ color: a.level === 'critical' ? 'var(--v-risk)' : 'var(--v-warn)' }} />
@@ -311,7 +380,6 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
     </div>
   );
 
-  // 业务导航（Agent 对话在上方列表，不占菜单项）
   const menuGroups = [
     {
       key: 'workspace',
@@ -366,13 +434,30 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
     }
   }
 
-  const selected = inAgent ? [] : [location.pathname];
+  const selected = inAgent ? ['/app'] : [location.pathname];
+
+  const openRecord = (item: any) => {
+    if (listKind === 'watchlist') navigate(`/watchlist?edit=${item.id}`);
+    else if (listKind === 'reports') navigate(`/reports?open=${item.id}`);
+    else if (listKind === 'alerts') navigate(`/alerts?focus=${item.id}`);
+    else if (listKind === 'dashboard') {
+      if (item.__kind === 'report') navigate(`/reports?open=${item.id}`);
+      else navigate(`/alerts?focus=${item.id}`);
+    }
+  };
+
+  const dashboardRecords = listKind === 'dashboard'
+    ? [
+      ...records.map(r => ({ ...r, __kind: 'report' })),
+      ...pendingAlertItems.map(a => ({ ...a, __kind: 'alert' }))
+    ]
+    : [];
 
   return (
-    <Layout className="uni-app">
-      <Layout.Sider className="uni-sider" width={248} trigger={null}>
-        {/* 品牌 + 组织 */}
-        <div className="uni-sider-top">
+    <div className="uni-shell">
+      {/* 第一栏：导航 */}
+      <nav className="uni-nav" style={{ width: navWidth }} aria-label="主导航">
+        <div className="uni-nav-top">
           <div className="uni-brand">
             <span className="brand-symbol">V</span>
             <span className="uni-brand-name">Vantage</span>
@@ -380,7 +465,7 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
           <Dropdown menu={{ items: orgMenuItems }} trigger={['click']} disabled={orgSwitching}>
             <Button className="uni-org-switch" type="text" loading={orgSwitching} block>
               <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-                <Text strong ellipsis style={{ maxWidth: 150 }}>{currentOrg?.name || '选择组织'}</Text>
+                <Text strong ellipsis style={{ maxWidth: navWidth - 90 }}>{currentOrg?.name || '选择组织'}</Text>
                 {user?.is_demo ? <Tag className="topbar-demo-tag">Demo</Tag> : null}
               </Space>
             </Button>
@@ -394,77 +479,29 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
           >
             <button className="uni-search-trigger" type="button" disabled={user?.is_demo}>
               <SearchOutlined />
-              <span>搜索监控、报告、告警</span>
+              <span>搜索</span>
               <Text type="secondary" style={{ fontSize: 10, marginLeft: 'auto' }}>⌘K</Text>
             </button>
           </Dropdown>
         </div>
 
-        {/* 会话列表 */}
-        <div className="uni-threads">
-          <Button
-            className="new-conversation"
-            icon={<PlusOutlined />}
-            onClick={() => navigate('/app')}
-            disabled={user?.is_demo}
-          >
-            新建对话
-          </Button>
-          <div className="sidebar-label">
-            最近对话
-            <Button
-              type="text"
-              size="small"
-              aria-label="刷新对话"
-              icon={<ReloadOutlined />}
-              onClick={() => setHistoryRevision(v => v + 1)}
-            />
-          </div>
-          <nav className="uni-thread-list" aria-label="对话历史">
-            {threadsLoading && !threads.length && <p className="history-empty">加载中…</p>}
-            {!threadsLoading && !threads.length && (
-              <p className="history-empty">
-                你的目标、证据和行动
-                <br />
-                会保存在这里。
-              </p>
-            )}
-            {threadGroups.map(g => (
-              <div key={g.label}>
-                <div className="uni-day-label">{g.label}</div>
-                {g.items.map(r => (
-                  <button
-                    className={`history-item ${activeThread === threadOf(r) ? 'selected' : ''}`}
-                    key={threadOf(r)}
-                    onClick={() => navigate(`/app/t/${threadOf(r)}`)}
-                  >
-                    <MessageOutlined />
-                    <span>{r.goal}</span>
-                    <i className={`status-dot ${r.status}`} title={r.status} />
-                  </button>
-                ))}
-              </div>
-            ))}
-            {threads.length < threadsTotal && (
-              <Button type="text" size="small" onClick={() => loadThreads(true)}>
-                加载更早对话
-              </Button>
-            )}
-          </nav>
-        </div>
-
-        {/* 业务导航 */}
-        <div className="uni-nav">
+        <div className="uni-nav-menu">
           <Menu
             mode="inline"
             selectedKeys={selected}
             style={{ borderRight: 0 }}
-            items={menuGroups}
+            items={[
+              {
+                key: '/app',
+                icon: <MessageOutlined />,
+                label: <Link to="/app">Agent 对话</Link>
+              },
+              ...menuGroups
+            ]}
           />
         </div>
 
-        {/* 底部工具 */}
-        <div className="uni-sider-bottom">
+        <div className="uni-nav-bottom">
           <Space size={2}>
             <Tooltip title="通知" placement="top">
               <Dropdown menu={{ items: notificationItems }} trigger={['click']} placement="topRight">
@@ -492,35 +529,123 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
             <ApiOutlined /> v{APP_VERSION}
           </Text>
         </div>
-      </Layout.Sider>
+      </nav>
 
-      <Content className="uni-content">
-        <div className="uni-content-inner">
-          {!inAgent && <Breadcrumb />}
-          <div className="fade-in-up">
-            <Suspense fallback={<div className="classic-page-loading">正在加载页面…</div>}>
-              <Routes>
-                <Route path="/" element={<Navigate to="/app" replace />} />
-                <Route path="/app" element={<AgentRoute onConfigure={() => navigate('/settings')} />} />
-                <Route path="/app/t/:threadId" element={<AgentRoute onConfigure={() => navigate('/settings')} />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/watchlist" element={<Watchlist />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/alerts" element={<Alerts />} />
-                <Route path="/organization" element={<Organization />} />
-                <Route path="/members" element={<Members />} />
-                <Route path="/bots" element={<Bots />} />
-                <Route path="/routes" element={<AlertRoutes />} />
-                <Route path="/logs" element={<Logs />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/about" element={<About />} />
-                <Route path="*" element={<Navigate to="/app" replace />} />
-              </Routes>
-            </Suspense>
-          </div>
-        </div>
-      </Content>
+      <div className="uni-split" onPointerDown={startNavDrag} role="separator" aria-orientation="vertical" />
+
+      {/* 第二栏：列表 */}
+      {listKind && (
+        <>
+          <aside className="uni-list" style={{ width: listWidth }} aria-label={listTitle}>
+            <div className="uni-list-header">
+              <span className="uni-list-title">{listTitle}</span>
+              <Space size={2}>
+                {listKind === 'threads' && (
+                  <Button
+                    className="uni-new-thread"
+                    size="small"
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => navigate('/app')}
+                    disabled={user?.is_demo}
+                  >
+                    新建
+                  </Button>
+                )}
+                <Button
+                  type="text"
+                  size="small"
+                  aria-label="刷新列表"
+                  icon={<ReloadOutlined />}
+                  onClick={() => listKind === 'threads' ? setHistoryRevision(v => v + 1) : loadRecords()}
+                />
+              </Space>
+            </div>
+            <div className="uni-list-body">
+              {(threadsLoading || recordsLoading) && (
+                <div className="uni-list-loading"><Spin size="small" /></div>
+              )}
+              {listKind === 'threads' && !threadsLoading && !threads.length && (
+                <p className="history-empty">
+                  你的目标、证据和行动
+                  <br />
+                  会保存在这里。
+                </p>
+              )}
+              {listKind === 'threads' && threadGroups.map(g => (
+                <div key={g.label}>
+                  <div className="uni-day-label">{g.label}</div>
+                  {g.items.map(r => (
+                    <button
+                      className={`history-item ${activeThread === threadOf(r) ? 'selected' : ''}`}
+                      key={threadOf(r)}
+                      onClick={() => navigate(`/app/t/${threadOf(r)}`)}
+                    >
+                      <MessageOutlined />
+                      <span>{r.goal}</span>
+                      <i className={`status-dot ${r.status}`} title={r.status} />
+                    </button>
+                  ))}
+                </div>
+              ))}
+              {listKind === 'threads' && threads.length < threadsTotal && (
+                <Button type="text" size="small" onClick={() => loadThreads(true)}>
+                  加载更早对话
+                </Button>
+              )}
+              {listKind !== 'threads' && !recordsLoading && !(listKind === 'dashboard' ? dashboardRecords.length : records.length) && (
+                <p className="history-empty">暂无记录</p>
+              )}
+              {listKind !== 'threads' && (listKind === 'dashboard' ? dashboardRecords : records).map((item: any) => (
+                <button
+                  className="uni-record"
+                  key={`${item.__kind || listKind}-${item.id}`}
+                  onClick={() => openRecord(item)}
+                >
+                  <span className="uni-record-title">
+                    {listKind === 'watchlist' && <EyeOutlined />}
+                    {listKind === 'reports' && <FileTextOutlined />}
+                    {listKind === 'alerts' && <WarningOutlined style={{ color: item.level === 'critical' ? 'var(--v-risk)' : item.level === 'warning' ? 'var(--v-warn)' : undefined }} />}
+                    {listKind === 'dashboard' && (item.__kind === 'report' ? <FileTextOutlined /> : <WarningOutlined />)}
+                    <span>{item.title || item.name || item.goal}</span>
+                  </span>
+                  <span className="uni-record-meta">
+                    {listKind === 'watchlist' && `${item.enabled ? '启用' : '停用'} · P${item.priority}`}
+                    {listKind === 'reports' && dayjs(item.created_at).format('MM-DD HH:mm')}
+                    {listKind === 'alerts' && `${dayjs(item.created_at).format('MM-DD HH:mm')} · ${item.status}`}
+                    {listKind === 'dashboard' && dayjs(item.created_at).format('MM-DD HH:mm')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </aside>
+          <div className="uni-split" onPointerDown={startListDrag} role="separator" aria-orientation="vertical" />
+        </>
+      )}
+
+      {/* 第三栏：主工作区 */}
+      <main className={`uni-main${inAgent ? ' uni-main-bleed' : ''}`}>
+        <Suspense fallback={<div className="classic-page-loading">正在加载页面…</div>}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/app" replace />} />
+            <Route path="/app" element={<AgentRoute onConfigure={() => navigate('/settings')} />} />
+            <Route path="/app/t/:threadId" element={<AgentRoute onConfigure={() => navigate('/settings')} />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/watchlist" element={<Watchlist />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/alerts" element={<Alerts />} />
+            <Route path="/organization" element={<Organization />} />
+            <Route path="/members" element={<Members />} />
+            <Route path="/bots" element={<Bots />} />
+            <Route path="/routes" element={<AlertRoutes />} />
+            <Route path="/logs" element={<Logs />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/about" element={<About />} />
+            <Route path="*" element={<Navigate to="/app" replace />} />
+          </Routes>
+        </Suspense>
+      </main>
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
-    </Layout>
+    </div>
   );
 }
