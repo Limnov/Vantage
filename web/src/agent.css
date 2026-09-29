@@ -10,40 +10,97 @@
   background: var(--a-bg);
   height: 100dvh;
   display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
-.workspace-header {
-  height: 64px;
+
+/* ─── 飞书式左侧图标栏 ─── */
+.lark-rail {
+  width: 64px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 0 12px;
+  background: var(--a-panel);
+  border-right: 1px solid var(--a-line);
+}
+.lark-rail-logo {
+  margin-bottom: 10px;
+}
+.brand-symbol {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: var(--a-accent);
+  color: #ffffff;
+  font-family: Georgia, serif;
+  font-weight: 700;
+  font-size: 17px;
+  border-radius: 9px;
+}
+.lark-rail-item {
+  width: 48px;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--a-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.lark-rail-item span {
+  font-size: 10px;
+  line-height: 1;
+}
+.lark-rail-item:hover {
+  background: var(--v-surface-3);
+  color: var(--a-text);
+}
+.lark-rail-item.active {
+  background: var(--v-accent-soft);
+  color: var(--a-accent);
+}
+.lark-rail-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.lark-rail-avatar {
+  padding: 0;
+}
+.lark-rail-spacer {
+  flex: 1;
+}
+.lark-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.lark-topbar {
+  height: 52px;
   flex-shrink: 0;
   padding: 0 20px;
   border-bottom: 1px solid var(--a-line);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 14px;
   background: var(--a-card);
 }
-.wordmark {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: 650;
-  letter-spacing: -1px;
-  color: var(--a-text) !important;
+.lark-topbar-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--a-text);
 }
-.brand-symbol {
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  background: var(--a-accent);
-  color: var(--v-on-accent);
-  font-family: Georgia, serif;
-  font-weight: 700;
-  border-radius: 50%;
-}
-.workspace-controls {
+.lark-topbar-right {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -51,11 +108,6 @@
 .topbar-org-select {
   min-width: 148px;
   max-width: 220px;
-}
-.topbar-account-button.ant-btn {
-  width: 36px;
-  height: 36px;
-  padding: 0;
 }
 .topbar-account-summary {
   display: grid;
@@ -79,20 +131,25 @@
 .conversation-sidebar {
   width: 252px;
   flex-shrink: 0;
-  background: var(--a-panel);
-  padding: 25px 16px 16px;
+  background: var(--a-card);
+  padding: 16px 12px;
   border-right: 1px solid var(--a-line);
   display: flex;
   flex-direction: column;
 }
 .new-conversation.ant-btn {
-  min-height: 42px;
+  min-height: 38px;
   width: 100%;
   text-align: left;
   justify-content: flex-start;
-  background: var(--a-card);
-  border-color: var(--a-line);
+  background: var(--a-accent);
+  border-color: var(--a-accent);
+  color: #ffffff;
   box-shadow: none;
+}
+.new-conversation.ant-btn:hover {
+  background: var(--a-accent);
+  opacity: 0.88;
 }
 .sidebar-label {
   display: flex;
@@ -100,8 +157,8 @@
   align-items: center;
   font-size: 11px;
   color: var(--a-muted);
-  letter-spacing: 1px;
-  margin: 26px 10px 10px;
+  letter-spacing: 0.5px;
+  margin: 18px 10px 8px;
 }
 .conversation-sidebar nav {
   overflow-y: auto;
@@ -126,10 +183,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.history-item:hover,
-.history-item.selected {
-  background: var(--a-card);
+.history-item:hover {
+  background: var(--v-surface-2);
   color: var(--a-text);
+}
+.history-item.selected {
+  background: var(--v-accent-soft);
+  color: var(--a-accent);
 }
 .status-dot {
   width: 5px;
@@ -210,12 +270,12 @@
   background: var(--a-accent);
 }
 .welcome h1 {
-  font-size: clamp(30px, 3.5vw, 48px);
-  font-family: "Songti SC", "Noto Serif CJK SC", Georgia, serif;
-  font-weight: 500;
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 600;
   line-height: 1.5;
-  letter-spacing: 2px;
-  margin: 20px 0;
+  letter-spacing: 0;
+  margin: 18px 0;
+  color: var(--a-text);
 }
 .welcome h1 span {
   color: var(--a-accent);
@@ -383,13 +443,13 @@
 .composer {
   border: 1px solid var(--a-line);
   background: var(--a-card);
-  border-radius: 13px;
-  padding: 15px 18px 12px;
-  box-shadow: 0 10px 30px rgba(36, 31, 23, 0.06);
+  border-radius: 8px;
+  padding: 14px 16px 10px;
+  box-shadow: 0 2px 12px rgba(31, 35, 41, 0.06);
 }
 .composer:focus-within {
   border-color: var(--a-accent);
-  box-shadow: 0 0 0 3px var(--v-focus), var(--v-shadow);
+  box-shadow: 0 0 0 3px var(--v-focus);
 }
 .composer textarea.ant-input {
   background: transparent;
@@ -438,9 +498,9 @@
 }
 .user-turn p {
   margin: 8px 0 0 auto;
-  background: var(--a-panel);
-  border-radius: 12px 12px 2px 12px;
-  padding: 14px 20px;
+  background: var(--v-accent-soft);
+  border-radius: 10px 10px 2px 10px;
+  padding: 12px 16px;
   max-width: 85%;
   display: table;
   text-align: left;
@@ -463,14 +523,14 @@
 .agent-avatar {
   display: grid;
   place-items: center;
-  width: 27px;
-  height: 27px;
-  color: var(--a-accent);
-  border: 1px solid var(--a-line);
-  border-radius: 50%;
-  font:
-    18px Georgia,
-    serif;
+  width: 28px;
+  height: 28px;
+  background: var(--a-accent);
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: Georgia, serif;
 }
 .tool-card {
   border: 1px solid var(--a-line);
@@ -546,9 +606,9 @@
 }
 .workspace-stats strong {
   display: block;
-  font:
-    26px Georgia,
-    serif;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .workspace-stats span {
   display: block;
@@ -577,10 +637,10 @@
   margin-top: 24px;
 }
 .final-result h3 {
-  font:
-    500 23px/1.5 "Songti SC",
-    Georgia,
-    serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--a-text);
 }
 .answer-text {
   line-height: 1.95;
@@ -664,8 +724,8 @@
   .conversation-sidebar {
     width: 200px;
   }
-  .workspace-header {
-    padding: 0 20px;
+  .lark-topbar {
+    padding: 0 16px;
   }
   .transcript {
     padding: 0 24px;
@@ -681,32 +741,24 @@
   }
 }
 @media (max-width: 640px) {
-  .workspace-header {
-    height: 64px;
-    padding: 0 14px;
+  .lark-rail {
+    width: 52px;
   }
-  .wordmark {
-    font-size: 18px;
+  .lark-rail-item {
+    width: 40px;
   }
-  .brand-symbol {
-    width: 26px;
-    height: 26px;
+  .lark-rail-item span {
+    display: none;
   }
-  .workspace-controls {
-    gap: 4px;
+  .lark-topbar {
+    height: 48px;
+    padding: 0 12px;
   }
-  .workspace-controls > .ant-select {
+  .topbar-org-select {
     min-width: 108px !important;
     width: 108px;
   }
   .topbar-demo-tag.ant-tag {
-    display: none;
-  }
-  .workspace-controls .ant-btn {
-    width: 32px;
-    padding: 0;
-  }
-  .workspace-controls .ant-btn > span:not(.ant-btn-icon) {
     display: none;
   }
   .workspace-layout {

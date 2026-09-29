@@ -67,7 +67,7 @@ function createWindow() {
     height: 880,
     minWidth: 960,
     minHeight: 640,
-    backgroundColor: '#191815',
+    backgroundColor: '#f5f6f7',
     title: 'Vantage',
     show: false,
     autoHideMenuBar: process.platform !== 'darwin',

@@ -99,53 +99,53 @@ function Root() {
       theme={{
         algorithm: mode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: mode === 'dark' ? '#f2f0ec' : '#141414',
-          colorInfo: mode === 'dark' ? '#f2f0ec' : '#141414',
-          colorSuccess: mode === 'dark' ? '#ddd5c8' : '#403d36',
-          colorWarning: mode === 'dark' ? '#c8bba5' : '#756a59',
-          colorError: mode === 'dark' ? '#fff8ed' : '#191815',
-          colorLink: mode === 'dark' ? '#f2f0ec' : '#141414',
-          colorTextLightSolid: mode === 'dark' ? '#141414' : '#ffffff',
+          colorPrimary: '#3370ff',
+          colorInfo: '#3370ff',
+          colorSuccess: mode === 'dark' ? '#56c339' : '#34c724',
+          colorWarning: mode === 'dark' ? '#ff9a2e' : '#ff8800',
+          colorError: mode === 'dark' ? '#ff6b66' : '#f54a45',
+          colorLink: '#3370ff',
+          colorTextLightSolid: '#ffffff',
           borderRadius: 6,
           fontSize: 14,
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
-          colorBgLayout: mode === 'dark' ? '#11100e' : '#eee9df',
-          colorBgContainer: mode === 'dark' ? '#191815' : '#fffdf8',
-          colorBgElevated: mode === 'dark' ? '#23211d' : '#fffdf8',
-          colorBorder: mode === 'dark' ? '#3a362f' : '#d4cdbf',
-          colorBorderSecondary: mode === 'dark' ? '#2a2823' : '#e6e0d6',
+          colorBgLayout: mode === 'dark' ? '#1f2329' : '#f5f6f7',
+          colorBgContainer: mode === 'dark' ? '#262a31' : '#ffffff',
+          colorBgElevated: mode === 'dark' ? '#2e333a' : '#ffffff',
+          colorBorder: mode === 'dark' ? '#3a3f47' : '#dee0e3',
+          colorBorderSecondary: mode === 'dark' ? '#2e333a' : '#e9ebed',
           boxShadow: mode === 'dark'
-            ? '0 2px 8px 0 rgba(0, 0, 0, 0.5)'
-            : '0 2px 8px 0 rgba(20, 20, 20, 0.05)',
+            ? '0 2px 8px 0 rgba(0, 0, 0, 0.4)'
+            : '0 2px 8px 0 rgba(31, 35, 41, 0.06)',
           boxShadowSecondary: mode === 'dark'
-            ? '0 4px 16px 0 rgba(0, 0, 0, 0.6)'
-            : '0 4px 16px 0 rgba(20, 20, 20, 0.07)'
+            ? '0 4px 16px 0 rgba(0, 0, 0, 0.5)'
+            : '0 4px 16px 0 rgba(31, 35, 41, 0.08)'
         },
         components: {
           Layout: {
-            headerBg: mode === 'dark' ? '#191815' : '#fffdf8',
-            siderBg: mode === 'dark' ? '#191815' : '#fffdf8',
-            bodyBg: mode === 'dark' ? '#11100e' : '#eee9df'
+            headerBg: mode === 'dark' ? '#262a31' : '#ffffff',
+            siderBg: mode === 'dark' ? '#262a31' : '#ffffff',
+            bodyBg: mode === 'dark' ? '#1f2329' : '#f5f6f7'
           },
           Card: {
             borderRadiusLG: 8
           },
           Menu: {
             itemBg: 'transparent',
-            itemSelectedBg: mode === 'dark' ? '#f5efe4' : '#191815',
-            itemHoverBg: mode === 'dark' ? '#23211d' : '#f6f2e9',
-            itemSelectedColor: mode === 'dark' ? '#191815' : '#fffdf8',
-            itemColor: mode === 'dark' ? 'rgba(242, 240, 236, 0.65)' : 'rgba(20, 20, 20, 0.72)'
+            itemSelectedBg: mode === 'dark' ? 'rgba(51, 112, 255, 0.18)' : '#e1eaff',
+            itemHoverBg: mode === 'dark' ? '#2e333a' : '#f5f6f7',
+            itemSelectedColor: '#3370ff',
+            itemColor: mode === 'dark' ? '#a0a6ad' : '#646a73'
           },
           Table: {
-            headerBg: mode === 'dark' ? '#23211d' : '#f6f2e9',
-            rowHoverBg: mode === 'dark' ? '#23211d' : '#f6f2e9'
+            headerBg: mode === 'dark' ? '#22262c' : '#f5f6f7',
+            rowHoverBg: mode === 'dark' ? '#2e333a' : '#f5f6f7'
           },
           Tag: {
-            defaultBg: mode === 'dark' ? '#23211d' : '#f6f2e9'
+            defaultBg: mode === 'dark' ? '#2e333a' : '#f5f6f7'
           },
           Progress: {
-            remainingColor: mode === 'dark' ? '#2a2823' : '#e6e0d6'
+            remainingColor: mode === 'dark' ? '#2e333a' : '#e9ebed'
           }
         }
       }}

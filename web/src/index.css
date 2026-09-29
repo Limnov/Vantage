@@ -1,45 +1,46 @@
-/* Vantage 视觉基线 — 黑、白、米色 · 明暗双主题 */
+/* Vantage 视觉基线 — 飞书设计语言 · 明暗双主题 */
 
 :root {
   color-scheme: light;
-  --v-text: #191815;
-  --v-text-2: rgba(25, 24, 21, 0.64);
-  --v-text-3: rgba(25, 24, 21, 0.42);
-  --v-bg: #eee9df;
-  --v-surface: #fffdf8;
-  --v-surface-2: #f6f2e9;
-  --v-surface-3: #e8e0d3;
-  --v-border: #d4cdbf;
-  --v-border-soft: #e6e0d6;
-  --v-accent: #191815;
-  --v-on-accent: #fffdf8;
-  --v-focus: rgba(25, 24, 21, 0.22);
-  --v-shadow: 0 18px 50px rgba(36, 31, 23, 0.08);
-  /* 状态仍由文字和图标表达，色相保持在黑白米色范围内。 */
-  --v-ok: #403d36;
-  --v-risk: #191815;
-  --v-warn: #756a59;
-  --v-info: #716c63;
+  --v-text: #1f2329;
+  --v-text-2: #646a73;
+  --v-text-3: #8f959e;
+  --v-bg: #f5f6f7;
+  --v-surface: #ffffff;
+  --v-surface-2: #f5f6f7;
+  --v-surface-3: #edeef0;
+  --v-border: #dee0e3;
+  --v-border-soft: #e9ebed;
+  --v-accent: #3370ff;
+  --v-on-accent: #ffffff;
+  --v-accent-soft: #e1eaff;
+  --v-focus: rgba(51, 112, 255, 0.2);
+  --v-shadow: 0 18px 50px rgba(31, 35, 41, 0.08);
+  --v-ok: #34c724;
+  --v-risk: #f54a45;
+  --v-warn: #ff8800;
+  --v-info: #646a73;
 }
 html[data-theme='dark'] {
   color-scheme: dark;
-  --v-text: #f5efe4;
-  --v-text-2: rgba(245, 239, 228, 0.68);
-  --v-text-3: rgba(245, 239, 228, 0.44);
-  --v-bg: #11100e;
-  --v-surface: #191815;
-  --v-surface-2: #23211d;
-  --v-surface-3: #312d27;
-  --v-border: #3a362f;
-  --v-border-soft: #2a2823;
-  --v-accent: #f5efe4;
-  --v-on-accent: #191815;
-  --v-focus: rgba(245, 239, 228, 0.22);
-  --v-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
-  --v-ok: #ddd5c8;
-  --v-risk: #fff8ed;
-  --v-warn: #c8bba5;
-  --v-info: #aba49a;
+  --v-text: #e5e6eb;
+  --v-text-2: #a0a6ad;
+  --v-text-3: #6c737c;
+  --v-bg: #1f2329;
+  --v-surface: #262a31;
+  --v-surface-2: #22262c;
+  --v-surface-3: #2e333a;
+  --v-border: #3a3f47;
+  --v-border-soft: #2e333a;
+  --v-accent: #3370ff;
+  --v-on-accent: #ffffff;
+  --v-accent-soft: rgba(51, 112, 255, 0.18);
+  --v-focus: rgba(51, 112, 255, 0.32);
+  --v-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+  --v-ok: #56c339;
+  --v-risk: #ff6b66;
+  --v-warn: #ff9a2e;
+  --v-info: #a0a6ad;
 }
 
 html, body, #root {
@@ -57,7 +58,7 @@ body {
 }
 
 ::selection {
-  color: var(--v-on-accent);
+  color: #ffffff;
   background: var(--v-accent);
 }
 
@@ -84,17 +85,17 @@ a {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(20, 20, 20, 0.18);
+  background: rgba(31, 35, 41, 0.16);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(20, 20, 20, 0.32);
+  background: rgba(31, 35, 41, 0.3);
 }
 html[data-theme='dark'] ::-webkit-scrollbar-thumb {
-  background: rgba(242, 240, 236, 0.14);
+  background: rgba(229, 230, 235, 0.16);
 }
 html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(242, 240, 236, 0.26);
+  background: rgba(229, 230, 235, 0.28);
 }
 
 /* 登录页和启动闸门共用产品背景。 */
