@@ -56,7 +56,7 @@ function Workspace({
   const dark = themeMode === 'dark';
   return (
     <Suspense fallback={<div className="workspace-loading">正在打开工作台…</div>}>
-      <ConfigProvider theme={{
+      <ConfigProvider locale={zhCN} theme={{
         token: {
           colorPrimary: dark ? '#4f8cff' : '#3370ff',
           colorInfo: dark ? '#4f8cff' : '#3370ff',

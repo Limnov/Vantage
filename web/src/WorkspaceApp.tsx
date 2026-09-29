@@ -282,6 +282,10 @@ export default function App({ themeMode, onToggleTheme }: Props) {
     '/settings': '系统设置', '/about': '关于 Vantage'
   } as Record<string, string>)[selected] || '工作台';
 
+  if (user?.is_demo && showManagementSider && selected !== '/about') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="unified-workspace-shell">
     <WorkspaceRail
