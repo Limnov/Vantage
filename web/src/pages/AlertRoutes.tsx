@@ -8,7 +8,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, AimOutlined } from '@ant-de
 import { alertRoutesApi, botsApi } from '../api';
 import { useAuth } from '../lib/auth';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function AlertRoutes() {
   const { currentOrgId, currentOrg } = useAuth();
@@ -95,9 +95,8 @@ export default function AlertRoutes() {
 
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="desk-management-head">
         <div>
-          <Title level={3} style={{ margin: 0 }}>告警路由</Title>
           <Text type="secondary">
             当前组织：<Text strong>{currentOrg?.name || '-'}</Text> · 优先级数字越大越先匹配
           </Text>

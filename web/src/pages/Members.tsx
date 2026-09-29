@@ -8,7 +8,7 @@ import { UserAddOutlined, UserOutlined, SearchOutlined, CrownOutlined } from '@a
 import { membersApi } from '../api';
 import { useAuth } from '../lib/auth';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function Members() {
   const { currentOrgId, currentOrg, user: me } = useAuth();
@@ -82,9 +82,8 @@ export default function Members() {
 
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="desk-management-head">
         <div>
-          <Title level={3} style={{ margin: 0 }}>成员管理</Title>
           <Text type="secondary">当前组织：<Text strong>{currentOrg?.name || '-'}</Text> · 共 {members.length} 人</Text>
         </div>
         <Button type="primary" icon={<UserAddOutlined />} onClick={() => setAddOpen(true)}>

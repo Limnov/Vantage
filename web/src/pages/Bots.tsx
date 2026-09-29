@@ -14,7 +14,7 @@ import {
 import { botsApi } from '../api';
 import { useAuth } from '../lib/auth';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 interface TestLog {
   timestamp: string;
@@ -171,9 +171,8 @@ export default function Bots() {
 
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="desk-management-head">
         <div>
-          <Title level={3} style={{ margin: 0 }}>飞书机器人</Title>
           <Text type="secondary">当前组织：<Text strong>{currentOrg?.name || '-'}</Text></Text>
         </div>
         <Space>
