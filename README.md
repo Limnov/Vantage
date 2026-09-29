@@ -23,7 +23,7 @@
 
 Vantage 是一个可自行部署的市场情报应用。登录后默认进入 Agent-first 工作台：用户只需描述目标，Agent 就能查询业务、创建和运行监控、研究公开市场、比较报告、处理告警和维护通知规则。顶部按钮可随时切换到经典管理界面，两种模式共用账户、组织与后端数据。
 
-[产品界面](#产品界面) · [核心能力](#核心能力) · [Agent 如何工作](#agent-如何工作) · [快速开始](#快速开始) · [配置](#配置) · [验证](#验证) · [安全与开源](#安全与开源)
+[产品界面](#产品界面) · [桌面应用](#桌面应用) · [核心能力](#核心能力) · [Agent 如何工作](#agent-如何工作) · [快速开始](#快速开始) · [配置](#配置) · [验证](#验证) · [安全与开源](#安全与开源)
 
 ## 在线体验
 
@@ -49,6 +49,18 @@ npm --prefix server run account:trial
 | 真实仪表盘 Demo | Agent 历史 Demo |
 | --- | --- |
 | ![Vantage 真实仪表盘 Demo](./assets/readme/aliyun-demo.png) | ![Vantage Agent 历史 Demo](./assets/readme/aliyun-agent-demo.png) |
+
+## 桌面应用
+
+Electron 客户端打开正式 Vantage 工作台，沿用同一套账号、组织、报告和 Agent 服务。客户端不包含数据库或 API Key，运行时需要连接 `https://vantage.limnov.com/app`。外部来源在系统浏览器打开；断网时提供重试页面。窗口禁用 Node.js 集成、WebView 和网页权限，仅允许正式域名在应用内导航。
+
+```bash
+npm run desktop:setup
+npm run desktop:start      # 在本机启动
+npm run desktop:dist       # 在 macOS 生成 DMG 安装包
+```
+
+`npm run desktop:pack` 只生成未签名的应用目录，适合本机验证。公开分发前仍需 Apple Developer ID 签名和公证；当前构建产物不应称为已通过 macOS 公证的发布版。开发时可用 `VANTAGE_DESKTOP_URL=http://127.0.0.1:5177/app npm run desktop:start` 连接本机前端。[桌面端说明 →](./desktop/README.md)
 
 ## Cloudflare 适配分支
 

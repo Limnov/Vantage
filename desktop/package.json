@@ -1,0 +1,40 @@
+{
+  "name": "vantage-desktop",
+  "productName": "Vantage",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Vantage desktop client",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.17.0"
+  },
+  "build": {
+    "appId": "com.limnov.vantage",
+    "productName": "Vantage",
+    "artifactName": "Vantage-${version}-${arch}.${ext}",
+    "asar": true,
+    "files": [
+      "main.cjs",
+      "url-policy.cjs",
+      "offline.html",
+      "offline.js",
+      "assets/icon.png",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.png",
+      "target": "dmg"
+    }
+  }
+}

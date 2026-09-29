@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vantage 暂时无法连接</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #191815; color: #f2f0ec; font: 15px -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
+    main { width: min(420px, calc(100vw - 48px)); }
+    .mark { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: #f2f0ec; color: #191815; font: 700 23px Georgia, serif; }
+    h1 { margin: 30px 0 10px; font-size: 24px; font-weight: 600; }
+    p { color: #a8a39b; line-height: 1.7; }
+    button { margin-top: 20px; padding: 10px 22px; border: 0; border-radius: 7px; background: #f2f0ec; color: #191815; font: inherit; cursor: pointer; }
+    button:hover { background: #ded8cc; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark">V</div>
+    <h1>暂时无法连接 Vantage</h1>
+    <p>检查网络连接或稍后重试。桌面端连接现有 Vantage 服务，账号和数据与网页版一致。</p>
+    <button id="retry" type="button">重新连接</button>
+  </main>
+  <script src="./offline.js"></script>
+</body>
+</html>

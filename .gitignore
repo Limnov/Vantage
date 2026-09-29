@@ -12,6 +12,7 @@ pnpm-debug.log*
 
 # ─── 构建产物 ──────────────────────────────────────────────
 web/dist/
+desktop/release/
 server/dist/
 server/evals/live/
 build/

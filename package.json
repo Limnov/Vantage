@@ -8,6 +8,10 @@
   "scripts": {
     "setup": "npm --prefix server ci && npm --prefix web ci",
     "dev": "node scripts/dev.js",
+    "desktop:setup": "npm --prefix desktop ci",
+    "desktop:start": "npm --prefix desktop start",
+    "desktop:pack": "npm --prefix desktop run pack",
+    "desktop:dist": "npm --prefix desktop run dist",
     "build": "npm --prefix web run build",
     "test": "npm --prefix server test",
     "check": "npm test && npm run build && npm --prefix server run eval:agent",
