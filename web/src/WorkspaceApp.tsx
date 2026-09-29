@@ -87,10 +87,11 @@ export default function App({ themeMode, onToggleTheme }: Props) {
   }, [currentOrgId]);
 
   useEffect(() => {
+    if (isAgentView) return;
     loadPendingAlerts();
     const t = setInterval(loadPendingAlerts, 60000);
     return () => clearInterval(t);
-  }, [loadPendingAlerts]);
+  }, [isAgentView, loadPendingAlerts]);
 
   useEffect(() => {
     if (!searchQ || searchQ.length < 2) {
@@ -382,11 +383,11 @@ export default function App({ themeMode, onToggleTheme }: Props) {
           </div>
         </Content>
       </Layout>
-      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       {/* 暴露刷新函数给子路由 */}
       {location.pathname === '/alerts' && <AlertsPendingRefresher onRefresh={loadPendingAlerts} />}
     </Layout>
     )}
+    <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     {setup && <Suspense fallback={null}><SecureSetup key={currentOrgId} onClose={() => setSetup(false)} /></Suspense>}
     </div>
   );
