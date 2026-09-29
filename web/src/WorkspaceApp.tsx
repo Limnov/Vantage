@@ -1,7 +1,7 @@
 import { Layout, Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typography, Badge } from 'antd';
 const { Text } = Typography;
 import {
-  DashboardOutlined, EyeOutlined, FileTextOutlined, WarningOutlined, SettingOutlined,
+  EyeOutlined, FileTextOutlined, WarningOutlined, SettingOutlined,
   SearchOutlined,
   RiseOutlined, FallOutlined, ArrowRightOutlined, TeamOutlined, RobotOutlined, AimOutlined,
   UserOutlined, MenuFoldOutlined, MenuUnfoldOutlined,
@@ -66,6 +66,7 @@ export default function App({ themeMode, onToggleTheme }: Props) {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
   const [setup, setSetup] = useState(false);
   const isAgentView = location.pathname === '/app';
+  const showManagementSider = ['/organization', '/members', '/bots', '/routes', '/logs', '/settings', '/about'].includes(location.pathname);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 768px)');
@@ -249,21 +250,6 @@ export default function App({ themeMode, onToggleTheme }: Props) {
   // 菜单分组
   const menuGroups = [
     {
-      key: 'workspace',
-      label: <span style={{ fontSize: 11, color: token.colorTextTertiary, letterSpacing: 1 }}>工作台</span>,
-      type: 'group' as const,
-      children: [
-        { key: '/dashboard', icon: <DashboardOutlined />, label: <Link to="/dashboard">仪表盘</Link> },
-        { key: '/watchlist', icon: <EyeOutlined />, label: <Link to="/watchlist">监控目标</Link> },
-        { key: '/reports', icon: <FileTextOutlined />, label: <Link to="/reports">情报报告</Link> },
-        { key: '/alerts', icon: <WarningOutlined />, label: (
-          <Link to="/alerts">
-            告警中心 {pendingAlerts > 0 && <Badge count={pendingAlerts} size="small" />}
-          </Link>
-        ) }
-      ]
-    },
-    {
       key: 'admin',
       label: <span style={{ fontSize: 11, color: token.colorTextTertiary, letterSpacing: 1 }}>管理</span>,
       type: 'group' as const,
@@ -299,7 +285,7 @@ export default function App({ themeMode, onToggleTheme }: Props) {
       </div>
     ) : (
     <Layout className="classic-workspace-inner" style={{ height: '100vh', overflow: 'hidden' }}>
-      <Sider
+      {showManagementSider && <Sider
         className="classic-sider"
         width={256}
         collapsedWidth={isMobile ? 0 : 64}
@@ -315,10 +301,10 @@ export default function App({ themeMode, onToggleTheme }: Props) {
           mode="inline"
           selectedKeys={[selected]}
           style={{ borderRight: 0, paddingTop: 8 }}
-          items={user?.is_demo ? menuGroups.filter(group => group.key === 'workspace') : menuGroups}
+          items={menuGroups}
           inlineCollapsed={siderCollapsed}
         />
-      </Sider>
+      </Sider>}
       <Layout>
         <Header className="classic-header" style={{
           padding: '0 16px',
@@ -328,7 +314,7 @@ export default function App({ themeMode, onToggleTheme }: Props) {
           alignItems: 'center',
           gap: 12
         }}>
-          <Tooltip title={siderCollapsed ? '展开侧边栏' : '折叠侧边栏'}>
+          {showManagementSider && <Tooltip title={siderCollapsed ? '展开侧边栏' : '折叠侧边栏'}>
             <Button
               type="text"
               className="classic-toolbar-button"
@@ -336,7 +322,7 @@ export default function App({ themeMode, onToggleTheme }: Props) {
               icon={siderCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setSiderCollapsed(!siderCollapsed)}
             />
-          </Tooltip>
+          </Tooltip>}
           <strong className="classic-view-title">{({ '/dashboard': '总览', '/watchlist': '监控目标', '/reports': '情报报告', '/agent': 'Agent 工作台', '/alerts': '告警中心', '/settings': '设置' } as Record<string, string>)[selected] || '工作区'}</strong>
           <div style={{ flex: 1 }} />
           <Space size={4} className="classic-header-actions" style={{ flexShrink: 0 }}>
