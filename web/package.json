@@ -18,6 +18,7 @@
     "axios": "^1.7.0",
     "dayjs": "^1.11.21",
     "express": "^5.2.1",
+    "gsap": "^3.15.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-router-dom": "^7.18.3"

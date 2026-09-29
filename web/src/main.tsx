@@ -9,6 +9,7 @@ import './index.css';
 
 const Landing = lazy(() => import('./pages/Landing'));
 const Evidence = lazy(() => import('./pages/Evidence'));
+const ProductPage = lazy(() => import('./pages/ProductPage'));
 const Login = lazy(() => import('./pages/Login'));
 const UnifiedApp = lazy(() => import('./UnifiedApp'));
 
@@ -20,10 +21,13 @@ function Entry({mode,toggleTheme}: {mode: ThemeMode; toggleTheme: () => void}) {
     document.querySelector('link[rel="canonical"]')?.setAttribute('href', `https://vantage.limnov.com${pathname}`);
     let robots = document.querySelector('meta[name="robots"]');
     if (!robots) { robots = document.createElement('meta'); robots.setAttribute('name','robots'); document.head.appendChild(robots); }
-    robots.setAttribute('content', pathname === '/' || pathname === '/demo' ? 'index,follow' : 'noindex,nofollow');
+    robots.setAttribute('content', ['/', '/demo', '/research', '/act', '/safety', '/evidence'].includes(pathname) ? 'index,follow' : 'noindex,nofollow');
   }, [pathname]);
   if (pathname === '/') return <Suspense fallback={<div className="mode-loading">加载中…</div>}><Landing/></Suspense>;
   if (pathname === '/evidence') return <Suspense fallback={<div className="mode-loading">加载中…</div>}><Evidence/></Suspense>;
+  if (pathname === '/research') return <Suspense fallback={<div className="mode-loading">加载中…</div>}><ProductPage page="research"/></Suspense>;
+  if (pathname === '/act') return <Suspense fallback={<div className="mode-loading">加载中…</div>}><ProductPage page="act"/></Suspense>;
+  if (pathname === '/safety') return <Suspense fallback={<div className="mode-loading">加载中…</div>}><ProductPage page="safety"/></Suspense>;
   if (pathname === '/demo') return <AuthProvider><Suspense fallback={<div className="auth-loading">加载中...</div>}><Login demoMode /></Suspense></AuthProvider>;
   return <AuthProvider><AuthGate><Workspace themeMode={mode} onToggleTheme={toggleTheme}/></AuthGate></AuthProvider>;
 }

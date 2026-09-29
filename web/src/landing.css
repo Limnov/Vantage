@@ -476,15 +476,13 @@
 }
 .m-footer-grid a:hover { color: var(--v-accent); }
 
-/* 入场动画 */
-.m-reveal {
+/* 入场动画：初始隐藏态只在动效就绪时挂载（GSAP 接管动画本身） */
+html.m-motion .m-reveal:not(.is-visible) {
   opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
 }
-.m-reveal.is-visible {
-  opacity: 1;
-  transform: none;
+.m-hero-art,
+.m-cards .m-card {
+  will-change: transform, opacity;
 }
 
 @media (max-width: 900px) {
@@ -511,4 +509,195 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .m-reveal { opacity: 1; transform: none; transition: none; }
+}
+/* ─── 顶部公告条 ─── */
+.m-banner {
+  background: var(--v-accent);
+  color: #fff;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+}
+
+/* ─── 子页 hero ─── */
+.m-page-hero {
+  padding: 116px 0 24px;
+  text-align: center;
+}
+.m-page-hero h1 {
+  margin: 0 auto;
+  max-width: 18em;
+  font-size: clamp(32px, 5vw, 60px);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+.m-page-hero h1 em {
+  font-style: normal;
+  color: var(--v-accent);
+}
+.m-lede {
+  max-width: 44em;
+  margin: 20px auto 0;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--v-text-2);
+}
+.m-page-hero .m-hero-actions { margin-top: 26px; }
+.m-page-hero .m-hero-art { margin-top: 44px; }
+.m-page-hero .m-mini { max-width: 420px; margin: 0 auto; }
+
+/* ─── 区块头（标题 + 了解更多） ─── */
+.m-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 34px;
+}
+.m-block-head h2 { margin: 0; }
+
+/* ─── 卡片网格变体 ─── */
+.m-cards-2 { grid-template-columns: repeat(2, 1fr); }
+.m-cards-3 { grid-template-columns: repeat(3, 1fr); }
+.m-cards-4 { grid-template-columns: repeat(4, 1fr); }
+.m-card-link {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.m-card-link:hover { border-color: var(--v-accent); }
+.m-card-link h3 { color: var(--v-text); }
+.m-card-meta {
+  font-size: 12px !important;
+  color: var(--v-text-3) !important;
+  margin: 0 !important;
+}
+
+/* ─── 步骤条 ─── */
+.m-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+.m-steps li {
+  border-top: 2px solid var(--v-border);
+  padding-top: 16px;
+}
+.m-step-index {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--v-accent);
+  margin-bottom: 8px;
+}
+.m-steps strong { display: block; font-size: 16px; margin-bottom: 6px; }
+.m-steps p { margin: 0; font-size: 13px; line-height: 1.7; color: var(--v-text-2); }
+
+/* ─── 数据条链接样式 ─── */
+.m-stats-grid a {
+  font-size: 13px;
+  color: var(--v-text-2);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.m-stats-grid a:hover { color: var(--v-accent); border-color: var(--v-accent); }
+
+/* ─── 案例页 ─── */
+.m-chips {
+  margin-top: 22px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.m-chips span {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--v-border);
+  background: var(--v-surface);
+  color: var(--v-text-2);
+}
+.m-quote {
+  margin: 0 0 20px;
+  padding: 22px 26px;
+  border-left: 3px solid var(--v-accent);
+  background: var(--v-surface);
+  border-radius: 0 12px 12px 0;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--v-text);
+}
+.m-compare {
+  margin-top: 28px;
+  border: 1px solid var(--v-border-soft);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--v-surface);
+}
+.m-compare-head,
+.m-compare-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 12px;
+  padding: 14px 20px;
+  align-items: center;
+}
+.m-compare-head {
+  background: var(--v-surface-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--v-text-2);
+}
+.m-compare-row { border-top: 1px solid var(--v-border-soft); }
+.m-compare-stage strong { display: block; font-size: 15px; }
+.m-compare-stage small { color: var(--v-text-3); font-size: 12px; }
+.m-compare-cell b {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── 新手引导 ─── */
+.m-guides {
+  padding: 20px 0 90px;
+}
+.m-guides h2 {
+  font-size: clamp(26px, 3.4vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  margin: 0 0 12px;
+}
+.m-guides .m-lede { margin-left: 0; }
+.m-guides .m-cards { margin-top: 30px; }
+
+.m-footnote-wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px 40px;
+}
+.m-footnote-wrap .m-footnote { padding: 0; max-width: 60em; }
+
+@media (max-width: 900px) {
+  .m-cards-4, .m-cards-3, .m-steps { grid-template-columns: repeat(2, 1fr); }
+  .m-compare-head { display: none; }
+  .m-compare-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 16px 18px;
+  }
+  .m-compare-cell b::before {
+    content: attr(data-label);
+  }
+}
+@media (max-width: 640px) {
+  .m-cards-4, .m-cards-3, .m-cards-2, .m-steps { grid-template-columns: 1fr; }
 }
