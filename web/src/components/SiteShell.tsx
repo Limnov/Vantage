@@ -31,7 +31,8 @@ export function SiteNav() {
     <header className={"m-nav" + (scrolled ? " is-scrolled" : "")}>
       <div className="m-nav-inner">
         <Link className="m-brand" to="/" aria-label="Vantage 首页">
-          <span className="m-brand-mark">V</span>
+          <img className="m-brand-logo brand-logo-light" src="/vantage-logo.png" alt="" width={30} height={30} />
+          <img className="m-brand-logo brand-logo-dark" src="/vantage-logo-white.png" alt="" width={30} height={30} />
           <span>Vantage</span>
         </Link>
         <nav id="vantage-site-nav" className={"m-nav-links" + (menuOpen ? " is-open" : "")} aria-label="产品导航">
@@ -70,6 +71,14 @@ export function SiteNav() {
 export function SiteFooter() {
   return (
     <footer className="m-footer">
+      <div className="m-container m-footer-brand">
+        <Link className="m-brand" to="/" aria-label="Vantage 首页">
+          <img className="m-brand-logo brand-logo-light" src="/vantage-logo.png" alt="" width={26} height={26} />
+          <img className="m-brand-logo brand-logo-dark" src="/vantage-logo-white.png" alt="" width={26} height={26} />
+          <span>Vantage</span>
+        </Link>
+        <span className="m-footer-note">跨境市场情报 · Agent 工作台</span>
+      </div>
       <div className="m-container m-footer-grid">
         <div>
           <span className="m-footer-head">产品</span>

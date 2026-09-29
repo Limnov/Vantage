@@ -105,6 +105,10 @@ export default function ProductPage({ page }: { page: Key }) {
 
       <section className="m-page-hero">
         <div className="m-container">
+          <span className="m-hero-mark">
+            <img className="brand-logo-light" src="/vantage-logo.png" alt="" width={48} height={48} />
+            <img className="brand-logo-dark" src="/vantage-logo-white.png" alt="" width={48} height={48} />
+          </span>
           <p className="m-promo">{c.kicker}</p>
           <h1>{c.title}</h1>
           <p className="m-lede">{c.lede}</p>

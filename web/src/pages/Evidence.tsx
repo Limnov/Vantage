@@ -39,6 +39,10 @@ export default function Evidence() {
 
       <section className="m-page-hero">
         <div className="m-container">
+          <span className="m-hero-mark">
+            <img className="brand-logo-light" src="/vantage-logo.png" alt="" width={48} height={48} />
+            <img className="brand-logo-dark" src="/vantage-logo-white.png" alt="" width={48} height={48} />
+          </span>
           <p className="m-promo">案例 · 样本数 1</p>
           <h1>
             同一道题，<em>两组结果</em>。

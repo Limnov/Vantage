@@ -67,6 +67,10 @@ export default function Landing() {
 
       {/* Hero */}
       <section className="m-hero" aria-labelledby="m-hero-title">
+        <span className="m-hero-mark">
+          <img className="brand-logo-light" src="/vantage-logo.png" alt="" width={54} height={54} />
+          <img className="brand-logo-dark" src="/vantage-logo-white.png" alt="" width={54} height={54} />
+        </span>
         <p className="m-promo">跨境市场情报</p>
         <h1 id="m-hero-title">
           <span>跨境市场情报，</span>
