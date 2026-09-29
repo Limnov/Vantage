@@ -3,13 +3,11 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Form, Input, Button, Card, Typography, Space, Tabs, App as AntdApp } from 'antd';
+import { Form, Input, Button, Tabs, App as AntdApp, ConfigProvider } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { authApi } from '../api/auth';
-
-const { Title, Text } = Typography;
 
 export default function Login({ demoMode = false }: { demoMode?: boolean }) {
   const { login, register } = useAuth();
@@ -56,34 +54,39 @@ export default function Login({ demoMode = false }: { demoMode?: boolean }) {
   };
 
   return (
-    <div className="login-shell">
-      <Card className="login-card">
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <div className="login-brand-lockup">
-            <img
-              src="/vantage-logo.png"
-              width={72}
-              height={72}
-              alt="Vantage"
-              className="brand-logo-light"
-              style={{ display: 'block', objectFit: 'contain', margin: '0 auto 12px' }}
-            />
-            <img
-              src="/vantage-logo-white.png"
-              width={72}
-              height={72}
-              alt="Vantage"
-              className="brand-logo-dark"
-              style={{ display: 'block', objectFit: 'contain', margin: '0 auto 12px' }}
-            />
-            <Title level={3} style={{ margin: 0 }}>Vantage</Title>
-            <Text type="secondary">{demoMode ? '使用演示账号，进入真实工作台' : '情报与行动 · Agent 工作台'}</Text>
-            {demoMode && <p className="demo-login-note">账号 <strong>demo</strong> · 密码 <strong>demo</strong><br/>浏览示例监控、报告与告警。演示账号只读，不提供 API Key，也不执行真实 AI、搜索或通知。</p>}
+    <ConfigProvider theme={{ token: {
+      colorPrimary: '#3370ff',
+      colorTextLightSolid: '#ffffff',
+      colorText: document.documentElement.dataset.theme === 'dark' ? '#f2f3f6' : '#1f2329',
+      colorTextSecondary: document.documentElement.dataset.theme === 'dark' ? '#a9adb7' : '#646a75',
+      colorBgContainer: document.documentElement.dataset.theme === 'dark' ? '#202124' : '#ffffff',
+      colorBgElevated: document.documentElement.dataset.theme === 'dark' ? '#292b30' : '#ffffff',
+      colorBorder: document.documentElement.dataset.theme === 'dark' ? '#3b3e46' : '#dfe2e8',
+      colorBorderSecondary: document.documentElement.dataset.theme === 'dark' ? '#303239' : '#eef0f3',
+      borderRadius: 8,
+    } }}>
+      <div className="login-shell">
+        <aside className="login-intro">
+          <div className="login-product"><span className="login-product-mark">V</span><strong>Vantage</strong></div>
+          <div className="login-intro-content">
+            <h1>市场工作台</h1>
+            <p>搜索 · 核验 · 监控</p>
+            <div className="login-feature-list">
+              <span>Agent <small>研究与执行</small></span>
+              <span>报告 <small>来源与结论</small></span>
+              <span>告警 <small>持续跟进</small></span>
+            </div>
           </div>
-
-          <Tabs
+          <span className="login-intro-footer">Vantage Workspace</span>
+        </aside>
+        <main className="login-main">
+          <div className="login-panel">
+            <span className="login-mobile-brand"><span className="login-product-mark">V</span> Vantage</span>
+            <h2>{demoMode ? '进入演示工作区' : '登录 Vantage'}</h2>
+            <p className="login-panel-note">{demoMode ? '使用只读账号查看真实界面' : '继续使用你的工作区'}</p>
+            {demoMode && <div className="demo-login-note">账号 <strong>demo</strong> · 密码 <strong>demo</strong><br/>演示数据只读，不调用 AI、搜索或通知服务</div>}
+            <Tabs
             defaultActiveKey="login"
-            centered
             items={[
               {
                 key: 'login',
@@ -142,10 +145,10 @@ export default function Login({ demoMode = false }: { demoMode?: boolean }) {
                 )
               }] : [])
             ]}
-          />
-
-          </Space>
-      </Card>
-    </div>
+            />
+          </div>
+        </main>
+      </div>
+    </ConfigProvider>
   );
 }

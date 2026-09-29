@@ -80,11 +80,11 @@ export default function Reports() {
             <FileTextOutlined />
             情报报告
           </h1>
-          <div className="page-subtitle">共 {total} 份报告 · AI 提炼的跨境市场洞察</div>
+          <div className="page-subtitle">共 {total} 份报告</div>
         </div>
       </div>
 
-      <Card style={{ marginBottom: 16, borderRadius: 8 }} styles={{ body: { padding: 12 } }}>
+      <Card className="desk-filter-bar" style={{ marginBottom: 12 }} styles={{ body: { padding: '10px 14px' } }}>
         <Space wrap>
           <Text type="secondary">信号筛选：</Text>
           <Tag.CheckableTag checked={!filterSignal} onChange={() => setFilterSignal(undefined)}>全部</Tag.CheckableTag>
@@ -103,7 +103,7 @@ export default function Reports() {
         </Space>
       </Card>
 
-      <Card styles={{ body: { padding: 0 } }}>
+      <Card className="desk-table-card" styles={{ body: { padding: 0 } }}>
         <Table
           loading={loading}
           dataSource={items}
@@ -118,12 +118,12 @@ export default function Reports() {
           }}
           rowClassName={(record: any) => `report-row-${record.signal_type}`}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 60 },
             {
               title: '标题',
               dataIndex: 'title',
               render: (v, r: any) => (
                 <Space size={6}>
+                  <span className="desk-file-icon"><FileTextOutlined /></span>
                   <Text strong style={{ fontSize: 13 }}>{v}</Text>
                   {r.agent_run_id && <Tag bordered={false} icon={<ApiOutlined />}>Agent</Tag>}
                 </Space>
@@ -139,12 +139,6 @@ export default function Reports() {
               }
             },
             {
-              title: '情感',
-              dataIndex: 'sentiment',
-              width: 90,
-              render: (v) => <span className={`signal-tag ${v === 'positive' ? 'opportunity' : v === 'negative' ? 'risk' : 'neutral'}`}>{sentimentMeta[v]?.text || v}</span>
-            },
-            {
               title: '摘要',
               dataIndex: 'summary',
               ellipsis: true,
@@ -153,13 +147,8 @@ export default function Reports() {
             {
               title: '时间',
               dataIndex: 'created_at',
-              width: 140,
-              render: (v) => (
-                <Space direction="vertical" size={0}>
-                  <Text style={{ fontSize: 12 }}>{dayjs(v).format('MM-DD HH:mm')}</Text>
-                  <Text type="secondary" style={{ fontSize: 10 }}>{dayjs(v).format('YYYY')}</Text>
-                </Space>
-              )
+              width: 150,
+              render: (v) => <Text style={{ fontSize: 12 }}>{dayjs(v).format('YYYY-MM-DD HH:mm')}</Text>
             },
             {
               title: '操作',
@@ -176,12 +165,12 @@ export default function Reports() {
       </Card>
 
       <Drawer
+        rootClassName="workspace-drawer"
         title={null}
         open={!!detail}
         onClose={() => setDetail(null)}
         width={760}
-        styles={{ body: { padding: 0, background: 'var(--ant-color-bg-layout)' } }}
-        headerStyle={{ display: 'none' }}
+        styles={{ body: { padding: 0, background: 'var(--ant-color-bg-layout)' }, header: { display: 'none' } }}
       >
         {detailLoading || !detail || detail.loading ? (
           <div style={{ padding: 32 }}>

@@ -1,4 +1,4 @@
-import { Avatar, Button, Dropdown, Tooltip } from 'antd';
+import { Avatar, Button, Dropdown } from 'antd';
 import {
   BellOutlined,
   DashboardOutlined,
@@ -8,18 +8,22 @@ import {
   LogoutOutlined,
   MoonOutlined,
   RobotOutlined,
+  SearchOutlined,
   SettingOutlined,
   SunOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
 
 type Props = {
   themeMode: 'light' | 'dark';
   onToggleTheme: () => void;
   onConfigure?: () => void;
+  searchPanel: ReactNode;
+  searchOpen: boolean;
+  onSearchOpenChange: (open: boolean) => void;
 };
 
 const primary = [
@@ -30,17 +34,10 @@ const primary = [
   { path: '/alerts', label: '告警', icon: <BellOutlined /> },
 ];
 
-export default function WorkspaceRail({ themeMode, onToggleTheme, onConfigure }: Props) {
+export default function WorkspaceRail({ themeMode, onToggleTheme, onConfigure, searchPanel, searchOpen, onSearchOpenChange }: Props) {
   const { user, orgs, currentOrg, currentOrgId, switchOrg, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 760px)').matches);
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 760px)');
-    const sync = () => setMobile(media.matches);
-    media.addEventListener('change', sync);
-    return () => media.removeEventListener('change', sync);
-  }, []);
   const orgItems = orgs.map((org) => ({
     key: String(org.id),
     label: <span className="rail-org-option"><span>{org.name}</span><small>{org.my_role}</small></span>,
@@ -68,27 +65,29 @@ export default function WorkspaceRail({ themeMode, onToggleTheme, onConfigure }:
           <DownOutlined className="rail-org-chevron" />
         </Button>
       </Dropdown>
+      <Dropdown open={searchOpen} onOpenChange={onSearchOpenChange} trigger={['click']} popupRender={() => searchPanel} placement="bottomLeft">
+        <Button className="rail-search" aria-label="搜索工作台">
+          <SearchOutlined /><span>搜索</span><kbd>⌘ K</kbd>
+        </Button>
+      </Dropdown>
       <div className="rail-group-label">工作台</div>
       <nav className="rail-nav" aria-label="业务模块">
         {primary.map((item) => (
-          <Tooltip key={item.path} title={item.label} placement="right" mouseEnterDelay={0.6} open={mobile ? false : undefined}>
-            <NavLink
-              to={item.path}
-              className={({ isActive }) => `rail-nav-item ${isActive || (item.path === '/app' && location.pathname === '/agent') ? 'active' : ''}`}
-              aria-label={item.label}
-            >
-              {item.icon}<span>{item.label}</span>
-            </NavLink>
-          </Tooltip>
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) => `rail-nav-item ${isActive || (item.path === '/app' && location.pathname === '/agent') ? 'active' : ''}`}
+            aria-label={item.label}
+          >
+            {item.icon}<span>{item.label}</span>
+          </NavLink>
         ))}
       </nav>
       <div className="rail-spacer" />
       {!user?.is_demo && (
-        <Tooltip title="设置" placement="right" mouseEnterDelay={0.6} open={mobile ? false : undefined}>
-          <NavLink to="/settings" className={({ isActive }) => `rail-nav-item rail-settings ${isActive ? 'active' : ''}`} aria-label="设置">
-            <SettingOutlined /><span>设置</span>
-          </NavLink>
-        </Tooltip>
+        <NavLink to="/settings" className={({ isActive }) => `rail-nav-item rail-settings ${isActive ? 'active' : ''}`} aria-label="设置">
+          <SettingOutlined /><span>设置</span>
+        </NavLink>
       )}
       <div className="rail-account-wrap">
         <Dropdown menu={{ items: accountItems }} trigger={['click']} placement="topLeft">

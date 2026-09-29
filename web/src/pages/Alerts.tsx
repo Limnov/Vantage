@@ -107,11 +107,11 @@ export default function Alerts() {
             <WarningOutlined />
             告警中心
           </h1>
-          <div className="page-subtitle">共 {total} 条告警 · 实时监控跨境信号变化</div>
+          <div className="page-subtitle">共 {total} 条告警</div>
         </div>
       </div>
 
-      <Card style={{ marginBottom: 16 }} styles={{ body: { padding: 12 } }}>
+      <Card className="desk-filter-bar" style={{ marginBottom: 12 }} styles={{ body: { padding: '10px 14px' } }}>
         <Row justify="space-between" align="middle" gutter={16}>
           <Col flex="auto">
             <Space wrap>
@@ -153,12 +153,12 @@ export default function Alerts() {
           <Empty description="暂无告警" style={{ padding: 60 }} />
         </Card>
       ) : view === 'list' ? (
-        <Row gutter={[16, 12]}>
+        <Row gutter={[0, 0]} className="desk-alert-list">
           {items.map(a => {
             const meta = levelMeta[a.level] || levelMeta.info;
             return (
               <Col span={24} key={a.id}>
-                <div className={`alert-card ${meta.bgClass}`} style={{ position: 'relative' }}>
+                <div className={`alert-card desk-alert-item ${meta.bgClass}`} style={{ position: 'relative' }}>
                   <Checkbox
                     checked={selectedIds.includes(a.id)}
                     onChange={() => toggleSelect(a.id)}
@@ -167,7 +167,6 @@ export default function Alerts() {
                   <div style={{ flex: 1 }}>
                     <Space size="small" style={{ marginBottom: 6 }}>
                       <span className={`signal-tag ${meta.bgClass}`}>{meta.icon}{meta.text}</span>
-                      <Tag>{a.type}</Tag>
                       <Tag color={statusMeta[a.status]?.color}>{statusMeta[a.status]?.text || a.status}</Tag>
                     </Space>
                     <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{a.title}</div>

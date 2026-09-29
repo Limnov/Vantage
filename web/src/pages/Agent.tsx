@@ -78,7 +78,7 @@ const examples: Array<{
 }> = [
   {
     title: "建立持续监控",
-    detail: "把关注的市场变成可追踪的信号",
+    detail: "创建监控目标和执行计划",
     prompt:
       "帮我创建一个监控：追踪北美便携储能市场，每天早上 9 点搜索新闻，先保持暂停。",
   },
@@ -100,7 +100,7 @@ const examples: Array<{
   },
   {
     title: "处理待办告警",
-    detail: "了解变化，决定下一步行动",
+    detail: "查看并处理未确认告警",
     prompt: "查看当前组织未处理的告警，按风险程度整理，并告诉我哪些需要跟进。",
   },
   {
@@ -576,7 +576,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
         <div className="sidebar-footer">
           <span className="connection-dot" />
           {capabilities ? `${capabilities} 项业务工具已就绪` : "Vantage Agent"}
-          <small>每一步执行，都有记录</small>
+          <small>执行记录</small>
         </div>
       </aside>
       <main className="conversation-main">
@@ -591,8 +591,8 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
           {!active && !turns.length && (
             <section className="welcome">
               <div className="welcome-mark">V</div>
-              <h1>今天要研究什么</h1>
-              <p>描述目标，Agent 会检索、核验并保存执行记录。</p>
+              <h1>新建任务</h1>
+              <p>输入研究、监控或告警目标</p>
               <div className="suggestion-grid">
                 {examples.map((example) => (
                   <button

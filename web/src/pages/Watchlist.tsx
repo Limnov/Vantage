@@ -164,9 +164,7 @@ export default function Watchlist() {
             <EyeOutlined />
             监控目标
           </h1>
-          <div className="page-subtitle">
-            共 <Text strong>{total}</Text> 个监控 · 配置你的跨境关注点
-          </div>
+          <div className="page-subtitle">共 {total} 个监控</div>
         </div>
         <Space wrap>
           <Button icon={<ReloadOutlined />} onClick={load}>刷新</Button>
@@ -177,7 +175,7 @@ export default function Watchlist() {
         </Space>
       </div>
 
-      <Card style={{ marginBottom: 16 }} styles={{ body: { padding: 12 } }}>
+      <Card className="desk-filter-bar" style={{ marginBottom: 12 }} styles={{ body: { padding: '10px 14px' } }}>
         <Space wrap size={6}>
           <Text type="secondary" style={{ fontSize: 12, marginRight: 4 }}>筛选：</Text>
           <Select
@@ -204,7 +202,7 @@ export default function Watchlist() {
         </Space>
       </Card>
 
-      <Card styles={{ body: { padding: 0 } }}>
+      <Card className="desk-table-card" styles={{ body: { padding: 0 } }}>
         <Table
           loading={loading}
           dataSource={items}
@@ -220,46 +218,31 @@ export default function Watchlist() {
           }}
           locale={{ emptyText: <Empty description="还没有监控目标" style={{ padding: 40 }} /> }}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 60 },
             {
-              title: '名称',
+              title: '监控目标',
               dataIndex: 'name',
               render: (v, r: any) => (
-                <Space size="small">
-                  <Tag color={typeMeta[r.type]?.color}>{typeMeta[r.type]?.label}</Tag>
-                  {r.search_mode && (
-                    <Tooltip title={searchModeMeta[r.search_mode]?.desc}>
-                      <Tag color={searchModeMeta[r.search_mode]?.color} style={{ marginLeft: 0 }}>
-                        {searchModeMeta[r.search_mode]?.label}
-                      </Tag>
-                    </Tooltip>
-                  )}
-                  <Text strong>{v}</Text>
-                  {r.priority >= 8 && <Tag style={{ marginLeft: 0 }}>高优</Tag>}
-                </Space>
+                <div className="desk-watch-name">
+                  <span className="desk-file-icon"><EyeOutlined /></span>
+                  <span><Text strong>{v}</Text><small>{typeMeta[r.type]?.label || r.type} · {searchModeMeta[r.search_mode]?.label || '通用查询'}{r.category ? ` · ${r.category}` : ''}</small></span>
+                </div>
               )
             },
-            { title: '分类', dataIndex: 'category', width: 80, render: (v) => v ? <Tag>{v}</Tag> : <Text type="secondary">-</Text> },
-            { title: '查询', dataIndex: 'query', ellipsis: true, render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text> },
-            { title: '优先级', dataIndex: 'priority', width: 80, render: (v) => <Tag>{v}</Tag> },
-            { title: '启用', dataIndex: 'enabled', width: 70, render: (v) => v ? <Tag>是</Tag> : <Tag>否</Tag> },
+            { title: '查询', dataIndex: 'query', ellipsis: true, render: (v) => <Text type="secondary" style={{ fontSize: 12 }}>{v}</Text> },
             {
-              title: '最近状态',
+              title: '状态',
               dataIndex: 'last_status',
-              width: 140,
+              width: 170,
               render: (v, r: any) => {
                 const meta = statusMeta[v] || statusMeta.pending;
                 return (
-                  <Space direction="vertical" size={0}>
-                    <Tag color={meta.color} icon={meta.icon}>{meta.text}</Tag>
-                    {r.last_run_at && <Text type="secondary" style={{ fontSize: 11 }}>{dayjs(r.last_run_at).format('MM-DD HH:mm')}</Text>}
-                  </Space>
+                  <div className="desk-watch-status"><span className={r.enabled ? 'is-on' : 'is-off'}>{r.enabled ? '启用' : '停用'}</span><small>{meta.text}{r.last_run_at ? ` · ${dayjs(r.last_run_at).format('MM-DD HH:mm')}` : ''}</small></div>
                 );
               }
             },
             {
               title: '操作',
-              width: 200,
+              width: 130,
               render: (_, r: any) => (
                 <Space size={4}>
                   <Tooltip title="立即执行">

@@ -53,9 +53,37 @@ function Workspace({
   themeMode: ThemeMode;
   onToggleTheme: () => void;
 }) {
+  const dark = themeMode === 'dark';
   return (
-    <Suspense fallback={<div className="mode-loading">正在打开工作台…</div>}>
-      <WorkspaceApp themeMode={themeMode} onToggleTheme={onToggleTheme} />
+    <Suspense fallback={<div className="workspace-loading">正在打开工作台…</div>}>
+      <ConfigProvider theme={{
+        token: {
+          colorPrimary: dark ? '#4f8cff' : '#3370ff',
+          colorInfo: dark ? '#4f8cff' : '#3370ff',
+          colorSuccess: dark ? '#57c89b' : '#199a69',
+          colorWarning: dark ? '#efbb63' : '#b97216',
+          colorError: dark ? '#f07878' : '#d84a4a',
+          colorLink: dark ? '#78a5ff' : '#2865de',
+          colorText: dark ? '#f3f4f6' : '#1f2329',
+          colorTextSecondary: dark ? '#a9adb7' : '#646a75',
+          colorBgLayout: dark ? '#17181b' : '#f5f6f8',
+          colorBgContainer: dark ? '#202124' : '#ffffff',
+          colorBgElevated: dark ? '#292b30' : '#ffffff',
+          colorBorder: dark ? '#383b42' : '#dfe2e8',
+          colorBorderSecondary: dark ? '#303239' : '#eef0f3',
+          borderRadius: 8,
+          boxShadow: 'none',
+          boxShadowSecondary: dark ? '0 16px 48px rgba(0,0,0,.35)' : '0 16px 48px rgba(30,39,58,.12)',
+        },
+        components: {
+          Layout: { headerBg: dark ? '#202124' : '#ffffff', siderBg: dark ? '#202124' : '#ffffff', bodyBg: dark ? '#17181b' : '#f5f6f8' },
+          Menu: { itemSelectedBg: dark ? '#303f60' : '#e8f0ff', itemSelectedColor: dark ? '#78a5ff' : '#2865de', itemHoverBg: dark ? '#2b2d33' : '#f2f4f8' },
+          Table: { headerBg: dark ? '#24262a' : '#f8f9fb', rowHoverBg: dark ? '#292c32' : '#f6f8fc' },
+          Tag: { defaultBg: dark ? '#303239' : '#f3f5f8' },
+        },
+      }}>
+        <WorkspaceApp themeMode={themeMode} onToggleTheme={onToggleTheme} />
+      </ConfigProvider>
     </Suspense>
   );
 }

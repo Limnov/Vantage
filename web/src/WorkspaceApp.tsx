@@ -13,7 +13,6 @@ import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
 import dayjs from 'dayjs';
 import { searchApi, alertsApi } from './api';
 import { useAuth } from './lib/auth';
-import { Breadcrumb } from './components/Breadcrumb';
 import { HelpModal } from './components/HelpModal';
 import WorkspaceRail from './components/WorkspaceRail';
 import AgentWorkspace from './pages/Agent';
@@ -103,6 +102,8 @@ export default function App({ themeMode, onToggleTheme }: Props) {
       try {
         const r = await searchApi.global(searchQ);
         setSearchResults(r);
+      } catch {
+        setSearchResults({ total: 0, results: {} });
       } finally {
         setSearchLoading(false);
       }
@@ -172,7 +173,7 @@ export default function App({ themeMode, onToggleTheme }: Props) {
   ];
 
   const searchPanel = (
-    <div style={{ width: 480, background: token.colorBgElevated, borderRadius: 8, boxShadow: token.boxShadowSecondary, overflow: 'hidden' }}>
+    <div style={{ width: 'min(480px, calc(100vw - 24px))', background: token.colorBgElevated, borderRadius: 8, boxShadow: token.boxShadowSecondary, overflow: 'hidden' }}>
       <Input
         size="large"
         prefix={<SearchOutlined />}
@@ -274,10 +275,23 @@ export default function App({ themeMode, onToggleTheme }: Props) {
   ];
 
   const selected = location.pathname;
+  const pageTitle = ({
+    '/dashboard': '总览', '/watchlist': '监控目标', '/reports': '情报报告',
+    '/alerts': '告警中心', '/organization': '组织管理', '/members': '成员',
+    '/bots': '飞书 Bot', '/routes': '告警路由', '/logs': '系统日志',
+    '/settings': '系统设置', '/about': '关于 Vantage'
+  } as Record<string, string>)[selected] || '工作台';
 
   return (
     <div className="unified-workspace-shell">
-    <WorkspaceRail themeMode={themeMode} onToggleTheme={onToggleTheme} onConfigure={() => setSetup(true)} />
+    <WorkspaceRail
+      themeMode={themeMode}
+      onToggleTheme={onToggleTheme}
+      onConfigure={() => setSetup(true)}
+      searchPanel={searchPanel}
+      searchOpen={searchOpen && !isMobile}
+      onSearchOpenChange={setSearchOpen}
+    />
     {isAgentView ? (
       <div className="agent-workspace-content">
         <ErrorBoundary key={currentOrgId || 'boundary'}>
@@ -296,7 +310,7 @@ export default function App({ themeMode, onToggleTheme }: Props) {
         style={{ borderRight: `1px solid ${token.colorBorder}` }}
       >
         <div className="classic-section-heading">
-          {!siderCollapsed && <><strong>工作区</strong><small>浏览所有模块</small></>}
+          {!siderCollapsed && <><strong>管理</strong><small>组织与系统</small></>}
         </div>
         <Menu
           mode="inline"
@@ -324,26 +338,12 @@ export default function App({ themeMode, onToggleTheme }: Props) {
               onClick={() => setSiderCollapsed(!siderCollapsed)}
             />
           </Tooltip>}
-          <strong className="classic-view-title">{({ '/dashboard': '总览', '/watchlist': '监控目标', '/reports': '情报报告', '/agent': 'Agent 工作台', '/alerts': '告警中心', '/settings': '设置' } as Record<string, string>)[selected] || '工作区'}</strong>
+          <h1 className="classic-view-title">{pageTitle}</h1>
           <div style={{ flex: 1 }} />
           <Space size={4} className="classic-header-actions" style={{ flexShrink: 0 }}>
-            <Tooltip title="全局搜索 (⌘K)">
-              <Dropdown
-                open={searchOpen}
-                onOpenChange={setSearchOpen}
-                trigger={['click']}
-                popupRender={() => searchPanel}
-                placement="bottomRight"
-              >
-                <Button
-                  type="text"
-                  className="classic-toolbar-button classic-secondary-action"
-                  aria-label="全局搜索"
-                  disabled={user?.is_demo}
-                  icon={<SearchOutlined />}
-                />
-              </Dropdown>
-            </Tooltip>
+            {isMobile && <Dropdown open={searchOpen} onOpenChange={setSearchOpen} trigger={['click']} popupRender={() => searchPanel} placement="bottomRight">
+              <Button type="text" className="classic-toolbar-button" aria-label="搜索工作台" icon={<SearchOutlined />} />
+            </Dropdown>}
             <Tooltip title="通知">
               <Dropdown menu={{ items: notificationItems }} trigger={['click']} placement="bottomRight">
                 <Button type="text" className="classic-toolbar-button" aria-label="查看通知" icon={
@@ -361,7 +361,6 @@ export default function App({ themeMode, onToggleTheme }: Props) {
           overflow: 'auto',
           height: 'calc(100vh - 96px)'
         }}>
-          <Breadcrumb />
           <div className="fade-in-up">
             <Suspense fallback={<div className="classic-page-loading">正在加载页面…</div>}>
             <Routes>
