@@ -1,22 +1,24 @@
-import { Layout, Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typography, Avatar, Popconfirm, Modal, Badge, message } from 'antd';
+import { Layout, Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typography, Avatar, Badge, Divider } from 'antd';
 const { Text } = Typography;
 import {
   DashboardOutlined, EyeOutlined, FileTextOutlined, WarningOutlined, SettingOutlined,
   MoonOutlined, SunOutlined, ReloadOutlined, SearchOutlined,
   RiseOutlined, FallOutlined, ArrowRightOutlined, TeamOutlined, RobotOutlined, AimOutlined,
-  LogoutOutlined, UserOutlined, MenuFoldOutlined, MenuUnfoldOutlined,
+  LogoutOutlined, UserOutlined,
   QuestionCircleOutlined, InfoCircleOutlined, BellOutlined, CheckOutlined, ApiOutlined,
-  FileSearchOutlined
+  FileSearchOutlined, PlusOutlined, MessageOutlined
 } from '@ant-design/icons';
-import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { lazy, Suspense, useEffect, useState, useCallback } from 'react';
 import dayjs from 'dayjs';
-import { searchApi, alertsApi } from './api';
+import { searchApi, alertsApi, agentApi } from './api';
 import { useAuth } from './lib/auth';
 import { Breadcrumb } from './components/Breadcrumb';
 import { HelpModal } from './components/HelpModal';
 import { APP_VERSION } from './version';
+import Agent from './pages/Agent';
 import './classic.css';
+import './agent.css';
 
 const Logs = lazy(() => import('./pages/Logs'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -29,25 +31,49 @@ const Bots = lazy(() => import('./pages/Bots'));
 const AlertRoutes = lazy(() => import('./pages/AlertRoutes'));
 const Members = lazy(() => import('./pages/Members'));
 const About = lazy(() => import('./pages/About'));
-const Agent = lazy(() => import('./pages/ClassicAgent'));
 
-const { Header, Sider, Content } = Layout;
+const { Content } = Layout;
 
 interface Props {
   themeMode: 'light' | 'dark';
   onToggleTheme: () => void;
-  onSwitchMode: () => void;
 }
 
-// 当 Alerts 页面卸载时刷新待处理数量
-function AlertsPendingRefresher({ onRefresh }: { onRefresh: () => void }) {
-  useEffect(() => {
-    return () => { onRefresh(); };
-  }, [onRefresh]);
-  return null;
+type Run = {
+  id: string;
+  goal: string;
+  status: string;
+  metadata?: any;
+  result?: any;
+  created_at?: string;
+};
+
+const threadOf = (r: Run) => r.metadata?.conversation_id || r.id;
+
+function dayGroupLabel(iso?: string): string {
+  if (!iso) return '更早';
+  const d = dayjs(iso);
+  const today = dayjs();
+  if (d.isSame(today, 'day')) return '今天';
+  if (d.isSame(today.subtract(1, 'day'), 'day')) return '昨天';
+  if (d.isSame(today, 'year')) return d.format('M 月 D 日');
+  return d.format('YYYY 年 M 月 D 日');
 }
 
-export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
+// Agent 路由包装：从 URL 读取当前会话
+function AgentRoute({ onConfigure }: { onConfigure: () => void }) {
+  const { threadId } = useParams<{ threadId?: string }>();
+  const navigate = useNavigate();
+  return (
+    <Agent
+      onConfigure={onConfigure}
+      thread={threadId || null}
+      onThreadChange={(id) => navigate(id ? `/app/t/${id}` : '/app', { replace: false })}
+    />
+  );
+}
+
+export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, orgs, currentOrg, currentOrgId, switchOrg, logout } = useAuth();
@@ -56,22 +82,45 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState<any>(null);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [siderCollapsed, setSiderCollapsed] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [pendingAlerts, setPendingAlerts] = useState(0);
   const [pendingAlertItems, setPendingAlertItems] = useState<any[]>([]);
   const [orgSwitching, setOrgSwitching] = useState(false);
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
+
+  // 会话历史（侧边栏）
+  const [threads, setThreads] = useState<Run[]>([]);
+  const [threadsTotal, setThreadsTotal] = useState(0);
+  const [threadsLoading, setThreadsLoading] = useState(false);
+  const [historyRevision, setHistoryRevision] = useState(0);
+
+  const inAgent = location.pathname === '/app' || location.pathname.startsWith('/app/');
+  const activeThread = inAgent && location.pathname.startsWith('/app/t/')
+    ? location.pathname.slice('/app/t/'.length)
+    : null;
+
+  const loadThreads = useCallback(async (append = false) => {
+    setThreadsLoading(true);
+    try {
+      const r = await agentApi.list({ limit: 50, offset: append ? threads.length : 0 });
+      setThreadsTotal(r.total || 0);
+      setThreads(prev => {
+        const items: Run[] = r.items || [];
+        if (!append) return items;
+        const seen = new Set(prev.map(threadOf));
+        return [...prev, ...items.filter(i => !seen.has(threadOf(i)))];
+      });
+    } catch {
+      // 侧边栏历史失败不打断主流程
+    } finally {
+      setThreadsLoading(false);
+    }
+  }, [threads.length]);
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 768px)');
-    const sync = () => { setIsMobile(media.matches); if (media.matches) setSiderCollapsed(true); };
-    sync();
-    media.addEventListener('change', sync);
-    return () => media.removeEventListener('change', sync);
-  }, []);
+    void loadThreads();
+  }, [historyRevision, currentOrgId, loadThreads]);
 
-  // 待处理告警数量（顶栏铃铛）
+  // 待处理告警数量（侧边栏铃铛）
   const loadPendingAlerts = useCallback(async () => {
     if (!currentOrgId) return;
     try {
@@ -109,46 +158,26 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen(true);
-        return;
       }
       if (e.key === '?' && !inInput) {
         e.preventDefault();
         setHelpOpen(true);
-        return;
       }
-      if (e.key === 'Escape') {
-        setSearchOpen(false);
-        setHelpOpen(false);
-        return;
-      }
-      // 数字键导航（不在输入框时）
-      if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const navMap: Record<string, string> = { '1': '/dashboard', '2': '/watchlist', '3': '/reports', '4': '/alerts', '5': '/agent', '6': '/settings' };
-        if (navMap[e.key]) {
-          e.preventDefault();
-          navigate(navMap[e.key]);
-        }
-      }
+      if (e.key === 'Escape') setSearchOpen(false);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [navigate]);
+  }, []);
 
-  // 切换组织：带视觉反馈
   const handleSwitchOrg = useCallback((orgId: number) => {
     if (orgId === currentOrgId) return;
     setOrgSwitching(true);
     switchOrg(orgId);
-    // 模拟加载延迟，让用户看到反馈
-    setTimeout(() => {
-      setOrgSwitching(false);
-      message.success(`已切换到「${orgs.find(o => o.id === orgId)?.name}」`);
-    }, 400);
-  }, [currentOrgId, switchOrg, orgs]);
+    setTimeout(() => setOrgSwitching(false), 400);
+  }, [currentOrgId, switchOrg]);
 
   const orgMenuItems = orgs.map(o => ({
     key: String(o.id),
@@ -156,7 +185,6 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
       <Space>
         {o.id === currentOrgId && <CheckOutlined />}
         {o.name}
-        <Tag style={{ marginLeft: 4 }}>{o.my_role}</Tag>
       </Space>
     ),
     onClick: () => handleSwitchOrg(o.id)
@@ -176,7 +204,7 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
     { key: 'about', icon: <InfoCircleOutlined />, label: '关于', onClick: () => navigate('/about') },
     { key: 'help', icon: <QuestionCircleOutlined />, label: '帮助 & 快捷键 (?)', onClick: () => setHelpOpen(true) },
     { type: 'divider' as const },
-    { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true, onClick: () => { logout(); navigate('/dashboard'); } }
+    { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true, onClick: () => { logout(); navigate('/app'); } }
   ];
 
   const notificationItems = [
@@ -232,7 +260,7 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
                   <div key={`w-${w.id}`} onClick={() => { navigate('/watchlist'); setSearchOpen(false); setSearchQ(''); }}
                     style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Space>
-                      <EyeOutlined style={{ color: 'var(--v-text-2)' }} />
+                      <EyeOutlined />
                       <span style={{ fontWeight: 500 }}>{w.name}</span>
                       <Tag style={{ marginLeft: 0 }}>P{w.priority}</Tag>
                     </Space>
@@ -283,17 +311,16 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
     </div>
   );
 
-  // 菜单分组
+  // 业务导航（Agent 对话在上方列表，不占菜单项）
   const menuGroups = [
     {
       key: 'workspace',
-      label: <span style={{ fontSize: 11, color: token.colorTextTertiary, letterSpacing: 1 }}>工作台</span>,
+      label: <span className="uni-group-title">工作台</span>,
       type: 'group' as const,
       children: [
         { key: '/dashboard', icon: <DashboardOutlined />, label: <Link to="/dashboard">仪表盘</Link> },
         { key: '/watchlist', icon: <EyeOutlined />, label: <Link to="/watchlist">监控目标</Link> },
         { key: '/reports', icon: <FileTextOutlined />, label: <Link to="/reports">情报报告</Link> },
-        { key: '/agent', icon: <ApiOutlined />, label: <Link to="/agent">Agent 工作台</Link> },
         { key: '/alerts', icon: <WarningOutlined />, label: (
           <Link to="/alerts">
             告警中心 {pendingAlerts > 0 && <Badge count={pendingAlerts} size="small" />}
@@ -301,192 +328,199 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
         ) }
       ]
     },
-    {
-      key: 'admin',
-      label: <span style={{ fontSize: 11, color: token.colorTextTertiary, letterSpacing: 1 }}>管理</span>,
-      type: 'group' as const,
-      children: [
-        { key: '/organization', icon: <TeamOutlined />, label: <Link to="/organization">组织管理</Link> },
-        { key: '/members', icon: <UserOutlined />, label: <Link to="/members">成员</Link> },
-        { key: '/bots', icon: <RobotOutlined />, label: <Link to="/bots">飞书 Bot</Link> },
-        { key: '/routes', icon: <AimOutlined />, label: <Link to="/routes">告警路由</Link> }
-      ]
-    },
-    {
-      key: 'system',
-      label: <span style={{ fontSize: 11, color: token.colorTextTertiary, letterSpacing: 1 }}>系统</span>,
-      type: 'group' as const,
-      children: [
-        { key: '/logs', icon: <FileSearchOutlined />, label: <Link to="/logs">系统日志</Link> },
-        { key: '/settings', icon: <SettingOutlined />, label: <Link to="/settings">系统设置</Link> },
-        { key: '/about', icon: <InfoCircleOutlined />, label: <Link to="/about">关于</Link> }
-      ]
-    }
+    ...(!user?.is_demo ? [
+      {
+        key: 'admin',
+        label: <span className="uni-group-title">管理</span>,
+        type: 'group' as const,
+        children: [
+          { key: '/organization', icon: <TeamOutlined />, label: <Link to="/organization">组织管理</Link> },
+          { key: '/members', icon: <UserOutlined />, label: <Link to="/members">成员</Link> },
+          { key: '/bots', icon: <RobotOutlined />, label: <Link to="/bots">飞书 Bot</Link> },
+          { key: '/routes', icon: <AimOutlined />, label: <Link to="/routes">告警路由</Link> }
+        ]
+      },
+      {
+        key: 'system',
+        label: <span className="uni-group-title">系统</span>,
+        type: 'group' as const,
+        children: [
+          { key: '/logs', icon: <FileSearchOutlined />, label: <Link to="/logs">系统日志</Link> },
+          { key: '/settings', icon: <SettingOutlined />, label: <Link to="/settings">系统设置</Link> },
+          { key: '/about', icon: <InfoCircleOutlined />, label: <Link to="/about">关于</Link> }
+        ]
+      }
+    ] : [])
   ];
 
-  const selected = location.pathname;
+  // 会话按天分组
+  const threadGroups: { label: string; items: Run[] }[] = [];
+  let lastLabel = '';
+  for (const t of threads) {
+    const label = dayGroupLabel(t.created_at);
+    if (label !== lastLabel) {
+      threadGroups.push({ label, items: [t] });
+      lastLabel = label;
+    } else {
+      threadGroups[threadGroups.length - 1].items.push(t);
+    }
+  }
+
+  const selected = inAgent ? [] : [location.pathname];
 
   return (
-    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-      <Sider
-        className="classic-sider"
-        width={220}
-        collapsedWidth={isMobile ? 0 : 64}
-        collapsed={siderCollapsed}
-        trigger={null}
-        collapsible
-        style={{ borderRight: `1px solid ${token.colorBorder}` }}
-      >
-        <div className="app-brand" style={{ justifyContent: siderCollapsed ? 'center' : 'flex-start', padding: siderCollapsed ? '0' : '0 20px' }}>
-          <div className="brand-icon">
-            <img src="/vantage-logo.png" alt="" className="brand-logo brand-logo-light" />
-            <img src="/vantage-logo-white.png" alt="" className="brand-logo brand-logo-dark" />
+    <Layout className="uni-app">
+      <Layout.Sider className="uni-sider" width={248} trigger={null}>
+        {/* 品牌 + 组织 */}
+        <div className="uni-sider-top">
+          <div className="uni-brand">
+            <span className="brand-symbol">V</span>
+            <span className="uni-brand-name">Vantage</span>
           </div>
-          {!siderCollapsed && (
-            <div className="brand-text">
-              <span className="brand-name">Vantage</span>
-              <span className="brand-tag">v{APP_VERSION} · Agent-first</span>
-            </div>
-          )}
-        </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[selected]}
-          style={{ borderRight: 0, paddingTop: 8 }}
-          items={user?.is_demo ? menuGroups.filter(group => group.key === 'workspace') : menuGroups}
-          inlineCollapsed={siderCollapsed}
-        />
-        {!siderCollapsed && (
-          <div style={{ position: 'absolute', bottom: 12, left: 16, right: 16 }}>
-            <Text type="secondary" style={{ fontSize: 11 }}>
-              <Space size={4}>
-                <ApiOutlined />
-                <span>v{APP_VERSION}</span>
+          <Dropdown menu={{ items: orgMenuItems }} trigger={['click']} disabled={orgSwitching}>
+            <Button className="uni-org-switch" type="text" loading={orgSwitching} block>
+              <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Text strong ellipsis style={{ maxWidth: 150 }}>{currentOrg?.name || '选择组织'}</Text>
+                {user?.is_demo ? <Tag className="topbar-demo-tag">Demo</Tag> : null}
               </Space>
-            </Text>
-          </div>
-        )}
-      </Sider>
-      <Layout>
-        <Header className="classic-header" style={{
-          padding: '0 16px',
-          background: token.colorBgContainer,
-          borderBottom: `1px solid ${token.colorBorder}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12
-        }}>
-          <Tooltip title={siderCollapsed ? '展开侧边栏' : '折叠侧边栏'}>
+            </Button>
+          </Dropdown>
+          <Dropdown
+            open={searchOpen}
+            onOpenChange={setSearchOpen}
+            trigger={['click']}
+            popupRender={() => searchPanel}
+            placement="bottomLeft"
+          >
+            <button className="uni-search-trigger" type="button" disabled={user?.is_demo}>
+              <SearchOutlined />
+              <span>搜索监控、报告、告警</span>
+              <Text type="secondary" style={{ fontSize: 10, marginLeft: 'auto' }}>⌘K</Text>
+            </button>
+          </Dropdown>
+        </div>
+
+        {/* 会话列表 */}
+        <div className="uni-threads">
+          <Button
+            className="new-conversation"
+            icon={<PlusOutlined />}
+            onClick={() => navigate('/app')}
+            disabled={user?.is_demo}
+          >
+            新建对话
+          </Button>
+          <div className="sidebar-label">
+            最近对话
             <Button
               type="text"
-              className="classic-toolbar-button"
-              aria-label={siderCollapsed ? '展开侧边栏' : '折叠侧边栏'}
-              icon={siderCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={() => setSiderCollapsed(!siderCollapsed)}
+              size="small"
+              aria-label="刷新对话"
+              icon={<ReloadOutlined />}
+              onClick={() => setHistoryRevision(v => v + 1)}
             />
-          </Tooltip>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
-            <Space size="middle" className="app-header-meta" style={{ flexShrink: 0 }}>
-              <Dropdown
-                menu={{ items: orgMenuItems }}
-                trigger={['click']}
-                disabled={orgSwitching}
-              >
-                <Button className="classic-org-switch" type="text" loading={orgSwitching}>
-                  <Text strong>{currentOrg?.name || '选择组织'}</Text>
-                </Button>
-              </Dropdown>
-              {user?.is_demo && (
-                <Tooltip title="示例数据，只读浏览，不调用 API">
-                  <Tag className="topbar-demo-tag">Demo · 只读</Tag>
-                </Tooltip>
-              )}
-              {user?.is_trial && user.trial && (
-                <Tooltip title={user.trial.unlimited_usage ? `Agent 与搜索不限调用次数；到期：${user.trial.expires_at}` : `今日剩余 Agent ${user.trial.remaining.agent_runs} 次、搜索 ${user.trial.remaining.searches} 次；到期：${user.trial.expires_at}`}>
-                  <Tag className="topbar-demo-tag">测试账号{user.trial.unlimited_usage ? ' · 开放额度' : ' · 有限额'}</Tag>
-                </Tooltip>
-              )}
-            </Space>
           </div>
-          <Space size={4} className="classic-header-actions" style={{ flexShrink: 0 }}>
-            <Tooltip title="切换到 Agent-first">
-              <Button
-                className="classic-mode-switch"
-                type="primary"
-                aria-label="切换到 Agent-first"
-                icon={<RobotOutlined />}
-                onClick={onSwitchMode}
-              >
-                <span className="classic-mode-label">Agent</span>
+          <nav className="uni-thread-list" aria-label="对话历史">
+            {threadsLoading && !threads.length && <p className="history-empty">加载中…</p>}
+            {!threadsLoading && !threads.length && (
+              <p className="history-empty">
+                你的目标、证据和行动
+                <br />
+                会保存在这里。
+              </p>
+            )}
+            {threadGroups.map(g => (
+              <div key={g.label}>
+                <div className="uni-day-label">{g.label}</div>
+                {g.items.map(r => (
+                  <button
+                    className={`history-item ${activeThread === threadOf(r) ? 'selected' : ''}`}
+                    key={threadOf(r)}
+                    onClick={() => navigate(`/app/t/${threadOf(r)}`)}
+                  >
+                    <MessageOutlined />
+                    <span>{r.goal}</span>
+                    <i className={`status-dot ${r.status}`} title={r.status} />
+                  </button>
+                ))}
+              </div>
+            ))}
+            {threads.length < threadsTotal && (
+              <Button type="text" size="small" onClick={() => loadThreads(true)}>
+                加载更早对话
               </Button>
-            </Tooltip>
-            <Tooltip title="全局搜索 (⌘K)">
-              <Dropdown
-                open={searchOpen}
-                onOpenChange={setSearchOpen}
-                trigger={['click']}
-                popupRender={() => searchPanel}
-                placement="bottomRight"
-              >
-                <Button
-                  type="text"
-                  className="classic-toolbar-button classic-secondary-action"
-                  aria-label="全局搜索"
-                  disabled={user?.is_demo}
-                  icon={<SearchOutlined />}
-                />
-              </Dropdown>
-            </Tooltip>
-            <Tooltip title="通知">
-              <Dropdown menu={{ items: notificationItems }} trigger={['click']} placement="bottomRight">
-                <Button type="text" className="classic-toolbar-button" aria-label="查看通知" icon={
+            )}
+          </nav>
+        </div>
+
+        {/* 业务导航 */}
+        <div className="uni-nav">
+          <Menu
+            mode="inline"
+            selectedKeys={selected}
+            style={{ borderRight: 0 }}
+            items={menuGroups}
+          />
+        </div>
+
+        {/* 底部工具 */}
+        <div className="uni-sider-bottom">
+          <Space size={2}>
+            <Tooltip title="通知" placement="top">
+              <Dropdown menu={{ items: notificationItems }} trigger={['click']} placement="topRight">
+                <Button type="text" className="uni-tool-button" aria-label="查看通知" icon={
                   <Badge count={pendingAlerts} size="small" offset={[-2, 2]}>
                     <BellOutlined />
                   </Badge>
                 } />
               </Dropdown>
             </Tooltip>
-            <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
-              <Button
-                type="text"
-                className="classic-user-button"
-                aria-label="打开用户菜单"
-                icon={<Avatar size="small" icon={<UserOutlined />} />}
-              />
+            <Tooltip title={themeMode === 'dark' ? '切换浅色' : '切换深色'} placement="top">
+              <Button type="text" className="uni-tool-button" aria-label="切换主题" onClick={onToggleTheme}
+                icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />} />
+            </Tooltip>
+            <Tooltip title="帮助 (?)" placement="top">
+              <Button type="text" className="uni-tool-button" aria-label="帮助" onClick={() => setHelpOpen(true)}
+                icon={<QuestionCircleOutlined />} />
+            </Tooltip>
+            <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="topRight">
+              <Button type="text" className="uni-tool-button uni-avatar-button" aria-label="账户菜单"
+                icon={<Avatar size={26} icon={<UserOutlined />} />} />
             </Dropdown>
           </Space>
-        </Header>
-        <Content className="classic-content" style={{
-          margin: 16,
-          padding: 24,
-          overflow: 'auto',
-          height: 'calc(100vh - 96px)'
-        }}>
-          <Breadcrumb />
+          <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 6 }}>
+            <ApiOutlined /> v{APP_VERSION}
+          </Text>
+        </div>
+      </Layout.Sider>
+
+      <Content className="uni-content">
+        <div className="uni-content-inner">
+          {!inAgent && <Breadcrumb />}
           <div className="fade-in-up">
             <Suspense fallback={<div className="classic-page-loading">正在加载页面…</div>}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/watchlist" element={<Watchlist />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/agent" element={<Agent />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/organization" element={<Organization />} />
-              <Route path="/members" element={<Members />} />
-              <Route path="/bots" element={<Bots />} />
-              <Route path="/routes" element={<AlertRoutes />} />
-              <Route path="/logs" element={<Logs />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/about" element={<About />} />
-            </Routes>
+              <Routes>
+                <Route path="/" element={<Navigate to="/app" replace />} />
+                <Route path="/app" element={<AgentRoute onConfigure={() => navigate('/settings')} />} />
+                <Route path="/app/t/:threadId" element={<AgentRoute onConfigure={() => navigate('/settings')} />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/watchlist" element={<Watchlist />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/alerts" element={<Alerts />} />
+                <Route path="/organization" element={<Organization />} />
+                <Route path="/members" element={<Members />} />
+                <Route path="/bots" element={<Bots />} />
+                <Route path="/routes" element={<AlertRoutes />} />
+                <Route path="/logs" element={<Logs />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/about" element={<About />} />
+                <Route path="*" element={<Navigate to="/app" replace />} />
+              </Routes>
             </Suspense>
           </div>
-        </Content>
-      </Layout>
+        </div>
+      </Content>
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
-      {/* 暴露刷新函数给子路由 */}
-      {location.pathname === '/alerts' && <AlertsPendingRefresher onRefresh={loadPendingAlerts} />}
     </Layout>
   );
 }

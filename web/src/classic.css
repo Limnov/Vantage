@@ -854,3 +854,157 @@
 .ant-skeleton-content .ant-skeleton-title {
   margin-top: 8px;
 }
+
+/* ─── 统一工作台外壳（飞书式单侧边栏，无顶栏） ─── */
+.uni-app {
+  height: 100vh;
+  overflow: hidden;
+}
+.uni-sider.ant-layout-sider {
+  background: var(--v-surface);
+  display: flex;
+  flex-direction: column;
+}
+.uni-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.uni-sider-top {
+  padding: 14px 12px 10px;
+  border-bottom: 1px solid var(--v-border-soft);
+  flex-shrink: 0;
+}
+.uni-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 6px 12px;
+}
+.uni-brand .brand-symbol {
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  border-radius: 8px;
+}
+.uni-brand-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--v-text);
+  letter-spacing: 0.3px;
+}
+.uni-org-switch.ant-btn {
+  justify-content: flex-start;
+  height: 34px;
+  border-radius: 6px;
+  color: var(--v-text);
+}
+.uni-org-switch.ant-btn:hover {
+  background: var(--v-surface-2);
+}
+.uni-search-trigger {
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--v-border-soft);
+  border-radius: 6px;
+  background: var(--v-surface-2);
+  color: var(--v-text-3);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.uni-search-trigger:hover {
+  border-color: var(--v-accent);
+  color: var(--v-text-2);
+}
+.uni-search-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.uni-threads {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 10px 6px;
+}
+.uni-threads .new-conversation.ant-btn {
+  min-height: 36px;
+  border-radius: 6px;
+}
+.uni-threads .sidebar-label {
+  margin: 14px 8px 6px;
+}
+.uni-thread-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.uni-day-label {
+  padding: 8px 10px 3px;
+  font-size: 11px;
+  color: var(--v-text-3);
+}
+.uni-thread-list .history-item {
+  padding: 9px 10px;
+}
+.uni-nav {
+  flex-shrink: 0;
+  border-top: 1px solid var(--v-border-soft);
+  padding: 6px 0;
+  max-height: 42%;
+  overflow-y: auto;
+}
+.uni-nav .ant-menu {
+  background: transparent;
+}
+.uni-group-title {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--v-text-3);
+}
+.uni-sider-bottom {
+  flex-shrink: 0;
+  border-top: 1px solid var(--v-border-soft);
+  padding: 8px 12px 10px;
+}
+.uni-tool-button.ant-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--v-text-2);
+}
+.uni-tool-button.ant-btn:hover {
+  background: var(--v-surface-2);
+  color: var(--v-text);
+}
+.uni-avatar-button.ant-btn .ant-avatar {
+  background: var(--v-accent);
+}
+.uni-content.ant-layout-content {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--v-bg);
+}
+.uni-content-inner {
+  height: 100%;
+  overflow: auto;
+  padding: 16px 24px 24px;
+}
+/* Agent 页在统一外壳里占满内容区，不再自带侧栏 */
+.uni-content-inner .workspace-layout-solo {
+  height: calc(100vh - 56px);
+  min-height: 420px;
+}
+.uni-content-inner .conversation-topline {
+  padding: 16px 36px 10px;
+}
+.uni-threads .new-conversation.ant-btn:disabled {
+  opacity: 0.55;
+  color: #ffffff;
+}

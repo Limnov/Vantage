@@ -1,6 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { ConfigProvider, theme, App as AntdApp } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { AuthProvider, useAuth } from './lib/auth';
@@ -10,8 +10,7 @@ import './index.css';
 const Landing = lazy(() => import('./pages/Landing'));
 const Evidence = lazy(() => import('./pages/Evidence'));
 const Login = lazy(() => import('./pages/Login'));
-const AgentFirstApp = lazy(() => import('./AgentFirstApp'));
-const ClassicApp = lazy(() => import('./ClassicApp'));
+const UnifiedApp = lazy(() => import('./UnifiedApp'));
 
 
 function Entry({mode,toggleTheme}: {mode: ThemeMode; toggleTheme: () => void}) {
@@ -54,25 +53,9 @@ function Workspace({
   themeMode: ThemeMode;
   onToggleTheme: () => void;
 }) {
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const isAgentMode = pathname === '/app' || pathname === '/login';
-
   return (
     <Suspense fallback={<div className="mode-loading">正在打开工作台…</div>}>
-      {isAgentMode ? (
-        <AgentFirstApp
-          themeMode={themeMode}
-          onToggleTheme={onToggleTheme}
-          onSwitchMode={() => navigate('/dashboard', { replace: true })}
-        />
-      ) : (
-        <ClassicApp
-          themeMode={themeMode}
-          onToggleTheme={onToggleTheme}
-          onSwitchMode={() => navigate('/app', { replace: true })}
-        />
-      )}
+      <UnifiedApp themeMode={themeMode} onToggleTheme={onToggleTheme} />
     </Suspense>
   );
 }

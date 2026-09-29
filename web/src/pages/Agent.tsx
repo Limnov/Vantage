@@ -2,10 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Empty, Input, Popconfirm, Spin, Tag } from "antd";
 import {
   ArrowUpOutlined,
-  PlusOutlined,
-  ReloadOutlined,
   StopOutlined,
-  MessageOutlined,
   CheckOutlined,
   SettingOutlined,
   ArrowRightOutlined,
@@ -274,11 +271,18 @@ function ToolCard({
     </details>
   );
 }
-export default function Agent({ onConfigure }: { onConfigure: () => void }) {
+export default function Agent({
+  onConfigure,
+  thread,
+  onThreadChange,
+}: {
+  onConfigure: () => void;
+  thread: string | null;
+  onThreadChange: (id: string | null) => void;
+}) {
   const { currentOrgId, currentOrg, user } = useAuth();
-  const [history, setHistory] = useState<Run[]>([]);
-  const [historyTotal, setHistoryTotal] = useState(0);
-  const [active, setActive] = useState<string | null>(null);
+  const active = thread;
+  const setActive = onThreadChange;
   const [turns, setTurns] = useState<Run[]>([]);
   const [goal, setGoal] = useState("");
   const [researchMode, setResearchMode] = useState(false);
@@ -289,7 +293,6 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
   const [sending, setSending] = useState(false);
   const [revision, setRevision] = useState(0);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
-  const [capabilities, setCapabilities] = useState<number | null>(null);
   const alive = useRef(true);
   const bottom = useRef<HTMLDivElement>(null);
   const canApprove =
@@ -308,33 +311,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
       alive.current = false;
     };
   }, []);
-  useEffect(() => {
-    api
-      .get("/agent/capabilities")
-      .then((r) => {
-        if (alive.current) setCapabilities(r.data.items.length);
-      })
-      .catch(() => {});
-  }, []);
-  useEffect(() => {
-    let stale = false;
-    if (!currentOrgId) return;
-    agentApi
-      .list({ limit: 50 })
-      .then((r) => {
-        if (!stale) {
-          setHistory(r.items || []);
-          setHistoryTotal(r.total || 0);
-          if (user?.is_demo && r.items?.length) setActive(current => current || r.items[0].id);
-        }
-      })
-      .catch((e) => {
-        if (!stale) setError(errorText(e));
-      });
-    return () => {
-      stale = true;
-    };
-  }, [revision, currentOrgId]);
+
   useEffect(() => {
     if (!active) return;
     let stale = false;
@@ -352,9 +329,6 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
         );
         if (stale) return;
         setTurns(details);
-        setHistory((rows) =>
-          rows.map((row) => details.find((d) => d.id === row.id) || row),
-        );
         setLoading(false);
         if (details.some((r) => ["queued", "running"].includes(r.status)))
           timer = setTimeout(load, 1600);
@@ -393,8 +367,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
     setSending(true);
     setError("");
     try {
-      const currentRun =
-        turns[turns.length - 1] || history.find((r) => threadOf(r) === active);
+      const currentRun = turns[turns.length - 1];
       const isMerchantConversation =
         currentRun?.metadata?.agent === "merchant_research";
       const conversationId = followupRun?.metadata?.conversation_id ||
@@ -469,96 +442,9 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
       setActionBusy(null);
     }
   };
-  const grouped = Array.from(
-    new Map(history.map((r) => [threadOf(r), r] as const).reverse()).values(),
-  ).reverse();
   return (
-    <div className="workspace-layout">
-      <aside className="conversation-sidebar">
-        <Button
-          className="new-conversation"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setActive(null);
-            setTurns([]);
-            setGoal("");
-            setError("");
-            setResearchMode(false);
-          }}
-          disabled={sending || user?.is_demo}
-        >
-          新建对话
-        </Button>
-        <div className="sidebar-label">
-          最近对话
-          <Button
-            type="text"
-            size="small"
-            aria-label="刷新对话"
-            icon={<ReloadOutlined />}
-            onClick={() => setRevision((v) => v + 1)}
-          />
-        </div>
-        <nav aria-label="对话历史">
-          {grouped.map((r) => (
-            <button
-              className={`history-item ${active === threadOf(r) ? "selected" : ""}`}
-              key={threadOf(r)}
-              onClick={() => {
-                setActive(threadOf(r));
-                setTurns([]);
-                setError("");
-                const merchantResearch =
-                  r.metadata?.agent === "merchant_research";
-                setResearchMode(merchantResearch);
-                if (merchantResearch) {
-                  setIndustry(r.metadata?.merchant?.industry || "手机配件");
-                  setRegion(r.metadata?.merchant?.region || "美国");
-                }
-              }}
-              disabled={sending || user?.is_demo}
-            >
-              <MessageOutlined />
-              <span>{r.goal}</span>
-              <i
-                className={`status-dot ${r.status}`}
-                aria-label={statuses[r.status] || r.status}
-                title={statuses[r.status] || r.status}
-              />
-            </button>
-          ))}
-        </nav>
-        {!history.length && (
-          <p className="history-empty">
-            你的目标、证据和行动
-            <br />
-            会保存在这里。
-          </p>
-        )}
-        {history.length < historyTotal && (
-          <Button
-            type="text"
-            onClick={async () => {
-              try {
-                const r = await agentApi.list({
-                  limit: 50,
-                  offset: history.length,
-                });
-                setHistory((v) => [...v, ...r.items]);
-              } catch (e) {
-                setError(errorText(e));
-              }
-            }}
-          >
-            加载更早对话
-          </Button>
-        )}
-        <div className="sidebar-footer">
-          <span className="connection-dot" />
-          {capabilities ? `${capabilities} 项业务工具已就绪` : "Vantage Agent"}
-          <small>每一步执行，都有记录</small>
-        </div>
-      </aside>
+    <div className="workspace-layout workspace-layout-solo">
+      
       <main className="conversation-main">
         <div className="conversation-topline">
           <span>{active ? "当前对话" : "你的市场情报工作台"}</span>

@@ -1,4 +1,5 @@
-.agent-app {
+/* 语义别名：供 agent 工作台与统一外壳共用 */
+:root {
   --a-bg: var(--v-bg);
   --a-panel: var(--v-surface-2);
   --a-card: var(--v-surface);
@@ -6,6 +7,8 @@
   --a-muted: var(--v-text-2);
   --a-line: var(--v-border);
   --a-accent: var(--v-accent);
+}
+.agent-app {
   color: var(--a-text);
   background: var(--a-bg);
   height: 100dvh;
@@ -851,4 +854,9 @@
     scroll-behavior: auto !important;
     transition: none !important;
   }
+}
+
+/* 统一外壳下 Agent 不再自带会话侧栏 */
+.conversation-sidebar[hidden] {
+  display: none !important;
 }
