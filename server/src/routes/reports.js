@@ -3,7 +3,7 @@
  */
 
 const express = require('express');
-const { query, queryOne } = require('../db');
+const { query, queryOne, pool } = require('../db');
 const { requireAuth, requireOrgRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -79,6 +79,37 @@ router.get('/:id', requireAuth, async (req, res) => {
   item.sources = parseJson(item.sources, []);
   item.raw_data = parseJson(item.raw_data, {});
   res.json(item);
+});
+
+router.delete('/:id', requireAuth, requireOrgRole('owner', 'admin'), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'bad_request', message: 'Valid report ID required' });
+  }
+
+  const item = await queryOne('SELECT id, org_id FROM reports WHERE id = ?', [id]);
+  if (!item) return res.status(404).json({ error: 'Not found' });
+  if (!req.user.is_system_admin && item.org_id !== req.currentOrgId) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.execute(
+      'UPDATE agent_runs SET report_id = NULL WHERE report_id = ? AND org_id = ?',
+      [id, item.org_id]
+    );
+    await connection.execute('DELETE FROM reports WHERE id = ? AND org_id = ?', [id, item.org_id]);
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+
+  res.json({ deleted: 1, id });
 });
 
 router.post('/:id/push', requireAuth, requireOrgRole('owner', 'admin'), async (req, res) => {
