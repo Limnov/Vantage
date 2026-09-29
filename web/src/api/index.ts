@@ -52,6 +52,13 @@ export const agentApi = {
     api.post(`/agent/runs/${runId}/actions/${actionId}/reject`, { reason }).then((r) => r.data)
 };
 
+// --- 预测回评 ---
+export const forecastReviewsApi = {
+  list: (params?: { status?: string; reportId?: number; limit?: number; offset?: number }) =>
+    api.get('/forecast-reviews', { params }).then((r) => r.data),
+  review: (id: number) => api.post(`/forecast-reviews/${id}/review`).then((r) => r.data)
+};
+
 // --- Alerts ---
 export const alertsApi = {
   list: (params?: any) => api.get('/alerts', { params }).then((r) => r.data),

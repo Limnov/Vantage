@@ -23,6 +23,7 @@ const Logs = lazy(() => import('./pages/Logs'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Watchlist = lazy(() => import('./pages/Watchlist'));
 const Reports = lazy(() => import('./pages/Reports'));
+const Forecasts = lazy(() => import('./pages/Forecasts'));
 const Alerts = lazy(() => import('./pages/Alerts'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Organization = lazy(() => import('./pages/Organization'));
@@ -346,6 +347,7 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
         { key: '/dashboard', icon: <DashboardOutlined />, label: <Link to="/dashboard">仪表盘</Link> },
         { key: '/watchlist', icon: <EyeOutlined />, label: <Link to="/watchlist">监控目标</Link> },
         { key: '/reports', icon: <FileTextOutlined />, label: <Link to="/reports">情报报告</Link> },
+        { key: '/forecasts', icon: <RiseOutlined />, label: <Link to="/forecasts">预测</Link> },
         { key: '/alerts', icon: <WarningOutlined />, label: (
           <Link to="/alerts">
             告警中心 {pendingAlerts > 0 && <Badge count={pendingAlerts} size="small" />}
@@ -540,6 +542,7 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/forecasts" element={<Forecasts />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/organization" element={<Organization />} />
             <Route path="/members" element={<Members />} />

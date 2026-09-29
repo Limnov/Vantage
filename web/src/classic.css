@@ -1553,3 +1553,35 @@ body.uni-resizing .uni-split::after {
 .is-electron .uni-main-bleed .conversation-topline {
   padding-top: 46px;
 }
+
+/* 预测页 */
+.forecast-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--v-text);
+  line-height: 1.2;
+}
+.forecast-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.forecast-row-body {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--v-text-2);
+}
+.forecast-row-meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--v-text-3);
+}
+.forecast-row-error {
+  color: var(--v-risk);
+}

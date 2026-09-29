@@ -8,6 +8,7 @@ const READ_PATHS = [
   /^\/api\/alerts\/?$/,
   /^\/api\/agent\/capabilities\/?$/,
   /^\/api\/agent\/runs(?:\/[a-z0-9-]+(?:\/events)?)?\/?$/,
+  /^\/api\/forecast-reviews\/?$/,
   /^\/api\/orgs\/?$/,
 ];
 function demoAccess(method, originalUrl, orgHeader, demoOrgId) {
