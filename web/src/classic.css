@@ -1132,19 +1132,37 @@ body.uni-resizing * {
 .uni-user-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   width: 100%;
+  margin-bottom: 10px;
+}
+.uni-user-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   border: 0;
   background: transparent;
   border-radius: 8px;
   padding: 6px 8px;
-  margin-bottom: 10px;
   cursor: pointer;
   text-align: left;
   transition: background 0.15s;
 }
-.uni-user-row:hover {
+.uni-user-main:hover {
   background: var(--v-surface-2);
+}
+.uni-bell-button.ant-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--v-text-2);
+}
+.uni-bell-button.ant-btn:hover {
+  background: var(--v-surface-2);
+  color: var(--v-text);
 }
 .uni-user-row .ant-avatar {
   background: var(--v-accent);
@@ -1465,4 +1483,8 @@ body.uni-resizing * {
     white-space: nowrap;
     margin-bottom: 0;
   }
+}
+.uni-settings-button.active {
+  background: var(--v-accent-soft);
+  color: var(--v-accent);
 }

@@ -235,6 +235,8 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
     { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true, onClick: () => { logout(); navigate('/app'); } }
   ];
 
+
+
   const notificationItems = [
     {
       key: 'header',
@@ -397,17 +399,26 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
       <nav className="uni-nav" style={{ width: navWidth }} aria-label="主导航">
         <div className="uni-nav-top">
           {/* 头像置顶 */}
-          <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomLeft">
-            <button className="uni-user-row" type="button" aria-label="账户菜单">
-              <Avatar size={34} icon={<UserOutlined />} />
-              <span className="uni-user-name">
-                <Text strong ellipsis style={{ maxWidth: navWidth - 110 }}>
-                  {user?.display_name || user?.username}
-                </Text>
-                <small>@{user?.username}</small>
-              </span>
-            </button>
-          </Dropdown>
+          <div className="uni-user-row">
+            <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomLeft">
+              <button className="uni-user-main" type="button" aria-label="账户菜单">
+                <Avatar size={34} icon={<UserOutlined />} />
+                <span className="uni-user-name">
+                  <Text strong ellipsis style={{ maxWidth: navWidth - 130 }}>
+                    {user?.display_name || user?.username}
+                  </Text>
+                  <small>@{user?.username}</small>
+                </span>
+              </button>
+            </Dropdown>
+            <Dropdown menu={{ items: notificationItems }} trigger={['click']} placement="bottomLeft">
+              <Button type="text" className="uni-bell-button" aria-label="通知" icon={
+                <Badge count={pendingAlerts} size="small" offset={[-2, 2]}>
+                  <BellOutlined />
+                </Badge>
+              } />
+            </Dropdown>
+          </div>
           <Dropdown menu={{ items: orgMenuItems }} trigger={['click']} disabled={orgSwitching}>
             <Button className="uni-org-switch" type="text" loading={orgSwitching} block>
               <Space style={{ justifyContent: 'space-between', width: '100%' }}>
@@ -450,34 +461,15 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
         </div>
 
         <div className="uni-nav-bottom">
-          <Dropdown
-            menu={{
-              items: [
-                {
-                  key: 'alerts',
-                  icon: <BellOutlined />,
-                  label: `通知${pendingAlerts ? `（${pendingAlerts} 条待处理）` : ''}`,
-                  onClick: () => navigate('/alerts')
-                },
-                { type: 'divider' as const },
-                {
-                  key: 'theme',
-                  icon: themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />,
-                  label: themeMode === 'dark' ? '切换浅色' : '切换深色',
-                  onClick: onToggleTheme
-                },
-                { key: 'refresh', icon: <ReloadOutlined />, label: '刷新当前页面', onClick: () => window.location.reload() },
-                { key: 'help', icon: <QuestionCircleOutlined />, label: '帮助 & 快捷键 (?)', onClick: () => setHelpOpen(true) },
-                { key: 'about', icon: <InfoCircleOutlined />, label: '关于', onClick: () => navigate('/about') }
-              ]
-            }}
-            trigger={['click']}
-            placement="topLeft"
+          <Button
+            type="text"
+            className={`uni-settings-button${location.pathname === '/settings' ? ' active' : ''}`}
+            block
+            icon={<SettingOutlined />}
+            onClick={() => navigate('/settings')}
           >
-            <Button type="text" className="uni-settings-button" block icon={<SettingOutlined />}>
-              设置
-            </Button>
-          </Dropdown>
+            设置
+          </Button>
           <Text type="secondary" className="uni-version">
             <ApiOutlined /> v{APP_VERSION}
           </Text>
