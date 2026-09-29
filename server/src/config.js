@@ -114,7 +114,10 @@ module.exports = {
   scheduler: {
     enabled: process.env.SCHEDULER_ENABLED !== 'false',
     dailyReportCron: process.env.DAILY_REPORT_CRON || '0 7 * * *',
-    masterScheduleCron: process.env.MASTER_SCHEDULE_CRON || '* * * * *'
+    masterScheduleCron: process.env.MASTER_SCHEDULE_CRON || '* * * * *',
+    // 预测回评：默认每天早上 8:30 扫描到期情景判断
+    forecastReviewCron: process.env.FORECAST_REVIEW_CRON || '30 8 * * *',
+    forecastReviewBatch: Math.max(1, Math.min(10, Number(process.env.FORECAST_REVIEW_BATCH) || 3))
   },
 
   log: {

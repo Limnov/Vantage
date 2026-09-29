@@ -50,6 +50,8 @@ const RUNTIME_CONFIG = Object.freeze({
   SCHEDULER_ENABLED: { group: 'scheduler', label: '调度器开关', secret: false },
   DAILY_REPORT_CRON: { group: 'scheduler', label: '每日报告 Cron', secret: false },
   MASTER_SCHEDULE_CRON: { group: 'scheduler', label: '主调度 Cron', secret: false },
+  FORECAST_REVIEW_CRON: { group: 'scheduler', label: '预测回评 Cron', secret: false },
+  FORECAST_REVIEW_BATCH: { group: 'scheduler', label: '预测回评单次条数', secret: false },
   RATE_LIMIT_MAX: { group: 'system', label: '限流上限', secret: false },
   VANTAGE_AI_CACHE_TTL: { group: 'system', label: 'AI 缓存时间', secret: false }
 });

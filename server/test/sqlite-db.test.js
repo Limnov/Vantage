@@ -45,7 +45,8 @@ test('SQLite schema and pool compatibility support the Agent persistence path', 
     });
     assert.equal(result.status, 0, result.stderr);
     const output = JSON.parse(result.stdout);
-    assert.equal(output.tableCount, 21);
+    assert.equal(output.tableCount, 22);
+    assert.ok(output.tableNames.includes('forecast_reviews'));
     assert.ok(output.tableNames.includes('demo_accounts'));
     assert.ok(output.tableNames.includes('trial_accounts'));
     assert.ok(output.tableNames.includes('trial_usage_daily'));

@@ -109,6 +109,7 @@ app.use('/api/logs', requireAuth, require('./routes/logs'));
 app.use('/api/tavily', requireAuth, require('./routes/tavily'));
 app.use('/api/runtime-config', requireAuth, require('./routes/runtimeConfig'));
 app.use('/api/agent', requireAuth, require('./routes/agent'));
+app.use('/api/forecast-reviews', requireAuth, require('./routes/forecastReviews'));
 
 // MCP 外部工具入口：JWT + X-Org-ID，工具实现与内部 Agent 共用 registry
 app.use('/mcp', requireAuth, mcpRouter);

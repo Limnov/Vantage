@@ -22,6 +22,8 @@ type Run = {
   actions?: any[];
   error?: string;
   created_at?: string;
+  report_id?: number | null;
+  forecast_review?: any;
 };
 const statuses: Record<string, string> = {
   queued: "等待执行",
@@ -578,7 +580,7 @@ export default function Agent({
                     <p className="answer-text">
                       {run.result.answer || run.result.summary}
                     </p>
-                    <ForecastCard forecast={run.result.forecast} evidence={run.result.evidence} />
+                    <ForecastCard forecast={run.result.forecast} evidence={run.result.evidence} review={run.forecast_review} />
                     {run.metadata?.agent === "merchant_research" &&
                       run.result.claim_citations?.length > 0 && (
                         <div className="claim-citation-list" aria-label="主张对应来源">

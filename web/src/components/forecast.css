@@ -12,3 +12,39 @@
 .forecast-disclaimer { display: block; margin-top: 18px; line-height: 1.6; }
 .forecast-unavailable { color: #655f54; }
 @media (max-width: 640px) { .forecast-card { padding: 16px; } .forecast-scenarios { grid-template-columns: 1fr; } }
+
+/* 回评结果 */
+.forecast-review {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--v-border-soft);
+}
+.forecast-review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.forecast-review-head small {
+  color: var(--v-text-3);
+  font-size: 11px;
+}
+.forecast-verdict {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: var(--v-surface-2);
+  color: var(--v-text-2);
+}
+.forecast-verdict.v-baseline { color: var(--v-text); }
+.forecast-verdict.v-upside { color: var(--v-ok); }
+.forecast-verdict.v-downside { color: var(--v-warn); }
+.forecast-verdict.v-invalidated { color: var(--v-risk); }
+.forecast-review p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--v-text-2);
+}

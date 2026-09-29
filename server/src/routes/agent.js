@@ -298,6 +298,16 @@ router.get('/runs/:id', asyncHandler(async (req, res) => {
   const run = await getRun(req.params.id);
   if (!run) return res.status(404).json({ error: 'run not found' });
   if (!(await assertRunAccess(req, run))) return res.status(403).json({ error: 'forbidden' });
+  // 情景判断的回评记录（报告生成后才会存在）
+  if (run.report_id) {
+    const review = await queryOne(
+      'SELECT id, status, verdict, rationale, evidence_ids, confidence, valid_until, evaluated_at FROM forecast_reviews WHERE report_id = ? AND org_id = ? ORDER BY id DESC LIMIT 1',
+      [run.report_id, run.org_id],
+    );
+    run.forecast_review = review
+      ? { ...review, evidence_ids: (() => { try { return JSON.parse(review.evidence_ids || '[]'); } catch { return []; } })() }
+      : null;
+  }
   return res.json(run);
 }));
 

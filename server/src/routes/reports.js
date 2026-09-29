@@ -78,6 +78,14 @@ router.get('/:id', requireAuth, async (req, res) => {
   item.key_points = parseJson(item.key_points, []);
   item.sources = parseJson(item.sources, []);
   item.raw_data = parseJson(item.raw_data, {});
+  // 情景判断的回评记录（如果这份报告登记过预测）
+  const review = await queryOne(
+    'SELECT id, status, verdict, rationale, evidence_ids, confidence, valid_until, evaluated_at FROM forecast_reviews WHERE report_id = ? AND org_id = ? ORDER BY id DESC LIMIT 1',
+    [item.id, item.org_id],
+  );
+  item.forecast_review = review
+    ? { ...review, evidence_ids: parseJson(review.evidence_ids, []) }
+    : null;
   res.json(item);
 });
 

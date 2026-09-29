@@ -364,6 +364,24 @@ async function saveAgentReport({
         ],
       );
       reportId = Number(inserted.insertId);
+
+      // 情景判断到期需要回看：在同一事务里登记回评任务
+      const forecast = rawData?.forecast || null;
+      if (forecast?.status === "scenario" && forecast.valid_until) {
+        await connection.execute(
+          `INSERT INTO forecast_reviews
+            (org_id, report_id, agent_run_id, question, horizon_days, valid_until, status)
+           VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+          [
+            orgId,
+            reportId,
+            runId,
+            shortText(forecast.question, 200),
+            Number(forecast.horizon_days) || 30,
+            String(forecast.valid_until),
+          ],
+        );
+      }
     }
 
     const actions = (
@@ -504,7 +522,146 @@ async function isCancelled(id) {
   return row?.status === "cancelled";
 }
 
+// ─── 预测回评 ────────────────────────────────────────────────
+
+function normalizeReviewRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    id: Number(row.id),
+    org_id: Number(row.org_id),
+    report_id: row.report_id === null ? null : Number(row.report_id),
+    horizon_days: Number(row.horizon_days),
+    attempts: Number(row.attempts || 0),
+    evidence_ids: parseJson(row.evidence_ids, []),
+  };
+}
+
+const MAX_REVIEW_ATTEMPTS = 3;
+
+async function createForecastReview({ orgId, reportId, agentRunId = null, forecast }) {
+  const question = shortText(forecast?.question, 200);
+  const horizonDays = Number(forecast?.horizon_days);
+  const validUntil = forecast?.valid_until ? String(forecast.valid_until) : "";
+  if (!question || !Number.isInteger(horizonDays) || !validUntil) return null;
+  const existing = await queryOne(
+    "SELECT id FROM forecast_reviews WHERE report_id = ? AND org_id = ?",
+    [reportId, orgId],
+  );
+  if (existing) return Number(existing.id);
+  const inserted = await query(
+    `INSERT INTO forecast_reviews
+      (org_id, report_id, agent_run_id, question, horizon_days, valid_until, status)
+     VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+    [orgId, reportId, agentRunId, question, horizonDays, validUntil],
+  );
+  return Number(inserted.insertId);
+}
+
+async function listDueForecastReviews({ limit = 5, orgId = null } = {}) {
+  const normalizedLimit = Math.max(1, Math.min(20, Number(limit) || 5));
+  const rows = orgId
+    ? await query(
+      `SELECT * FROM forecast_reviews
+       WHERE status = 'pending' AND valid_until <= datetime('now') AND org_id = ?
+       ORDER BY valid_until ASC LIMIT ${normalizedLimit}`,
+      [orgId],
+    )
+    : await query(
+      `SELECT * FROM forecast_reviews
+       WHERE status = 'pending' AND valid_until <= datetime('now')
+       ORDER BY valid_until ASC LIMIT ${normalizedLimit}`,
+    );
+  return rows.map(normalizeReviewRow);
+}
+
+async function listForecastReviews({ orgId, reportId = null, status = null, limit = 50, offset = 0 }) {
+  const normalizedLimit = Math.max(1, Math.min(100, Number(limit) || 50));
+  const normalizedOffset = Math.max(0, Number(offset) || 0);
+  const where = ["org_id = ?"];
+  const params = [orgId];
+  if (reportId) {
+    where.push("report_id = ?");
+    params.push(reportId);
+  }
+  if (status) {
+    where.push("status = ?");
+    params.push(status);
+  }
+  const whereSql = where.join(" AND ");
+  const rows = await query(
+    `SELECT * FROM forecast_reviews WHERE ${whereSql}
+     ORDER BY COALESCE(evaluated_at, valid_until) DESC, id DESC
+     LIMIT ${normalizedLimit} OFFSET ${normalizedOffset}`,
+    params,
+  );
+  const totalRow = await queryOne(
+    `SELECT COUNT(*) AS total FROM forecast_reviews WHERE ${whereSql}`,
+    params,
+  );
+  return { items: rows.map(normalizeReviewRow), total: Number(totalRow?.total || 0) };
+}
+
+async function getForecastReview(id, orgId = null) {
+  const row = orgId
+    ? await queryOne("SELECT * FROM forecast_reviews WHERE id = ? AND org_id = ?", [id, orgId])
+    : await queryOne("SELECT * FROM forecast_reviews WHERE id = ?", [id]);
+  return normalizeReviewRow(row);
+}
+
+/** 原子占用：只有仍处于 pending 的记录会被置为 evaluating */
+async function claimForecastReview(id) {
+  const rows = await query(
+    `UPDATE forecast_reviews
+     SET status = 'evaluating', attempts = attempts + 1, updated_at = datetime('now')
+     WHERE id = ? AND status = 'pending'
+     RETURNING id`,
+    [id],
+  );
+  return rows.length > 0;
+}
+
+async function finishForecastReview(id, { verdict, rationale, evidenceIds = [], confidence = "low" }) {
+  await query(
+    `UPDATE forecast_reviews
+     SET status = 'evaluated', verdict = ?, rationale = ?, evidence_ids = ?,
+         confidence = ?, evaluated_at = datetime('now'), updated_at = datetime('now'), last_error = NULL
+     WHERE id = ?`,
+    [verdict, rationale, jsonText(evidenceIds), confidence, id],
+  );
+}
+
+/** 失败：未超上限退回 pending 重试，超过上限才落 void */
+async function failForecastReview(id, error) {
+  const row = await queryOne("SELECT attempts FROM forecast_reviews WHERE id = ?", [id]);
+  const attempts = Number(row?.attempts || 0);
+  const terminal = attempts >= MAX_REVIEW_ATTEMPTS;
+  await query(
+    `UPDATE forecast_reviews
+     SET status = ?, verdict = ?, rationale = ?, last_error = ?,
+         evaluated_at = CASE WHEN ? = 1 THEN datetime('now') ELSE evaluated_at END,
+         updated_at = datetime('now')
+     WHERE id = ?`,
+    [
+      terminal ? "void" : "pending",
+      terminal ? "void" : null,
+      terminal ? `回评连续失败 ${attempts} 次，未产出判定` : null,
+      shortText(error, 300),
+      terminal ? 1 : 0,
+      id,
+    ],
+  );
+  return { terminal, attempts };
+}
+
 module.exports = {
+  createForecastReview,
+  listDueForecastReviews,
+  listForecastReviews,
+  getForecastReview,
+  claimForecastReview,
+  finishForecastReview,
+  failForecastReview,
   createRun,
   appendStep,
   updateRun,

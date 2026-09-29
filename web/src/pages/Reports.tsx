@@ -248,7 +248,7 @@ function ReportDetail({ report }: { report: any }) {
         </Card>
       )}
 
-      <ForecastCard forecast={report.raw_data?.forecast} evidence={report.raw_data?.evidence} />
+      <ForecastCard forecast={report.raw_data?.forecast} evidence={report.raw_data?.evidence} review={report.forecast_review} />
 
       {/* 来源 */}
       <Card

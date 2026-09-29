@@ -9,11 +9,14 @@ const cron = require('node-cron');
 const { isWatchlistDue } = require('./schedule');
 const { query, queryOne } = require('../db');
 const { runWatchlist } = require('../services');
+const { runDueReviews } = require('../agent/forecastReviewRunner');
 const config = require('../config');
 const logger = require('../utils/logger');
 
 let isRunning = false;
 let masterTask = null;
+let reviewTask = null;
+let isReviewing = false;
 const manualRuns = new Map();  // watchlistId -> Promise
 
 /**
@@ -30,8 +33,14 @@ function init() {
     tick();
   });
 
+  // 预测回评：到期情景判断的回看
+  reviewTask = cron.schedule(config.scheduler.forecastReviewCron, () => {
+    forecastReviewTick();
+  });
+
   logger.info('scheduler started', {
-    masterCron: config.scheduler.masterScheduleCron
+    masterCron: config.scheduler.masterScheduleCron,
+    forecastReviewCron: config.scheduler.forecastReviewCron
   });
 }
 
@@ -94,6 +103,26 @@ async function runAll() {
 }
 
 /**
+ * 预测回评 tick：扫描到期预测并逐条回评。
+ * 与 watchlist tick 分开计时，避免互相阻塞；失败只记日志、不中断调度。
+ */
+async function forecastReviewTick() {
+  if (isReviewing) {
+    logger.debug('previous forecast review tick still running, skip');
+    return;
+  }
+  isReviewing = true;
+  try {
+    const { scanned, results } = await runDueReviews({ limit: config.scheduler.forecastReviewBatch });
+    if (scanned) logger.info('forecast review tick', { scanned, results });
+  } catch (error) {
+    logger.error('forecast review tick failed', { error: error.message });
+  } finally {
+    isReviewing = false;
+  }
+}
+
+/**
  * 优雅关闭
  */
 function stop() {
@@ -101,7 +130,11 @@ function stop() {
     masterTask.stop();
     masterTask = null;
   }
+  if (reviewTask) {
+    reviewTask.stop();
+    reviewTask = null;
+  }
   logger.info('scheduler stopped');
 }
 
-module.exports = { init, tick, runNow, runAll, stop };
+module.exports = { init, tick, runNow, runAll, stop, forecastReviewTick };
