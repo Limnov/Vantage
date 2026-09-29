@@ -142,6 +142,10 @@ function Root() {
   );
 }
 
+if (typeof window !== 'undefined' && /Electron/i.test(navigator.userAgent)) {
+  document.documentElement.classList.add('is-electron');
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Root />

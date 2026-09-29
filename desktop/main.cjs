@@ -69,6 +69,8 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#f5f6f7',
     title: 'Vantage',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    trafficLightPosition: { x: 16, y: 16 },
     show: false,
     autoHideMenuBar: process.platform !== 'darwin',
     webPreferences: {

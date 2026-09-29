@@ -1488,3 +1488,68 @@ body.uni-resizing * {
   background: var(--v-accent-soft);
   color: var(--v-accent);
 }
+
+/* ─── 页中页：除最左栏外均为圆角容器（学飞书） ─── */
+.uni-list {
+  margin: 8px 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--v-surface-2);
+  overflow: hidden;
+}
+.uni-main {
+  margin: 8px 8px 8px 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--v-surface);
+}
+.uni-split {
+  width: 8px;
+  background: transparent;
+  position: relative;
+}
+.uni-split::after {
+  content: '';
+  position: absolute;
+  inset: 8px 3px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.15s;
+}
+.uni-split:hover::after,
+body.uni-resizing .uni-split::after {
+  background: var(--v-accent);
+}
+/* 设置面板填满主容器，不再自带边框 */
+.uni-main .settings-panel {
+  border: 0;
+  border-radius: 0;
+  height: 100%;
+}
+
+/* ─── Electron 透明标题栏 ─── */
+.is-electron .uni-shell::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  z-index: 60;
+  -webkit-app-region: drag;
+}
+.is-electron .uni-nav {
+  padding-top: 42px;
+}
+.is-electron .uni-list-header {
+  padding-top: 46px;
+}
+.is-electron .uni-main {
+  padding-top: 44px;
+}
+.is-electron .uni-main-bleed {
+  padding-top: 0;
+}
+.is-electron .uni-main-bleed .conversation-topline {
+  padding-top: 46px;
+}

@@ -470,9 +470,6 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
           >
             设置
           </Button>
-          <Text type="secondary" className="uni-version">
-            <ApiOutlined /> v{APP_VERSION}
-          </Text>
         </div>
       </nav>
 

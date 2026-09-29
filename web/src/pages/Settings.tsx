@@ -5,7 +5,7 @@ import {
   BulbOutlined, ApiOutlined, BellOutlined, ThunderboltOutlined, DatabaseOutlined,
   SendOutlined, ReloadOutlined, ExperimentOutlined, CloudServerOutlined,
   GlobalOutlined, ClockCircleOutlined, CloudSyncOutlined, EditOutlined,
-  LinkOutlined, SyncOutlined, CloseOutlined, UserOutlined,
+  LinkOutlined, SyncOutlined, UserOutlined,
   QuestionCircleOutlined, InfoCircleOutlined
 } from '@ant-design/icons';
 import { settingsApi, dashboardApi, aiApi, tavilyApi, runtimeConfigApi } from '../api';
@@ -400,7 +400,6 @@ export default function Settings({ themeMode, onToggleTheme }: { themeMode: 'lig
     <div className="settings-panel">
       <div className="settings-panel-bar">
         <span className="settings-panel-title">设置</span>
-        <Button type="text" className="settings-panel-close" aria-label="关闭设置" icon={<CloseOutlined />} onClick={() => navigate('/app')} />
       </div>
       <div className="settings-panel-body">
         <div className="settings-panel-nav">
@@ -487,7 +486,6 @@ export default function Settings({ themeMode, onToggleTheme }: { themeMode: 'lig
         <span className="settings-panel-title">设置</span>
         <Space>
           <Button size="small" icon={<ReloadOutlined />} onClick={() => { load(); loadAiData(); loadTavilyConfig(); loadFeishuConfig(); }} loading={loading}>刷新</Button>
-          <Button type="text" className="settings-panel-close" aria-label="关闭设置" icon={<CloseOutlined />} onClick={() => navigate('/app')} />
         </Space>
       </div>
       <div className="settings-panel-body">
