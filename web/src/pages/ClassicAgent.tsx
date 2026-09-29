@@ -24,6 +24,13 @@ const statusColor: Record<string, string> = {
   rejected: 'default'
 };
 
+const safeSourceLink = (raw: string) => {
+  try {
+    const url = new URL(raw);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined;
+  } catch { return undefined; }
+};
+
 // ─── Agent 定义 ────────────────────────────────────────────────
 // 每个 Agent 是同一执行引擎上的一个预设角色：专属提示模板 + 关注点，
 // 运行记录通过 metadata.agent 区分，并在侧边栏各占一个入口。
@@ -367,12 +374,48 @@ export default function Agent() {
               <div className="report-card-title">{result.title || '分析结论'}</div>
               <p className="report-card-summary">{result.summary}</p>
               {result.answer && <p className="report-card-answer">{result.answer}</p>}
+              {result.answer_status === 'quote_checked' && (
+                <div className="report-card-warnings">引文已与来源原文核对；结论仍需人工复核</div>
+              )}
               {result.key_points?.length > 0 && (
                 <ul className="report-card-points">
                   {result.key_points.map((p: string, i: number) => (
                     <li key={i}>{p}</li>
                   ))}
                 </ul>
+              )}
+              {result.claims?.length > 0 && (
+                <div className="report-card-warnings">
+                  <strong>逐条引文</strong>
+                  <ul>
+                    {result.claims.map((claim: any, index: number) => (
+                      <li key={`${claim.evidence_id}-${index}`}>
+                        {claim.text}
+                        <blockquote>{claim.quote}</blockquote>
+                        <a href={safeSourceLink(claim.url)} target="_blank" rel="noreferrer">查看来源</a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {result.evidence?.length > 0 && (
+                <div className="report-card-warnings">
+                  <strong>参考来源</strong>
+                  <ul>
+                    {result.evidence
+                      .filter((source: any, index: number, items: any[]) =>
+                        source.url && items.findIndex((item: any) => item.url === source.url) === index)
+                      .slice(0, 8)
+                      .map((source: any) => (
+                        <li key={source.url}>
+                          <a href={safeSourceLink(source.url)} target="_blank" rel="noreferrer">
+                            {source.title || source.url}
+                          </a>
+                          {source.evidence_level === 'fulltext' ? '（已读取原文）' : '（搜索摘要）'}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
               )}
               <div className="report-card-tags">
                 {result.confidence && <Tag>置信度 {result.confidence}</Tag>}

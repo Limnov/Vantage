@@ -1,0 +1,8 @@
+{"query":"RTX 4090 current used price United States","expected_terms":["4090"],"topic":"general"}
+{"query":"OpenAI latest API pricing","expected_terms":["OpenAI"],"topic":"general"}
+{"query":"Apple Vision Pro latest news","expected_terms":["Vision Pro"],"topic":"news"}
+{"query":"Temu US seller policy 2026","expected_terms":["Temu"],"topic":"general"}
+{"query":"Amazon FBA fee changes 2026","expected_terms":["Amazon","FBA"],"topic":"general"}
+{"query":"9800X3D review benchmark","expected_terms":["9800X3D"],"topic":"general"}
+{"query":"TikTok Shop US policy latest","expected_terms":["TikTok Shop"],"topic":"news"}
+{"query":"NVIDIA latest earnings Reuters","expected_terms":["NVIDIA"],"topic":"news"}

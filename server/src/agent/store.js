@@ -271,6 +271,7 @@ async function saveAgentReport({
       title: shortText(item.title, 300),
       url: String(item.url).substring(0, 2048),
       publishedDate: item.published_date || null,
+      publishedDateSource: item.published_date_source || null,
       evidence_id: item.evidence_id || null,
     }));
   const normalizedWatchlistId =
@@ -316,6 +317,10 @@ async function saveAgentReport({
         ? result.evidence_ids
         : [],
       evidence: reportEvidence.slice(0, 20),
+      evidence_provider: result?.evidence_provider || null,
+      answer_status: result?.answer_status || null,
+      evidence_quality: result?.evidence_quality || null,
+      claims: Array.isArray(result?.claims) ? result.claims.slice(0, 8) : [],
       warnings: Array.isArray(result?.warnings) ? result.warnings : [],
       proposed_actions: Array.isArray(result?.proposed_actions)
         ? result.proposed_actions

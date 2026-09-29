@@ -1,0 +1,3 @@
+{"query":"BEIR benchmark original paper zero shot retrieval 2021","expected_url":"https://arxiv.org/abs/2104.08663","category":"paper"}
+{"query":"BEIR 零样本信息检索基准 原始论文 arxiv","expected_url":"https://arxiv.org/abs/2104.08663","category":"paper"}
+{"query":"RAG 检索评测 ir_measures 开源项目 GitHub","expected_url":"https://github.com/terrierteam/ir_measures","category":"project"}

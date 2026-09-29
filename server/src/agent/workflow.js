@@ -70,6 +70,9 @@ function buildSystemPrompt(context = {}) {
       sentiment: 'positive | neutral | negative',
       confidence: 'high | medium | low',
       evidence_ids: ['实际工具返回的 evidence_id'],
+      ...(context.agent === 'merchant_research' && (context.evidenceProvider || process.env.VANTAGE_EVIDENCE_PROVIDER) === 'search_api'
+        ? { claims: [{ text: '仅包含引文直接支持的事实', evidence_id: 'page_...', quote: '从该证据原文逐字复制的连续引文' }] }
+        : {}),
       proposed_actions: context.agent === 'merchant_research'
         ? []
         : [{ type: 'send_feishu_notification', requires_approval: true, report_id: 123, reason: '...' }]
@@ -81,6 +84,9 @@ function buildSystemPrompt(context = {}) {
       '行业与地区来自用户自述，只作检索背景。事实、推断和待确认事项要分开；重要结论标明来源及发布时间。没有可靠依据时明确说明。',
       '每轮最多搜索 3 次、提取原文 4 次。找到相关来源后尽快提取原文，使用实际返回的 page_ 类型 evidence_id 写最终 JSON；不要重复搜索同一问题。'
     );
+    if ((context.evidenceProvider || process.env.VANTAGE_EVIDENCE_PROVIDER) === 'search_api') {
+      instructions.push('最终 JSON 的 claims 必须逐条给出 text、page_ evidence_id 和 quote。quote 必须是同一段 excerpt 中连续、至少 20 字的原文；每条 text 只陈述这段原文直接支持的事实。运行时只会展示通过逐字核对的 claims；不要在 summary、answer 或 key_points 中加入额外事实。');
+    }
   }
   return instructions.join('\n');
 }

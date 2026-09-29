@@ -60,10 +60,11 @@ test('HTTP security boundaries enforce authentication, tenant scope, roles, and 
       const invitee = await db.query("INSERT INTO users (username, email, password_hash, is_system_admin) VALUES ('invitee', 'invitee@example.test', 'hash', 0)");
       await db.query("INSERT INTO org_members (org_id, user_id, role, status) VALUES (2, ?, 'owner', 'active'), (2, ?, 'viewer', 'active'), (2, ?, 'member', 'active'), (3, ?, 'owner', 'active')", [owner.insertId, viewer.insertId, member.insertId, invitee.insertId]);
       const ownWatch = await db.query("INSERT INTO watchlist (org_id, owner_id, name, type, query) VALUES (2, ?, 'SecretNeedle Two', 'keyword', 'needle-two')", [owner.insertId]);
-      await db.query("INSERT INTO watchlist (org_id, owner_id, name, type, query) VALUES (3, ?, 'SecretNeedle Three', 'keyword', 'needle-three')", [invitee.insertId]);
+      const otherWatch = await db.query("INSERT INTO watchlist (org_id, owner_id, name, type, query) VALUES (3, ?, 'SecretNeedle Three', 'keyword', 'needle-three')", [invitee.insertId]);
       const report = await db.query("INSERT INTO reports (org_id, watchlist_id, title, summary) VALUES (2, ?, 'SecretNeedle report two', 'two')", [ownWatch.insertId]);
+      const foreignReport = await db.query("INSERT INTO reports (org_id, watchlist_id, title, summary) VALUES (3, ?, 'Private report three', 'three')", [otherWatch.insertId]);
       const alert = await db.query("INSERT INTO alerts (org_id, watchlist_id, report_id, type, level, title, message) VALUES (2, ?, ?, 'signal', 'warning', 'Test alert', 'Test')", [ownWatch.insertId, report.insertId]);
-      await db.query("INSERT INTO agent_runs (id, org_id, user_id, goal, status) VALUES ('owner-run', 2, ?, 'Owner task', 'queued')", [owner.insertId]);
+      await db.query("INSERT INTO agent_runs (id, org_id, user_id, goal, status, report_id) VALUES ('owner-run', 2, ?, 'Owner task', 'queued', ?)", [owner.insertId, report.insertId]);
       await db.query("INSERT INTO settings (scope, scope_id, key, value) VALUES ('system', 0, 'ai_config', ?)", [JSON.stringify({ apiKey: 'legacy-secret-key', model: 'legacy-model' })]);
       const bot = await db.query("INSERT INTO feishu_bots (org_id, name, webhook_url, secret) VALUES (2, 'Bot Two', 'https://open.feishu.cn/open-apis/bot/v2/hook/private-token-123', 'private-signing-secret')");
       await db.query("INSERT INTO alert_routes (org_id, name, bot_id) VALUES (2, 'Route Two', ?)", [bot.insertId]);
@@ -120,6 +121,8 @@ test('HTTP security boundaries enforce authentication, tenant scope, roles, and 
         results.memberRunsOtherWatchlist = await request(base, '/api/watchlist/' + ownWatch.insertId + '/run', { method: 'POST', auth: memberToken, orgId: 2, body: {} });
         results.viewerStartsAgent = await request(base, '/api/agent/runs', { method: 'POST', auth: viewerToken, orgId: 2, body: { goal: 'Run a report' } });
         results.viewerPushesReport = await request(base, '/api/reports/' + report.insertId + '/push', { method: 'POST', auth: viewerToken, orgId: 2 });
+        results.viewerDeletesReport = await request(base, '/api/reports/' + report.insertId, { method: 'DELETE', auth: viewerToken, orgId: 2 });
+        results.crossOrgDeletesReport = await request(base, '/api/reports/' + foreignReport.insertId, { method: 'DELETE', auth: ownerToken, orgId: 2 });
         results.viewerAcksAlert = await request(base, '/api/alerts/' + alert.insertId + '/ack', { method: 'POST', auth: viewerToken, orgId: 2 });
         results.viewerDismissesAlert = await request(base, '/api/alerts/' + alert.insertId + '/dismiss', { method: 'POST', auth: viewerToken, orgId: 2 });
         results.viewerResendsAlert = await request(base, '/api/alerts/' + alert.insertId + '/resend', { method: 'POST', auth: viewerToken, orgId: 2 });
@@ -133,6 +136,8 @@ test('HTTP security boundaries enforce authentication, tenant scope, roles, and 
         results.adminReadsLogs = await request(base, '/api/logs', { auth: adminToken, orgId: 2 });
         results.search = await request(base, '/api/search/global?q=SecretNeedle', { auth: ownerToken, orgId: 2 });
         results.bot = await request(base, '/api/bots/' + bot.insertId, { auth: viewerToken, orgId: 2 });
+        results.ownerDeletesReport = await request(base, '/api/reports/' + report.insertId, { method: 'DELETE', auth: ownerToken, orgId: 2 });
+        results.redeletesReport = await request(base, '/api/reports/' + report.insertId, { method: 'DELETE', auth: ownerToken, orgId: 2 });
         results.routes = await request(base, '/api/routes?orgId=2', { auth: viewerToken, orgId: 2 });
         results.membersQueryMismatch = await request(base, '/api/members?orgId=3', { auth: ownerToken, orgId: 2 });
         results.botsQueryMismatch = await request(base, '/api/bots?orgId=3', { auth: ownerToken, orgId: 2 });
@@ -149,7 +154,12 @@ test('HTTP security boundaries enforce authentication, tenant scope, roles, and 
         const dbChecks = {
           orgThreeName: (await db.queryOne('SELECT name FROM organizations WHERE id = 3')).name,
           ownWatchName: (await db.queryOne('SELECT name FROM watchlist WHERE id = ?', [ownWatch.insertId])).name,
-          inviteeOrgTwo: await db.queryOne('SELECT id FROM org_members WHERE org_id = 2 AND user_id = ?', [invitee.insertId])
+          targetReportId: report.insertId,
+          inviteeOrgTwo: await db.queryOne('SELECT id FROM org_members WHERE org_id = 2 AND user_id = ?', [invitee.insertId]),
+          deletedReport: await db.queryOne('SELECT id FROM reports WHERE id = ?', [report.insertId]),
+          alertReportId: (await db.queryOne('SELECT report_id FROM alerts WHERE id = ?', [alert.insertId])).report_id,
+          runReportId: (await db.queryOne("SELECT report_id FROM agent_runs WHERE id = 'owner-run'")).report_id,
+          foreignReport: await db.queryOne('SELECT id FROM reports WHERE id = ?', [foreignReport.insertId])
         };
         process.stdout.write('RESULT_JSON:' + JSON.stringify({ results, dbChecks, routed, unrouted, routedCalls }) + '\\n');
       } finally {
@@ -185,9 +195,12 @@ test('HTTP security boundaries enforce authentication, tenant scope, roles, and 
     assert.equal(results.vantageNoOrg.status, 400);
     assert.equal(results.vantagePrivate.status, 400);
     assert.equal(results.vantagePrivate.payload.error, 'unsafe_url');
-    for (const key of ['crossOrgMember', 'crossOrgUpdate', 'runtimeWrite', 'aiWrite', 'tavilyWrite', 'systemSetting', 'runtimeRead', 'aiRead', 'aiTest', 'tavilyRead', 'tavilyTest', 'viewerUpdate', 'viewerDelete', 'viewerRun', 'memberRunsOtherWatchlist', 'viewerStartsAgent', 'viewerPushesReport', 'viewerAcksAlert', 'viewerDismissesAlert', 'viewerResendsAlert', 'memberCancelsOwnerRun', 'memberTestsBot', 'viewerSearchesUsers', 'viewerReadsLogs', 'viewerReadsAnalytics', 'parentMismatch', 'adminCrossWatch']) {
+    for (const key of ['crossOrgMember', 'crossOrgUpdate', 'runtimeWrite', 'aiWrite', 'tavilyWrite', 'systemSetting', 'runtimeRead', 'aiRead', 'aiTest', 'tavilyRead', 'tavilyTest', 'viewerUpdate', 'viewerDelete', 'viewerRun', 'memberRunsOtherWatchlist', 'viewerStartsAgent', 'viewerPushesReport', 'viewerDeletesReport', 'crossOrgDeletesReport', 'viewerAcksAlert', 'viewerDismissesAlert', 'viewerResendsAlert', 'memberCancelsOwnerRun', 'memberTestsBot', 'viewerSearchesUsers', 'viewerReadsLogs', 'viewerReadsAnalytics', 'parentMismatch', 'adminCrossWatch']) {
       assert.equal(results[key].status, 403, key + ': ' + JSON.stringify(results[key]));
     }
+    assert.equal(results.ownerDeletesReport.status, 200);
+    assert.deepEqual(results.ownerDeletesReport.payload, { deleted: 1, id: dbChecks.targetReportId });
+    assert.equal(results.redeletesReport.status, 404);
     assert.equal(results.registrationStatus.status, 200);
     assert.equal(results.registrationStatus.payload.enabled, false);
     assert.equal(results.registrationDisabled.status, 403);
@@ -221,6 +234,10 @@ test('HTTP security boundaries enforce authentication, tenant scope, roles, and 
     assert.equal(dbChecks.orgThreeName, 'Org Three');
     assert.equal(dbChecks.ownWatchName, 'SecretNeedle Two');
     assert.equal(dbChecks.inviteeOrgTwo, null);
+    assert.equal(dbChecks.deletedReport, null);
+    assert.equal(dbChecks.alertReportId, null);
+    assert.equal(dbChecks.runReportId, null);
+    assert.ok(dbChecks.foreignReport);
     assert.equal(routed.ok, true);
     assert.equal(unrouted.reason, 'no_target');
     assert.equal(routedCalls.length, 1);

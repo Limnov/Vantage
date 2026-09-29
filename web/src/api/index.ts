@@ -27,6 +27,7 @@ export const searchApi = {
 export const reportsApi = {
   list: (params?: any) => api.get('/reports', { params }).then((r) => r.data),
   get: (id: number) => api.get(`/reports/${id}`).then((r) => r.data),
+  delete: (id: number) => api.delete(`/reports/${id}`).then((r) => r.data),
   push: (id: number) => api.post(`/reports/${id}/push`).then((r) => r.data),
   export: (id: number, format: 'md' | 'json' = 'md') => {
     window.open(`/api/reports/${id}/export?format=${format}`, '_blank');

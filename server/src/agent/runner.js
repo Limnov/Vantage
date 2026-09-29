@@ -107,8 +107,18 @@ function collectEvidence(result, evidenceMap, sourceTool = null) {
       evidence_id: item.evidence_id,
       title: item.title || '',
       url: item.url || '',
+      requested_url: item.requested_url || null,
       published_date: item.published_date || null,
-      excerpt: String(item.excerpt || '').substring(0, 1200),
+      published_date_source: item.published_date_source || null,
+      excerpt: item.passage_sha256
+        ? String(item.excerpt || '')
+        : String(item.excerpt || '').substring(0, 1200),
+      content_sha256: item.content_sha256 || null,
+      passage_sha256: item.passage_sha256 || null,
+      passage_start: Number.isInteger(item.passage_start) ? item.passage_start : null,
+      passage_end: Number.isInteger(item.passage_end) ? item.passage_end : null,
+      retrieved_at: item.retrieved_at || null,
+      provider: item.provider || null,
       untrusted_content: item.untrusted_content === true,
       source_tool: sourceTool || item.source_tool || null,
       evidence_level: sourceTool === 'extract_source' || String(item.evidence_id).startsWith('page_')
@@ -201,6 +211,7 @@ function normalizeFinal(text, evidenceMap) {
     confidence,
     evidence_ids: evidenceIds,
     evidence_quality: evidenceQuality,
+    claims: Array.isArray(raw.claims) ? raw.claims.slice(0, 8) : [],
     proposed_actions: proposedActions,
     warnings
   };
@@ -227,6 +238,52 @@ function stabilizeMerchantFinal(final, evidenceMap) {
   final.evidence_quality = evaluateEvidenceQuality(final.evidence_ids, evidenceMap);
   final.answer_status = verifiedSources.length ? 'sources_only' : 'insufficient_evidence';
   final.warnings.push('未生成带有效原文引用的综合结论，已隐藏未经支持的模型回答');
+  return final;
+}
+
+function stabilizeSearchApiFinal(final, evidenceMap) {
+  const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
+  const requested = final.claims;
+  const verified = [];
+  for (const claim of requested) {
+    if (!claim || typeof claim !== 'object') continue;
+    const evidence = evidenceMap.get(claim.evidence_id);
+    const quote = normalize(claim.quote);
+    const statement = normalize(claim.text);
+    if (!evidence || evidence.evidence_level !== 'fulltext' || !evidence.content_sha256 ||
+        !evidence.passage_sha256 || quote.length < 20 || quote.length > 500 ||
+        !normalize(evidence.excerpt).includes(quote) || !statement || statement.length > 300) continue;
+    verified.push({
+      text: statement,
+      evidence_id: evidence.evidence_id,
+      quote,
+      url: evidence.url,
+      requested_url: evidence.requested_url,
+      content_sha256: evidence.content_sha256,
+      passage_sha256: evidence.passage_sha256,
+      passage_start: evidence.passage_start,
+      passage_end: evidence.passage_end,
+      retrieved_at: evidence.retrieved_at
+    });
+  }
+  if (!requested.length || verified.length !== requested.length) {
+    final.evidence_quality = { ...final.evidence_quality, fulltext_count: 0, quote_checked_count: 0 };
+    final.claims = [];
+    final.warnings.push('逐条引文缺失或与提取原文不一致，已隐藏模型结论');
+    return stabilizeMerchantFinal(final, evidenceMap);
+  }
+  final.claims = verified;
+  final.evidence_ids = [...new Set(verified.map(item => item.evidence_id))];
+  final.evidence_quality = { ...evaluateEvidenceQuality(final.evidence_ids, evidenceMap), quote_checked_count: verified.length };
+  final.key_points = verified.slice(0, 5).map(item => item.text);
+  final.answer = verified.map(item => item.text).join('\n').substring(0, 2000);
+  final.summary = verified.map(item => item.text).join('；').substring(0, 1200);
+  final.title = '公开来源引文核验摘要';
+  final.signal_type = 'neutral';
+  final.sentiment = 'neutral';
+  final.confidence = final.evidence_quality.distinct_domains >= 2 ? 'medium' : 'low';
+  final.answer_status = 'quote_checked';
+  final.warnings.push('引文已与提取原文逐字核对；结论与引文的语义支持关系仍需人工复核');
   return final;
 }
 
@@ -276,13 +333,16 @@ function agentErrorMessage(error) {
   return String(error?.userMessage || error?.message || error || 'agent run failed').substring(0, 1000);
 }
 
-function buildFinalRepairPrompt(evidenceMap) {
+function buildFinalRepairPrompt(evidenceMap, context = {}) {
   const evidenceIds = Array.from(evidenceMap.keys()).slice(0, 20);
   return [
     '你上一个最终回答不是合法 JSON。请只修复格式，不增加新事实，也不要调用工具。',
     '只输出一个合法 JSON 对象，不要解释、不要 Markdown 代码围栏；字符串内部的引号必须正确转义。',
     `evidence_ids 只能从以下值中选择：${JSON.stringify(evidenceIds)}`,
-    '必须保留字段：title、summary、answer、key_points、signal_type、sentiment、confidence、evidence_ids、proposed_actions。'
+    '必须保留字段：title、summary、answer、key_points、signal_type、sentiment、confidence、evidence_ids、proposed_actions。',
+    ...(context.agent === 'merchant_research' && context.evidenceProvider === 'search_api'
+      ? ['必须保留 claims 数组，每项包含 text、evidence_id、quote；quote 原样复制对应 page_ 证据中的连续原文。']
+      : [])
   ].join('\n');
 }
 
@@ -301,7 +361,11 @@ async function runAgent({
     orgId: context.orgId,
     userId: context.userId
   });
-  const messages = buildInitialMessages(goal, context);
+  const evidenceProvider = context.agent === 'merchant_research' && process.env.VANTAGE_EVIDENCE_PROVIDER === 'search_api'
+    ? 'search_api'
+    : 'legacy';
+  const runContext = { ...context, evidenceProvider };
+  const messages = buildInitialMessages(goal, runContext);
   const allowedTools = context.agent === 'merchant_research'
     ? new Set(MERCHANT_RESEARCH_TOOLS)
     : null;
@@ -343,7 +407,7 @@ async function runAgent({
       const startedAt = Date.now();
       const forceFinal = context.agent === 'merchant_research' && stepNo === maxSteps;
       if (forceFinal && !formatRepairPending) {
-        messages.push({ role: 'user', content: buildFinalRepairPrompt(evidenceMap) });
+        messages.push({ role: 'user', content: buildFinalRepairPrompt(evidenceMap, runContext) });
       }
       const merchantSearchCount = operations.filter(item => item.tool === 'search_market' && item.ok && !item.replayed).length;
       const merchantExtractCount = operations.filter(item => item.tool === 'extract_source' && item.ok && !item.replayed).length;
@@ -410,7 +474,7 @@ async function runAgent({
           workflow.phase = PHASES.REPORTING;
           workflow.stepCount = stepNo;
           messages.push({ role: 'assistant', content: finalText || 'invalid final response' });
-          messages.push({ role: 'user', content: buildFinalRepairPrompt(evidenceMap) });
+          messages.push({ role: 'user', content: buildFinalRepairPrompt(evidenceMap, runContext) });
           await store.updateRun(runId, {
             phase: PHASES.REPORTING,
             stepCount: stepNo,
@@ -424,7 +488,14 @@ async function runAgent({
         }
         formatRepairPending = false;
         const final = normalizeFinal(finalText, evidenceMap);
-        if (context.agent === 'merchant_research') stabilizeMerchantFinal(final, evidenceMap);
+        if (context.agent === 'merchant_research') {
+          final.evidence_provider = evidenceProvider;
+          if (evidenceProvider === 'search_api') {
+            stabilizeSearchApiFinal(final, evidenceMap);
+          } else {
+            stabilizeMerchantFinal(final, evidenceMap);
+          }
+        }
         const researchTools = new Set(['search_market', 'extract_source', 'compare_reports']);
         const isOperation = context.agent === 'merchant_research'
           ? false
@@ -535,7 +606,7 @@ async function runAgent({
             result = toolName === 'propose_notification' && notificationProposals.length > 0
               ? { ok: false, error: { code: 'proposal_limit', message: '每轮任务最多一个通知建议；请在下一轮提出另一个建议' } }
               : await registry.execute(toolName, args, {
-                ...context,
+                ...runContext,
                 runId,
                 stepNo,
                 goal,

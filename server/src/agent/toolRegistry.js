@@ -53,7 +53,10 @@ function normalizeReport(row) {
 
 function createDefaultDependencies() {
   return {
-    async searchMarket(input) {
+    async searchMarket(input, context = {}) {
+      if (context.agent === 'merchant_research' && (context.evidenceProvider || process.env.VANTAGE_EVIDENCE_PROVIDER) === 'search_api') {
+        return require('../collectors/searchApi').search(input);
+      }
       const { collect } = require('../services');
       return collect({
         query: input.query,
@@ -76,6 +79,10 @@ function createDefaultDependencies() {
 
     async extractSourceViaTavily(input) {
       return require('../collectors/tavily').extract(input.url);
+    },
+
+    async extractSourceViaSearchApi(input) {
+      return require('../collectors/searchApi').extract(input);
     },
 
     async getReport(reportId, context) {
@@ -119,7 +126,7 @@ function createToolRegistry(overrides = {}) {
       if (context.userId) {
         await require('../security/trial').consumeTrialQuota(context.userId, 'searches');
       }
-      const raw = await dependencies.searchMarket(input);
+      const raw = await dependencies.searchMarket(input, context);
       const items = Array.isArray(raw) ? raw : (Array.isArray(raw?.results) ? raw.results : []);
       const results = items.slice(0, input.max_results).map((item, index) => {
         const title = shortText(item.title, 300);
@@ -132,6 +139,8 @@ function createToolRegistry(overrides = {}) {
           title,
           url,
           published_date: item.publishedDate || item.published_date || null,
+          published_date_source: item.published_date_source || null,
+          provider: item.source || null,
           excerpt,
           untrusted_content: true
         };
@@ -141,8 +150,9 @@ function createToolRegistry(overrides = {}) {
         search_mode: input.search_mode,
         count: results.length,
         results,
-        evidence: results.map(({ evidence_id, title, url, published_date, excerpt, untrusted_content }) => ({
-          evidence_id, title, url, published_date, excerpt, untrusted_content
+        warnings: Array.isArray(raw?.warnings) ? raw.warnings : [],
+        evidence: results.map(({ evidence_id, title, url, published_date, published_date_source, provider, excerpt, untrusted_content }) => ({
+          evidence_id, title, url, published_date, published_date_source, provider, excerpt, untrusted_content
         }))
       };
     },
@@ -156,24 +166,49 @@ function createToolRegistry(overrides = {}) {
       if (context.agent === 'merchant_research' && !matchedSource) {
         throw new ToolExecutionError('source URL must come from this run search results', 'source_not_in_search');
       }
-      const page = context.agent === 'merchant_research'
+      const searchApiMode = context.agent === 'merchant_research' && (context.evidenceProvider || process.env.VANTAGE_EVIDENCE_PROVIDER) === 'search_api';
+      const page = searchApiMode
+        ? await dependencies.extractSourceViaSearchApi({ ...input, url: url.href })
+        : context.agent === 'merchant_research'
         ? await dependencies.extractSourceViaTavily({ ...input, url: url.href })
         : await dependencies.extractSource({ ...input, url: url.href });
       const content = shortText(page?.content, input.max_chars);
       const id = evidenceId('page', url.href);
+      const sourceUrl = searchApiMode ? assertSafeSourceUrl(page?.url).href : url.href;
+      const passages = searchApiMode && Array.isArray(page?.passages)
+        ? page.passages.slice(0, 8).map(part => ({
+          evidence_id: evidenceId('page', `${sourceUrl}|${page.contentSha256}|${part.start}`),
+          title: shortText(page?.title || matchedSource?.title, 300),
+          url: sourceUrl,
+          requested_url: url.href,
+          published_date: page?.publishedDate || matchedSource?.published_date || null,
+          published_date_source: page?.publishedDate ? 'page_metadata' : matchedSource?.published_date_source || null,
+          excerpt: part.text,
+          content_sha256: page.contentSha256,
+          passage_sha256: part.sha256,
+          passage_start: part.start,
+          passage_end: part.end,
+          retrieved_at: page.retrievedAt,
+          provider: 'vantage-search-api',
+          untrusted_content: true
+        }))
+        : [];
       return {
-        url: url.href,
+        url: sourceUrl,
+        requested_url: url.href,
         title: shortText(page?.title || page?.ogTitle || matchedSource?.title, 300),
         published_date: page?.publishedDate || matchedSource?.published_date || null,
         content_length: page?.contentLength || content.length,
-        evidence: content ? [{
+        content_sha256: searchApiMode ? page?.contentSha256 : null,
+        retrieved_at: searchApiMode ? page?.retrievedAt : null,
+        evidence: passages.length ? passages : (searchApiMode ? [] : content ? [{
           evidence_id: id,
           title: shortText(page?.title || page?.ogTitle || matchedSource?.title, 300),
           url: url.href,
           excerpt: content,
           untrusted_content: true
-        }] : [],
-        warnings: content
+        }] : []),
+        warnings: passages.length || (!searchApiMode && content)
           ? []
           : [page?.error || 'source content is empty or could not be extracted']
       };

@@ -48,6 +48,7 @@ test('demo logs into the real API, is tenant confined and cannot mutate or invok
       ['/api/watchlist','POST',{name:'should never persist'}],
       ['/api/watchlist/1/run','POST',{}],
       ['/api/watchlist/1','DELETE'],
+      ['/api/reports/1','DELETE'],
       ['/api/watchlist/1','PUT',{enabled:1}],
       ['/api/agent/runs','POST',{goal:'call AI'}],
       ['/api/agent/runs/demo-research-1/cancel','POST',{}],

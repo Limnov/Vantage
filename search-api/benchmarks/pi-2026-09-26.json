@@ -1,0 +1,140 @@
+{
+  "summary": [
+    {
+      "provider": "vantage-search",
+      "queries": 8,
+      "labeled_queries": 8,
+      "expected_top5_hit_rate": 1.0,
+      "numeric_mismatch_rate": 0.0,
+      "avg_unique_domains_top5": 5,
+      "p50_latency_s": 1.237,
+      "p95_latency_s": 1.984,
+      "avg_latency_s": 1.331,
+      "avg_results": 8,
+      "empty_result_rate": 0.0,
+      "cache_hit_rate": 0.0
+    }
+  ],
+  "cases": [
+    {
+      "provider": "vantage-search",
+      "query": "RTX 4090 current used price United States",
+      "latency_s": 1.143753268988803,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": true,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://gpuprix.com/us/gpus/geforce-rtx-4090",
+        "https://bestvaluegpu.com/history/new-and-used-rtx-4090-price-history-and-specs/",
+        "https://gpudojo.com/rtx-4090"
+      ]
+    },
+    {
+      "provider": "vantage-search",
+      "query": "OpenAI latest API pricing",
+      "latency_s": 1.3040491529973224,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": true,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://developers.openai.com/api/docs/pricing",
+        "https://custom.typingmind.com/tools/estimate-llm-usage-costs/openrouter/gpt-mini-latest",
+        "https://openai.com/business/pricing/"
+      ]
+    },
+    {
+      "provider": "vantage-search",
+      "query": "Apple Vision Pro latest news",
+      "latency_s": 1.7481982419849373,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": true,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://economictimes.indiatimes.com/topic/pregnant-women-apple-vision-pro",
+        "https://www.apple.com/newsroom/topics/apple-vision-pro/",
+        "https://ai-engage.co/2026/09/09/ring-the-bell-fovii-unveils-new-platform-for-apple-vision-pro/"
+      ]
+    },
+    {
+      "provider": "vantage-search",
+      "query": "Temu US seller policy 2026",
+      "latency_s": 0.7125170369981788,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": true,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://cnbusinesshub.com/corporate_advisory/article-35-temu-us-tariffs-de-minimis-english-2026-0804.html",
+        "https://shopappy.com/ecommerce/temu/selling-temu-us-brand-early-seller",
+        "https://fletchapp.com/temu-seller-strategy-2026-best-practices-for-us-sellers/"
+      ]
+    },
+    {
+      "provider": "vantage-search",
+      "query": "Amazon FBA fee changes 2026",
+      "latency_s": 1.1708101140102372,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": true,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://prepcenterla.com/learn/amazon/2026-fba-fee-changes",
+        "https://sellercentral.amazon.com/help/hub/reference/external/G201411300?locale=en-US",
+        "https://sellersnap.io/amazon-fee-changes-and-updates/"
+      ]
+    },
+    {
+      "provider": "vantage-search",
+      "query": "9800X3D review benchmark",
+      "latency_s": 0.7649713570135646,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": true,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://gamersnexus.net/cpus/rip-intel-amd-ryzen-7-9800x3d-cpu-review-benchmarks-vs-7800x3d-285k-14900k-more",
+        "https://www.tomshardware.com/pc-components/cpus/amd-ryzen-7-9800x3d-review-devastating-gaming-performance",
+        "https://www.cpubenchmark.net/cpu.php?cpu=AMD+Ryzen+7+9800X3D"
+      ]
+    },
+    {
+      "provider": "vantage-search",
+      "query": "TikTok Shop US policy latest",
+      "latency_s": 1.984248103981372,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": true,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://seller.tiktok.com/",
+        "https://news.seonib.com/articles/2026-08-27/tiktok-shop-july-2026-policy-updates-return-timing-shipping-.html",
+        "https://www.expandlyinfo.com/tiktok-shop-us-seller-policy-enforcement-2026/"
+      ]
+    },
+    {
+      "provider": "vantage-search",
+      "query": "NVIDIA latest earnings Reuters",
+      "latency_s": 1.8175891490536742,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": true,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://investor.nvidia.com/financial-info/financial-reports/default.aspx",
+        "https://www.reuters.com/business/nvidia-shares-set-280-billion-price-swing-after-earnings-options-show-2026-08-25/",
+        "https://finance.yahoo.com/quote/NVDA/"
+      ]
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 import { useAuth } from '../lib/auth';
 import { useEffect, useState } from 'react';
-import { Table, Card, Tag, Space, Typography, Button, Drawer, Skeleton, Empty } from 'antd';
+import { Table, Card, Tag, Space, Typography, Button, Drawer, Skeleton, Empty, Popconfirm, Tooltip } from 'antd';
 import {
-  EyeOutlined, SendOutlined, FileTextOutlined,
+  EyeOutlined, SendOutlined, DeleteOutlined, FileTextOutlined,
   RiseOutlined, FallOutlined, ArrowRightOutlined,
   LinkOutlined, AimOutlined, MessageOutlined, ClockCircleOutlined, ApiOutlined
 } from '@ant-design/icons';
@@ -24,7 +24,7 @@ const sentimentMeta: Record<string, { color: string; text: string }> = {
 };
 
 export default function Reports() {
-  const { user } = useAuth();
+  const { user, currentOrg } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -33,6 +33,11 @@ export default function Reports() {
   const [filterSignal, setFilterSignal] = useState<string | undefined>();
   const [detail, setDetail] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const canDeleteReports = Boolean(
+    user?.is_system_admin || ['owner', 'admin'].includes(currentOrg?.my_role || currentOrg?.role || '')
+  ) && !user?.is_demo;
+  const showDeleteAction = canDeleteReports || Boolean(user?.is_trial);
 
   const load = async () => {
     setLoading(true);
@@ -68,6 +73,22 @@ export default function Reports() {
     } else {
       // @ts-ignore
       window.message?.error(r.error || '推送失败');
+    }
+  };
+
+  const onDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await reportsApi.delete(id);
+      // @ts-ignore
+      window.message?.success('报告已删除');
+      if (items.length === 1 && page > 1) setPage(page - 1);
+      else await load();
+    } catch (error: any) {
+      // @ts-ignore
+      window.message?.error(error.response?.data?.message || error.response?.data?.error || '删除失败');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -117,7 +138,11 @@ export default function Reports() {
           }}
           rowClassName={(record: any) => `report-row-${record.signal_type}`}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 60 },
+            {
+              title: '序号',
+              width: 60,
+              render: (_: unknown, __: unknown, index: number) => (page - 1) * pageSize + index + 1
+            },
             {
               title: '标题',
               dataIndex: 'title',
@@ -162,11 +187,30 @@ export default function Reports() {
             },
             {
               title: '操作',
-              width: 160,
+              width: showDeleteAction ? 210 : 160,
               render: (_, r: any) => (
                 <Space size={4}>
                   <Button size="small" type="link" icon={<EyeOutlined />} onClick={() => onShowDetail(r.id)}>查看</Button>
                   <Button size="small" type="link" disabled={user?.is_demo} icon={<SendOutlined />} onClick={() => onPush(r.id)}>推送</Button>
+                  {canDeleteReports && (
+                    <Popconfirm
+                      title="删除这份报告？"
+                      description="删除后无法恢复。"
+                      okText="删除"
+                      cancelText="取消"
+                      okButtonProps={{ danger: true, loading: deletingId === r.id }}
+                      onConfirm={() => onDelete(r.id)}
+                    >
+                      <Button size="small" type="link" danger loading={deletingId === r.id} icon={<DeleteOutlined />}>删除</Button>
+                    </Popconfirm>
+                  )}
+                  {!canDeleteReports && showDeleteAction && (
+                    <Tooltip title="共享测试账号不能删除报告，请使用组织所有者或管理员账号。">
+                      <span>
+                        <Button size="small" type="link" danger disabled icon={<DeleteOutlined />}>删除</Button>
+                      </span>
+                    </Tooltip>
+                  )}
                 </Space>
               )
             }

@@ -1,0 +1,43 @@
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "Vantage Search"
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "auto"
+  formats:
+    - html
+    - json
+
+server:
+  secret_key: "change-me-before-public-deploy"
+  limiter: false
+  image_proxy: false
+
+ui:
+  static_use_hash: true
+
+outgoing:
+  request_timeout: 6.0
+  max_request_timeout: 12.0
+  pool_connections: 100
+  pool_maxsize: 20
+
+engines:
+  - name: bing
+    engine: bing
+    disabled: false
+    weight: 1.15
+
+  - name: duckduckgo
+    engine: duckduckgo
+    disabled: false
+    weight: 1.0
+
+  - name: google
+    engine: google
+    disabled: false
+    weight: 1.1

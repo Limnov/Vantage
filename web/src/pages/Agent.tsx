@@ -583,6 +583,23 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                         ))}
                       </ul>
                     )}
+                    {run.result.answer_status === 'quote_checked' && (
+                      <Alert showIcon type="warning" message="引文已与来源原文核对；结论仍需人工复核" />
+                    )}
+                    {run.result.claims?.length > 0 && (
+                      <div className="evidence-note">
+                        <strong>逐条引文</strong>
+                        <ul>
+                          {run.result.claims.map((claim: any, index: number) => (
+                            <li key={`${claim.evidence_id}-${index}`}>
+                              {claim.text}
+                              <blockquote>{claim.quote}</blockquote>
+                              <a href={safeLink(claim.url)} target="_blank" rel="noreferrer">查看来源</a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {run.result.warnings?.length > 0 && (
                       <div className="evidence-note">
                         {run.result.warnings.join("；")}

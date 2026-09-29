@@ -1,0 +1,4 @@
+services:
+  searxng:
+    volumes:
+      - ./searxng/settings.pi.yml:/etc/searxng/settings.yml:ro

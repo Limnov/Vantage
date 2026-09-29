@@ -137,6 +137,8 @@ Agent 与 MCP 共用同一套参数校验、权限判断和业务实现：
 
 研究内容和网页正文始终按不可信数据处理。网页提取只接受公开 HTTP(S) 目标，并拒绝私网、保留地址、带凭据 URL 和未经复验的重定向。
 
+商户研究可通过 `VANTAGE_EVIDENCE_PROVIDER=search_api` 显式切换到同机 Vantage Search API；同时设置 `VANTAGE_SEARCH_API_URL=http://127.0.0.1:8787` 和服务端 `VANTAGE_SEARCH_API_KEY`。Search API 源码与部署配置位于 [`search-api/`](./search-api/README.md)，可从仓库根目录执行 `bash search-api/deploy/pi.sh` 部署。该模式的搜索与原文提取均通过 Search API，失败时返回工具错误，不会偷偷改用 Tavily。原文证据记录抓取时间、返回正文与片段的哈希、片段偏移量；最终报告要求逐条引文与片段原文匹配，不能匹配时仅展示已提取来源。引文匹配仍不能证明陈述在语义上受到原文支持，所以该模式暂不等同于自动报告的生产级唯一证据入口。其他监控和采集流程仍使用现有配置。
+
 ## 系统结构
 
 下面展示共享业务分层与 Node 自托管结构。Cloudflare 对应 D1 / Queues / R2，详见[云端架构](./docs/cloudflare-deployment.md#架构)。
@@ -323,12 +325,13 @@ Vantage/
 │   ├── src/mcp/             # HTTP / stdio MCP
 │   ├── src/routes/          # REST API
 │   ├── src/security/        # 启动配置与出站请求边界
-│   ├── src/collectors/      # Tavily 与市场采集
+│   ├── src/collectors/      # Tavily、Search API 适配与市场采集
 │   ├── src/searnov/         # 搜索增强、网页提取、缓存与 AI 摘要
 │   ├── src/push/            # 飞书发送链路
 │   ├── src/scheduler/       # 定时任务
 │   └── test/                # Node.js 测试
 ├── web/                     # Agent-first 与经典 React 工作台
+├── search-api/              # SearXNG 搜索服务、提取、benchmark 与 Pi 部署
 ├── cloudflare/              # Hono Worker、D1 适配、R2、Queues 与云端迁移
 ├── db/                      # Node 版 SQLite schema 与迁移
 ├── docs/                    # 重构说明与 Agent 设计资料

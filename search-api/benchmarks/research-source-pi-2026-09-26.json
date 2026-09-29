@@ -1,0 +1,73 @@
+{
+  "summary": [
+    {
+      "provider": "vantage-search",
+      "queries": 3,
+      "labeled_queries": 0,
+      "expected_top5_hit_rate": null,
+      "source_top3_hit_rate": 1.0,
+      "source_top5_hit_rate": 1.0,
+      "numeric_mismatch_rate": 0.0,
+      "avg_unique_domains_top5": 5,
+      "p50_latency_s": 1.699,
+      "p95_latency_s": 1.785,
+      "avg_latency_s": 1.446,
+      "avg_results": 8,
+      "empty_result_rate": 0.0,
+      "cache_hit_rate": 0.0
+    }
+  ],
+  "cases": [
+    {
+      "provider": "vantage-search",
+      "query": "BEIR benchmark original paper zero shot retrieval 2021",
+      "latency_s": 0.8540568230091594,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": null,
+      "expected_url": "https://arxiv.org/abs/2104.08663",
+      "expected_url_rank": 1,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://arxiv.org/abs/2104.08663",
+        "https://www.researchgate.net/publication/350992153_BEIR_A_Heterogenous_Benchmark_for_Zero-shot_Evaluation_of_Information_Retrieval_Models",
+        "https://www.alphaxiv.org/abs/2104.08663"
+      ]
+    },
+    {
+      "provider": "vantage-search",
+      "query": "BEIR 零样本信息检索基准 原始论文 arxiv",
+      "latency_s": 1.7847160280216485,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": null,
+      "expected_url": "https://arxiv.org/abs/2104.08663",
+      "expected_url_rank": 1,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://arxiv.org/abs/2104.08663",
+        "https://github.com/beir-cellar/beir",
+        "https://hyper.ai/cn/papers/2104.08663"
+      ]
+    },
+    {
+      "provider": "vantage-search",
+      "query": "RAG 检索评测 ir_measures 开源项目 GitHub",
+      "latency_s": 1.699261195026338,
+      "result_count": 8,
+      "unique_domains_top5": 5,
+      "expected_hit": null,
+      "expected_url": "https://github.com/terrierteam/ir_measures",
+      "expected_url_rank": 1,
+      "numeric_mismatch": false,
+      "cached": false,
+      "top3_urls": [
+        "https://github.com/terrierteam/ir_measures",
+        "https://repos.ecosyste.ms/hosts/GitHub/repositories/terrierteam/ir_measures",
+        "https://gist.github.com/donbr/1a1281f647419aaacb8673223b69569c"
+      ]
+    }
+  ]
+}
