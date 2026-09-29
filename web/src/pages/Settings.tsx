@@ -3,7 +3,7 @@ import { Card, Form, Input, Button, message, Typography, Space, Alert, Row, Col,
 import {
   SaveOutlined, SettingOutlined, CheckCircleOutlined, CloseCircleOutlined,
   BulbOutlined, ApiOutlined, BellOutlined, ThunderboltOutlined, DatabaseOutlined,
-  SendOutlined, ReloadOutlined, ExperimentOutlined, CloudServerOutlined,
+  SendOutlined, ExperimentOutlined, CloudServerOutlined,
   GlobalOutlined, ClockCircleOutlined, CloudSyncOutlined, EditOutlined,
   LinkOutlined, SyncOutlined, UserOutlined,
   QuestionCircleOutlined, InfoCircleOutlined
@@ -484,9 +484,6 @@ export default function Settings({ themeMode, onToggleTheme }: { themeMode: 'lig
     <div className="settings-panel">
       <div className="settings-panel-bar">
         <span className="settings-panel-title">设置</span>
-        <Space>
-          <Button size="small" icon={<ReloadOutlined />} onClick={() => { load(); loadAiData(); loadTavilyConfig(); loadFeishuConfig(); }} loading={loading}>刷新</Button>
-        </Space>
       </div>
       <div className="settings-panel-body">
         <div className="settings-panel-nav">

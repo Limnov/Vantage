@@ -2,7 +2,7 @@ import { Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typog
 const { Text } = Typography;
 import {
   DashboardOutlined, EyeOutlined, FileTextOutlined, WarningOutlined, SettingOutlined,
-  MoonOutlined, SunOutlined, ReloadOutlined, SearchOutlined,
+  MoonOutlined, SunOutlined, SearchOutlined,
   RiseOutlined, FallOutlined, ArrowRightOutlined, TeamOutlined, RobotOutlined, AimOutlined,
   LogoutOutlined, UserOutlined,
   QuestionCircleOutlined, InfoCircleOutlined, BellOutlined, CheckOutlined, ApiOutlined,
@@ -481,13 +481,16 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
           <aside className="uni-list" style={{ width: listWidth }} aria-label="对话">
             <div className="uni-list-header">
               <span className="uni-list-title">对话</span>
-              <Button
-                type="text"
-                size="small"
-                aria-label="刷新对话"
-                icon={<ReloadOutlined />}
-                onClick={() => setHistoryRevision(v => v + 1)}
-              />
+              <Tooltip title="新建会话">
+                <Button
+                  type="primary"
+                  size="small"
+                  aria-label="新建会话"
+                  icon={<PlusOutlined />}
+                  onClick={() => navigate('/app')}
+                  disabled={user?.is_demo}
+                />
+              </Tooltip>
             </div>
             <div className="uni-list-body">
               {threadsLoading && !threads.length && (

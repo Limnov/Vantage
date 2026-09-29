@@ -76,12 +76,10 @@ export default function Dashboard() {
   const [timeseries, setTimeseries] = useState<any>(null);
   const [recentReports, setRecentReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<dayjs.Dayjs | null>(null);
 
   const load = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
-    setRefreshing(!showLoading);
     try {
       const [d, h, ts, r] = await Promise.all([
         dashboardApi.get(),
@@ -96,7 +94,6 @@ export default function Dashboard() {
       setLastSyncAt(dayjs());
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
@@ -176,9 +173,6 @@ export default function Dashboard() {
           </Tooltip>
           <Button disabled={user?.is_demo} type="primary" icon={<PlusOutlined />} onClick={() => navigate('/watchlist')}>
             新建监控
-          </Button>
-          <Button icon={<ReloadOutlined spin={refreshing} />} onClick={() => load(false)} loading={refreshing}>
-            刷新
           </Button>
         </Space>
       </div>

@@ -37,7 +37,6 @@ const categoryMeta: Record<string, { color: string; label: string }> = {
 
 export default function Logs() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<string>('all');
   const [latestId, setLatestId] = useState(0);
   const [stats, setStats] = useState<any>(null);
@@ -103,15 +102,6 @@ export default function Logs() {
     }
   };
 
-  const handleRefresh = async () => {
-    setLoading(true);
-    setLogs([]);
-    setLatestId(0);
-    await fetchLogs(true);
-    await fetchStats();
-    setLoading(false);
-  };
-
   const filteredLogs = filter === 'all' ? logs : logs.filter(l => l.category === filter);
 
   const renderLog = (log: LogEntry) => {
@@ -172,9 +162,6 @@ export default function Logs() {
           </div>
         </div>
         <Space>
-          <Button icon={<ReloadOutlined spin={loading} />} onClick={handleRefresh} loading={loading}>
-            刷新
-          </Button>
           <Button icon={<ClearOutlined />} onClick={handleClear} danger>
             清空
           </Button>

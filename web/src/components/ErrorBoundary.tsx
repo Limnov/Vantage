@@ -54,13 +54,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 <Text type="secondary">{this.state.error?.message || '未知错误'}</Text>
               </Paragraph>
               <Paragraph type="secondary" style={{ fontSize: 12 }}>
-                尝试刷新页面，或联系管理员
+                尝试回到首页，或联系管理员
               </Paragraph>
             </div>
           }
           extra={[
             <Button key="reset" onClick={this.reset}>重试</Button>,
-            <Button key="reload" type="primary" onClick={() => window.location.reload()}>刷新页面</Button>
+            <Button key="home" type="primary" onClick={() => { window.location.href = '/app'; }}>回到首页</Button>
           ]}
         />
       );

@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import {
   PlusOutlined, PlayCircleOutlined, EditOutlined, DeleteOutlined,
-  ReloadOutlined, EyeOutlined, CheckCircleOutlined, ClockCircleOutlined,
+  EyeOutlined, CheckCircleOutlined, ClockCircleOutlined,
   CloseCircleOutlined, ThunderboltOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -179,7 +179,6 @@ export default function Watchlist() {
           </div>
         </div>
         <Space wrap>
-          <Button icon={<ReloadOutlined />} onClick={load}>刷新</Button>
           <Popconfirm title="确定执行所有启用的监控项？" onConfirm={onRunAll}>
             <Button disabled={user?.is_demo} icon={<ThunderboltOutlined />}>全部执行</Button>
           </Popconfirm>

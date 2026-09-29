@@ -3,7 +3,7 @@
  */
 
 import { Empty, Typography, Button, Space } from 'antd';
-import { InboxOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
+import { InboxOutlined, PlusOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -43,9 +43,6 @@ export function EmptyState({
               <Button type="primary" icon={action.icon || <PlusOutlined />} onClick={action.onClick}>
                 {action.text}
               </Button>
-            )}
-            {onRefresh && (
-              <Button icon={<ReloadOutlined />} onClick={onRefresh}>刷新</Button>
             )}
           </Space>
         </div>
