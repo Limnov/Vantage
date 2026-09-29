@@ -1430,3 +1430,39 @@ body.uni-resizing * {
   border-top: 1px solid var(--v-border-soft);
   padding-top: 8px;
 }
+.settings-help-line {
+  color: var(--v-text-2);
+  font-size: 13px;
+  line-height: 2;
+  margin: 0 0 8px;
+}
+/* 窄窗口：设置面板导航收窄 */
+@media (max-width: 900px) {
+  .settings-panel-nav {
+    width: 168px;
+  }
+  .settings-panel-content {
+    padding: 20px 20px 40px;
+  }
+  .settings-theme-cards {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 640px) {
+  .settings-panel-body {
+    flex-direction: column;
+  }
+  .settings-panel-nav {
+    width: 100%;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--v-border-soft);
+    padding: 8px;
+  }
+  .settings-nav-item {
+    white-space: nowrap;
+    margin-bottom: 0;
+  }
+}

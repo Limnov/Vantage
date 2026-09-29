@@ -5,11 +5,13 @@ import {
   BulbOutlined, ApiOutlined, BellOutlined, ThunderboltOutlined, DatabaseOutlined,
   SendOutlined, ReloadOutlined, ExperimentOutlined, CloudServerOutlined,
   GlobalOutlined, ClockCircleOutlined, CloudSyncOutlined, EditOutlined,
-  LinkOutlined, SyncOutlined, CloseOutlined, UserOutlined
+  LinkOutlined, SyncOutlined, CloseOutlined, UserOutlined,
+  QuestionCircleOutlined, InfoCircleOutlined
 } from '@ant-design/icons';
 import { settingsApi, dashboardApi, aiApi, tavilyApi, runtimeConfigApi } from '../api';
 import { useAuth } from '../lib/auth';
 import { useNavigate } from 'react-router-dom';
+import { APP_VERSION } from '../version';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -63,6 +65,7 @@ const configSourceMap: Record<string, { color: string; label: string }> = {
 export default function Settings({ themeMode, onToggleTheme }: { themeMode: 'light' | 'dark'; onToggleTheme: () => void }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [settingsSection, setSettingsSection] = useState('general');
   const [items, setItems] = useState<Setting[]>([]);
   const [health, setHealth] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -393,31 +396,86 @@ export default function Settings({ themeMode, onToggleTheme }: { themeMode: 'lig
   const itemsByKey: Record<string, Setting> = {};
   items.forEach(it => itemsByKey[it.key] = it);
 
-  if (!user?.is_system_admin) {
-    return (
-      <div className="settings-panel">
-        <div className="settings-panel-bar">
-          <span className="settings-panel-title">设置</span>
-          <Button type="text" className="settings-panel-close" aria-label="关闭设置" icon={<CloseOutlined />} onClick={() => navigate('/app')} />
+  const personalPanel = (
+    <div className="settings-panel">
+      <div className="settings-panel-bar">
+        <span className="settings-panel-title">设置</span>
+        <Button type="text" className="settings-panel-close" aria-label="关闭设置" icon={<CloseOutlined />} onClick={() => navigate('/app')} />
+      </div>
+      <div className="settings-panel-body">
+        <div className="settings-panel-nav">
+          <div className={`settings-nav-item ${settingsSection === 'account' ? 'active' : ''}`} onClick={() => setSettingsSection('account')}>
+            <UserOutlined /><span>账号与安全</span>
+          </div>
+          <div className={`settings-nav-item ${settingsSection === 'general' ? 'active' : ''}`} onClick={() => setSettingsSection('general')}>
+            <SettingOutlined /><span>通用</span>
+          </div>
+          <div className={`settings-nav-item ${settingsSection === 'help' ? 'active' : ''}`} onClick={() => setSettingsSection('help')}>
+            <QuestionCircleOutlined /><span>帮助</span>
+          </div>
+          <div className={`settings-nav-item ${settingsSection === 'about' ? 'active' : ''}`} onClick={() => setSettingsSection('about')}>
+            <InfoCircleOutlined /><span>关于</span>
+          </div>
         </div>
-        <div className="settings-panel-body">
-          <div className="settings-panel-nav">
-            <div className="settings-nav-item active"><UserOutlined /><span>账号与安全</span></div>
-          </div>
-          <div className="settings-panel-content">
-            <Alert
-              type="warning"
-              showIcon
-              message="仅系统管理员可访问"
-              description="这些配置由整个 Vantage 实例共享，可能包含 API Key、Provider 地址和全局推送凭据。组织管理员可在组织、成员、Bot 和告警路由页面管理本组织资源。"
-            />
-          </div>
+        <div className="settings-panel-content">
+          {settingsSection === 'account' && (
+            <div>
+              <h2 className="settings-section-title">我的账号</h2>
+              <div className="settings-account-row">
+                <Avatar size={44} icon={<UserOutlined />} />
+                <div>
+                  <Text strong>{user?.display_name || user?.username}</Text>
+                  <div><Text type="secondary" style={{ fontSize: 12 }}>@{user?.username} · {user?.email}</Text></div>
+                </div>
+              </div>
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginTop: 20 }}
+                message="系统配置仅管理员可访问"
+                description="AI 模型、采集与全局推送凭据由实例管理员统一管理。组织管理员可在组织、成员、Bot 和告警路由页面管理本组织资源。"
+              />
+            </div>
+          )}
+          {settingsSection === 'general' && (
+            <div>
+              <h2 className="settings-section-title">通用</h2>
+              <div className="settings-sub-label">主题模式</div>
+              <div className="settings-theme-cards">
+                <button type="button" className={`settings-theme-card ${themeMode === 'light' ? 'active' : ''}`} onClick={() => themeMode === 'dark' && onToggleTheme()}>
+                  <span className="settings-theme-preview light"><i /><i className="bar" /><i className="bar accent" /></span>
+                  <span className="settings-theme-name">浅色</span>
+                </button>
+                <button type="button" className={`settings-theme-card ${themeMode === 'dark' ? 'active' : ''}`} onClick={() => themeMode === 'light' && onToggleTheme()}>
+                  <span className="settings-theme-preview dark"><i /><i className="bar" /><i className="bar accent" /></span>
+                  <span className="settings-theme-name">深色</span>
+                </button>
+              </div>
+            </div>
+          )}
+          {settingsSection === 'help' && (
+            <div>
+              <h2 className="settings-section-title">帮助</h2>
+              <p className="settings-help-line">全局搜索：<Text code>⌘K</Text>　帮助面板：<Text code>?</Text>　发送消息：<Text code>Enter</Text>　换行：<Text code>Shift + Enter</Text></p>
+              <p className="settings-help-line">文档：<a href="https://vantage.limnov.com/" target="_blank" rel="noreferrer">vantage.limnov.com</a></p>
+            </div>
+          )}
+          {settingsSection === 'about' && (
+            <div>
+              <h2 className="settings-section-title">关于</h2>
+              <p className="settings-help-line">Vantage 跨境市场情报工作台 · v{APP_VERSION}</p>
+              <Button onClick={() => navigate('/about')}>查看完整关于页</Button>
+            </div>
+          )}
         </div>
       </div>
-    );
+    </div>
+  );
+
+  if (!user?.is_system_admin) {
+    return personalPanel;
   }
 
-  const [settingsSection, setSettingsSection] = useState('general');
   const gotoSection = (key: string) => {
     setSettingsSection(key);
     document.getElementById(`settings-section-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
