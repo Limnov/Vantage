@@ -1,7 +1,7 @@
 {
   "name": "vantage-web",
   "version": "3.0.0",
-  "description": "Vantage · Agent-first 与经典管理双模式工作台",
+  "description": "Vantage · Agent 与业务页面统一工作台",
   "license": "MIT",
   "type": "module",
   "engines": {

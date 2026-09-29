@@ -29,7 +29,7 @@ const features = [
 ];
 
 const changelog = [
-  { version: `v${APP_VERSION}`, date: '2026-09-05', items: ['Agent-first 成为默认业务入口，并保留经典版切换', '统一黑白米色视觉系统', '持久 Agent 队列、质量评测、页面拆包与移动端适配'] },
+  { version: `v${APP_VERSION}`, date: '2026-09-29', items: ['Agent 与业务页面合并为统一工作台', '桌面侧边主导航与移动端底部导航', '持久 Agent 队列、质量评测与来源核验'] },
   { version: 'v2.3.0', date: '2026-08-07', items: ['历史版本：GitHub Pages 部署（已停用）', 'Demo 模式：HashRouter + Mock 适配器，在线免部署体验', '修复 Dashboard 空白问题（mock 数据结构对齐后端 API）', '前端防御性检查 + Quickstart 支持 Demo 访问'] },
   { version: 'v2.2.0', date: '2026-08-06', items: ['UI/UX 大幅升级：菜单 3 组分类 + Sider 折叠 + 面包屑导航', '快捷键支持：Ctrl+K 搜索 / ? 帮助面板 / 数字键导航', '通知中心：顶栏告警 Badge + 下拉列表', '微交互：数字 CountUp 动画 / 按钮 hover 缩放 / 响应式自适应'] },
   { version: 'v2.1.0', date: '2026-06-04', items: ['统一错误处理 + Request ID', 'AI 摘要二级缓存', 'Metrics 监控端点', 'LRU 包装 bug 修复'] },

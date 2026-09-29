@@ -9,6 +9,7 @@ import {
   CheckOutlined,
   SettingOutlined,
   ArrowRightOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import { agentApi, api } from "../api";
 import { useAuth } from "../lib/auth";
@@ -278,6 +279,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
   const { currentOrgId, currentOrg, user } = useAuth();
   const [history, setHistory] = useState<Run[]>([]);
   const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyQuery, setHistoryQuery] = useState('');
   const [active, setActive] = useState<string | null>(null);
   const [turns, setTurns] = useState<Run[]>([]);
   const [goal, setGoal] = useState("");
@@ -472,23 +474,37 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
   const grouped = Array.from(
     new Map(history.map((r) => [threadOf(r), r] as const).reverse()).values(),
   ).reverse();
+  const visibleHistory = grouped.filter((run) => run.goal?.toLowerCase().includes(historyQuery.trim().toLowerCase()));
   return (
     <div className="workspace-layout">
       <aside className="conversation-sidebar">
-        <Button
-          className="new-conversation"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setActive(null);
-            setTurns([]);
-            setGoal("");
-            setError("");
-            setResearchMode(false);
-          }}
-          disabled={sending || user?.is_demo}
-        >
-          新建对话
-        </Button>
+        <div className="conversation-sidebar-head">
+          <div><strong>对话</strong><small>市场研究与行动记录</small></div>
+          <Button
+            className="new-conversation"
+            type="text"
+            aria-label="新建对话"
+            title="新建对话"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              setActive(null);
+              setTurns([]);
+              setGoal("");
+              setError("");
+              setResearchMode(false);
+            }}
+            disabled={sending || user?.is_demo}
+          />
+        </div>
+        <Input
+          className="conversation-search"
+          prefix={<SearchOutlined />}
+          aria-label="搜索对话"
+          placeholder="搜索对话"
+          value={historyQuery}
+          onChange={(event) => setHistoryQuery(event.target.value)}
+          allowClear
+        />
         <div className="sidebar-label">
           最近对话
           <Button
@@ -500,7 +516,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
           />
         </div>
         <nav aria-label="对话历史">
-          {grouped.map((r) => (
+          {visibleHistory.map((r) => (
             <button
               className={`history-item ${active === threadOf(r) ? "selected" : ""}`}
               key={threadOf(r)}
@@ -516,10 +532,13 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
                   setRegion(r.metadata?.merchant?.region || "美国");
                 }
               }}
-              disabled={sending || user?.is_demo}
+              disabled={sending}
             >
-              <MessageOutlined />
-              <span>{r.goal}</span>
+              <span className="history-avatar"><MessageOutlined /></span>
+              <span className="history-copy">
+                <strong>{r.goal}</strong>
+                <small>{statuses[r.status] || r.status}{r.created_at ? ` · ${new Date(r.created_at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}` : ''}</small>
+              </span>
               <i
                 className={`status-dot ${r.status}`}
                 aria-label={statuses[r.status] || r.status}
@@ -528,6 +547,7 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
             </button>
           ))}
         </nav>
+        {historyQuery && !visibleHistory.length && <p className="history-empty">没有匹配的对话</p>}
         {!history.length && (
           <p className="history-empty">
             你的目标、证据和行动
@@ -561,25 +581,18 @@ export default function Agent({ onConfigure }: { onConfigure: () => void }) {
       </aside>
       <main className="conversation-main">
         <div className="conversation-topline">
-          <span>{active ? "当前对话" : "你的市场情报工作台"}</span>
-          <span>{currentOrg?.name || "请选择组织"}</span>
+          <div className="conversation-heading">
+            <span className="conversation-heading-mark">V</span>
+            <div><strong>{active ? turns[0]?.goal || '当前对话' : '新对话'}</strong><small>Vantage Agent</small></div>
+          </div>
+          <span className="conversation-header-status">{running ? '执行中' : '工作台'}</span>
         </div>
         <div className="transcript">
           {!active && !turns.length && (
             <section className="welcome">
-              <div className="welcome-eyebrow">
-                <span /> 从一个目标开始
-              </div>
-              <h1>
-                关注变化，
-                <br />
-                <span>让情报变成行动。</span>
-              </h1>
-              <p>
-                告诉 Vantage 你想了解什么、持续关注什么。
-                <br />
-                从市场研究到监控管理，在同一段对话中完成。
-              </p>
+              <div className="welcome-mark">V</div>
+              <h1>今天要研究什么</h1>
+              <p>描述目标，Agent 会检索、核验并保存执行记录。</p>
               <div className="suggestion-grid">
                 {examples.map((example) => (
                   <button

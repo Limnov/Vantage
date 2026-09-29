@@ -1,11 +1,11 @@
-import { Layout, Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typography, Avatar, Popconfirm, Modal, Badge, message } from 'antd';
+import { Layout, Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typography, Badge } from 'antd';
 const { Text } = Typography;
 import {
   DashboardOutlined, EyeOutlined, FileTextOutlined, WarningOutlined, SettingOutlined,
-  MoonOutlined, SunOutlined, ReloadOutlined, SearchOutlined,
+  SearchOutlined,
   RiseOutlined, FallOutlined, ArrowRightOutlined, TeamOutlined, RobotOutlined, AimOutlined,
-  LogoutOutlined, UserOutlined, MenuFoldOutlined, MenuUnfoldOutlined,
-  QuestionCircleOutlined, InfoCircleOutlined, BellOutlined, CheckOutlined, ApiOutlined,
+  UserOutlined, MenuFoldOutlined, MenuUnfoldOutlined,
+  InfoCircleOutlined, BellOutlined,
   FileSearchOutlined
 } from '@ant-design/icons';
 import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
@@ -15,8 +15,13 @@ import { searchApi, alertsApi } from './api';
 import { useAuth } from './lib/auth';
 import { Breadcrumb } from './components/Breadcrumb';
 import { HelpModal } from './components/HelpModal';
-import { APP_VERSION } from './version';
+import WorkspaceRail from './components/WorkspaceRail';
+import AgentWorkspace from './pages/Agent';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import './agent.css';
 import './classic.css';
+import './workspace.css';
+const SecureSetup = lazy(() => import('./components/SecureSetup'));
 
 const Logs = lazy(() => import('./pages/Logs'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -29,14 +34,12 @@ const Bots = lazy(() => import('./pages/Bots'));
 const AlertRoutes = lazy(() => import('./pages/AlertRoutes'));
 const Members = lazy(() => import('./pages/Members'));
 const About = lazy(() => import('./pages/About'));
-const Agent = lazy(() => import('./pages/ClassicAgent'));
 
 const { Header, Sider, Content } = Layout;
 
 interface Props {
   themeMode: 'light' | 'dark';
   onToggleTheme: () => void;
-  onSwitchMode: () => void;
 }
 
 // 当 Alerts 页面卸载时刷新待处理数量
@@ -47,10 +50,10 @@ function AlertsPendingRefresher({ onRefresh }: { onRefresh: () => void }) {
   return null;
 }
 
-export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
+export default function App({ themeMode, onToggleTheme }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, orgs, currentOrg, currentOrgId, switchOrg, logout } = useAuth();
+  const { user, currentOrgId } = useAuth();
   const { token } = theme.useToken();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
@@ -60,8 +63,9 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
   const [helpOpen, setHelpOpen] = useState(false);
   const [pendingAlerts, setPendingAlerts] = useState(0);
   const [pendingAlertItems, setPendingAlertItems] = useState<any[]>([]);
-  const [orgSwitching, setOrgSwitching] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
+  const [setup, setSetup] = useState(false);
+  const isAgentView = location.pathname === '/app';
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 768px)');
@@ -127,7 +131,7 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
       }
       // 数字键导航（不在输入框时）
       if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const navMap: Record<string, string> = { '1': '/dashboard', '2': '/watchlist', '3': '/reports', '4': '/alerts', '5': '/agent', '6': '/settings' };
+        const navMap: Record<string, string> = { '1': '/dashboard', '2': '/watchlist', '3': '/reports', '4': '/alerts', '5': '/app', '6': '/settings' };
         if (navMap[e.key]) {
           e.preventDefault();
           navigate(navMap[e.key]);
@@ -137,47 +141,6 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [navigate]);
-
-  // 切换组织：带视觉反馈
-  const handleSwitchOrg = useCallback((orgId: number) => {
-    if (orgId === currentOrgId) return;
-    setOrgSwitching(true);
-    switchOrg(orgId);
-    // 模拟加载延迟，让用户看到反馈
-    setTimeout(() => {
-      setOrgSwitching(false);
-      message.success(`已切换到「${orgs.find(o => o.id === orgId)?.name}」`);
-    }, 400);
-  }, [currentOrgId, switchOrg, orgs]);
-
-  const orgMenuItems = orgs.map(o => ({
-    key: String(o.id),
-    label: (
-      <Space>
-        {o.id === currentOrgId && <CheckOutlined />}
-        {o.name}
-        <Tag style={{ marginLeft: 4 }}>{o.my_role}</Tag>
-      </Space>
-    ),
-    onClick: () => handleSwitchOrg(o.id)
-  }));
-
-  const userMenuItems = [
-    { key: 'info', label: (
-      <div style={{ padding: '4px 0' }}>
-        <div><Text strong>{user?.display_name || user?.username}</Text></div>
-        <Text type="secondary" style={{ fontSize: 11 }}>@{user?.username} · {user?.email}</Text>
-        {user?.is_system_admin && <div><Tag style={{ marginTop: 4 }}>系统超管</Tag></div>}
-      </div>
-    ), disabled: true },
-    { type: 'divider' as const },
-    { key: 'refresh', icon: <ReloadOutlined />, label: '刷新当前页面', onClick: () => window.location.reload() },
-    { key: 'theme', icon: themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />, label: themeMode === 'dark' ? '切换浅色' : '切换深色', onClick: onToggleTheme },
-    { key: 'about', icon: <InfoCircleOutlined />, label: '关于', onClick: () => navigate('/about') },
-    { key: 'help', icon: <QuestionCircleOutlined />, label: '帮助 & 快捷键 (?)', onClick: () => setHelpOpen(true) },
-    { type: 'divider' as const },
-    { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true, onClick: () => { logout(); navigate('/dashboard'); } }
-  ];
 
   const notificationItems = [
     {
@@ -293,7 +256,6 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
         { key: '/dashboard', icon: <DashboardOutlined />, label: <Link to="/dashboard">仪表盘</Link> },
         { key: '/watchlist', icon: <EyeOutlined />, label: <Link to="/watchlist">监控目标</Link> },
         { key: '/reports', icon: <FileTextOutlined />, label: <Link to="/reports">情报报告</Link> },
-        { key: '/agent', icon: <ApiOutlined />, label: <Link to="/agent">Agent 工作台</Link> },
         { key: '/alerts', icon: <WarningOutlined />, label: (
           <Link to="/alerts">
             告警中心 {pendingAlerts > 0 && <Badge count={pendingAlerts} size="small" />}
@@ -327,27 +289,27 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
   const selected = location.pathname;
 
   return (
-    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+    <div className="unified-workspace-shell">
+    <WorkspaceRail themeMode={themeMode} onToggleTheme={onToggleTheme} onConfigure={() => setSetup(true)} />
+    {isAgentView ? (
+      <div className="agent-workspace-content">
+        <ErrorBoundary key={currentOrgId || 'boundary'}>
+          <AgentWorkspace key={currentOrgId || 'no-org'} onConfigure={() => setSetup(true)} />
+        </ErrorBoundary>
+      </div>
+    ) : (
+    <Layout className="classic-workspace-inner" style={{ height: '100vh', overflow: 'hidden' }}>
       <Sider
         className="classic-sider"
-        width={220}
+        width={256}
         collapsedWidth={isMobile ? 0 : 64}
         collapsed={siderCollapsed}
         trigger={null}
         collapsible
         style={{ borderRight: `1px solid ${token.colorBorder}` }}
       >
-        <div className="app-brand" style={{ justifyContent: siderCollapsed ? 'center' : 'flex-start', padding: siderCollapsed ? '0' : '0 20px' }}>
-          <div className="brand-icon">
-            <img src="/vantage-logo.png" alt="" className="brand-logo brand-logo-light" />
-            <img src="/vantage-logo-white.png" alt="" className="brand-logo brand-logo-dark" />
-          </div>
-          {!siderCollapsed && (
-            <div className="brand-text">
-              <span className="brand-name">Vantage</span>
-              <span className="brand-tag">v{APP_VERSION} · Agent-first</span>
-            </div>
-          )}
+        <div className="classic-section-heading">
+          {!siderCollapsed && <><strong>工作区</strong><small>浏览所有模块</small></>}
         </div>
         <Menu
           mode="inline"
@@ -356,16 +318,6 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
           items={user?.is_demo ? menuGroups.filter(group => group.key === 'workspace') : menuGroups}
           inlineCollapsed={siderCollapsed}
         />
-        {!siderCollapsed && (
-          <div style={{ position: 'absolute', bottom: 12, left: 16, right: 16 }}>
-            <Text type="secondary" style={{ fontSize: 11 }}>
-              <Space size={4}>
-                <ApiOutlined />
-                <span>v{APP_VERSION}</span>
-              </Space>
-            </Text>
-          </div>
-        )}
       </Sider>
       <Layout>
         <Header className="classic-header" style={{
@@ -385,41 +337,9 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
               onClick={() => setSiderCollapsed(!siderCollapsed)}
             />
           </Tooltip>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
-            <Space size="middle" className="app-header-meta" style={{ flexShrink: 0 }}>
-              <Dropdown
-                menu={{ items: orgMenuItems }}
-                trigger={['click']}
-                disabled={orgSwitching}
-              >
-                <Button className="classic-org-switch" type="text" loading={orgSwitching}>
-                  <Text strong>{currentOrg?.name || '选择组织'}</Text>
-                </Button>
-              </Dropdown>
-              {user?.is_demo && (
-                <Tooltip title="示例数据，只读浏览，不调用 API">
-                  <Tag className="topbar-demo-tag">Demo · 只读</Tag>
-                </Tooltip>
-              )}
-              {user?.is_trial && user.trial && (
-                <Tooltip title={user.trial.unlimited_usage ? `Agent 与搜索不限调用次数；到期：${user.trial.expires_at}` : `今日剩余 Agent ${user.trial.remaining.agent_runs} 次、搜索 ${user.trial.remaining.searches} 次；到期：${user.trial.expires_at}`}>
-                  <Tag className="topbar-demo-tag">测试账号{user.trial.unlimited_usage ? ' · 开放额度' : ' · 有限额'}</Tag>
-                </Tooltip>
-              )}
-            </Space>
-          </div>
+          <strong className="classic-view-title">{({ '/dashboard': '总览', '/watchlist': '监控目标', '/reports': '情报报告', '/agent': 'Agent 工作台', '/alerts': '告警中心', '/settings': '设置' } as Record<string, string>)[selected] || '工作区'}</strong>
+          <div style={{ flex: 1 }} />
           <Space size={4} className="classic-header-actions" style={{ flexShrink: 0 }}>
-            <Tooltip title="切换到 Agent-first">
-              <Button
-                className="classic-mode-switch"
-                type="primary"
-                aria-label="切换到 Agent-first"
-                icon={<RobotOutlined />}
-                onClick={onSwitchMode}
-              >
-                <span className="classic-mode-label">Agent</span>
-              </Button>
-            </Tooltip>
             <Tooltip title="全局搜索 (⌘K)">
               <Dropdown
                 open={searchOpen}
@@ -446,14 +366,6 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
                 } />
               </Dropdown>
             </Tooltip>
-            <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
-              <Button
-                type="text"
-                className="classic-user-button"
-                aria-label="打开用户菜单"
-                icon={<Avatar size="small" icon={<UserOutlined />} />}
-              />
-            </Dropdown>
           </Space>
         </Header>
         <Content className="classic-content" style={{
@@ -470,7 +382,7 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/watchlist" element={<Watchlist />} />
               <Route path="/reports" element={<Reports />} />
-              <Route path="/agent" element={<Agent />} />
+              <Route path="/agent" element={<Navigate to="/app" replace />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/organization" element={<Organization />} />
               <Route path="/members" element={<Members />} />
@@ -488,5 +400,8 @@ export default function App({ themeMode, onToggleTheme, onSwitchMode }: Props) {
       {/* 暴露刷新函数给子路由 */}
       {location.pathname === '/alerts' && <AlertsPendingRefresher onRefresh={loadPendingAlerts} />}
     </Layout>
+    )}
+    {setup && <Suspense fallback={null}><SecureSetup key={currentOrgId} onClose={() => setSetup(false)} /></Suspense>}
+    </div>
   );
 }

@@ -10,6 +10,7 @@ const rootPackage = JSON.parse(readFileSync(path.resolve(path.dirname(fileURLToP
 // For project pages, this is typically "/repository-name/"
 const base = process.env.CI_BASE_PATH || '/';
 const devHost = process.env.VANTAGE_WEB_HOST || '127.0.0.1';
+const apiProxyTarget = process.env.VANTAGE_API_PROXY_TARGET || 'http://127.0.0.1:3004';
 const devAllowedHosts = (process.env.VANTAGE_WEB_ALLOWED_HOSTS || '127.0.0.1,localhost')
   .split(',')
   .map((host) => host.trim())
@@ -25,8 +26,13 @@ export default defineConfig({
     allowedHosts: devAllowedHosts,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3004',
-        changeOrigin: true
+        target: apiProxyTarget,
+        changeOrigin: true,
+        configure(proxy) {
+          if (apiProxyTarget.startsWith('https://')) {
+            proxy.on('proxyReq', (request) => request.setHeader('Origin', new URL(apiProxyTarget).origin));
+          }
+        }
       }
     }
   },

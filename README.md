@@ -9,7 +9,7 @@
 
 <p align="center">
   <strong>让 Agent 接住市场研究、持续监控与告警处置，再把每一步留在可核验的业务轨迹里。</strong><br />
-  <sub>Agent-first · 经典工作台 · D1 · R2 · Hono · Queues · MCP · 飞书审批</sub>
+  <sub>统一工作台 · D1 · R2 · Hono · Queues · MCP · 飞书审批</sub>
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-111111?style=flat-square" alt="MIT License" /></a>
 </p>
 
-Vantage 是一个可自行部署的市场情报应用。登录后默认进入 Agent-first 工作台：用户只需描述目标，Agent 就能查询业务、创建和运行监控、研究公开市场、比较报告、处理告警和维护通知规则。顶部按钮可随时切换到经典管理界面，两种模式共用账户、组织与后端数据。
+Vantage 是一个可自行部署的市场情报应用。登录后进入统一工作台：Agent 对话、总览、监控、报告和告警共用一条主导航与同一组织上下文。用户可以描述目标，让 Agent 查询业务、创建和运行监控、研究公开市场、比较报告、处理告警和维护通知规则，也能直接打开相应业务页面。
 
 [产品界面](#产品界面) · [桌面应用](#桌面应用) · [核心能力](#核心能力) · [Agent 如何工作](#agent-如何工作) · [快速开始](#快速开始) · [配置](#配置) · [验证](#验证) · [安全与开源](#安全与开源)
 
@@ -90,23 +90,15 @@ npm run deploy
 
 ## 产品界面
 
-| Agent-first（默认入口） | 经典管理界面 |
-| --- | --- |
-| ![Vantage Agent-first 对话工作台](./assets/readme/agent-workspace.png) | ![Vantage 经典管理界面](./assets/readme/classic-workspace.png) |
+工作台沿用飞书式的主导航、对象列表与内容区：进入 Agent 时，列表显示对话历史；进入业务模块时，可直接查看总览、监控、报告和告警。桌面端使用侧边主导航，窄屏改为底部导航。界面使用统一的黑、白、米色视觉系统并支持明暗主题。
 
-两个版本采用统一的黑、白、米色视觉系统，并支持明暗主题。Agent 模式使用 `/app`，经典仪表盘使用 `/dashboard`；刷新与直接访问链接都保留相应界面。
-
-<p align="center">
-  <img src="./assets/readme/agent-mobile.png" width="300" alt="Vantage Agent-first 移动端界面" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="./assets/readme/classic-mobile.png" width="300" alt="Vantage 经典版移动端界面" />
-</p>
+`/app` 是 Agent 入口，`/dashboard` 是总览；旧 `/agent` 链接会转到 `/app`。这些地址属于同一个工作台，不再切换界面版本。
 
 ## 核心能力
 
 | 模块 | 当前实现 |
 | --- | --- |
-| Agent-first 入口 | 自然语言目标、连续追问、对话历史、执行轨迹、业务对象卡片、来源与审批状态 |
+| Agent | 自然语言目标、连续追问、对话历史、执行轨迹、业务对象卡片、来源与审批状态 |
 | 市场监控 | 创建、修改、暂停、恢复、删除与立即执行；支持新闻、商品和通用搜索模式 |
 | 情报研究 | 公开市场搜索、网页原文核验、报告保存、来源质量统计和历史比较 |
 | 短期情景判断 | 用户明确要求时，对未来 7–90 天给出基准、上行、下行情景及失效条件；需要两个独立来源和已核验原文，证据不足则不展示预测结论。预测随报告保存，尚未校准为统计概率 |
@@ -114,7 +106,7 @@ npm run deploy
 | 通知治理 | 管理组织 Bot 路由；Agent 只提出通知建议，由 `owner/admin` 独立批准 |
 | 多组织协作 | 组织、成员和 `owner / admin / member / viewer` 角色；数据库实时校验成员关系 |
 | 身份与会话 | 自助注册默认关闭；Access/Refresh Token 绑定持久会话，登出和改密会撤销会话 |
-| 经典工作台 | Dashboard、监控、报告、告警、组织、系统设置与运行日志，按页面加载 |
+| 业务页面 | Dashboard、监控、报告、告警、组织、系统设置与运行日志，按页面加载 |
 | 开发者接口 | REST API、HTTP/stdio MCP，与内部 Agent 共用 21 个 Zod 工具契约 |
 | 任务执行 | Cloudflare Queues + D1 原子认领、取消和过期失败保护；Node 版使用 SQLite 持久队列 |
 
@@ -162,7 +154,7 @@ Agent 与 MCP 共用同一套参数校验、权限判断和业务实现：
 </p>
 
 ```text
-Agent-first / 经典工作台 / MCP Client
+统一工作台（Agent 与业务页面）/ MCP Client
                  ↓ JWT + 当前组织
          REST API 与 Tool Registry
                  ↓
@@ -294,7 +286,7 @@ npm run test:live   # 真实模型的临时只读业务任务
 | 离线 Agent 质量套件 | 6 / 6 通过 |
 | 真实模型只读套件 | 3 / 3 通过，工具选择率 100% |
 | 浏览器端到端流程 | 15 / 15 通过 |
-| TypeScript 与生产构建 | 通过，经典页面分包均低于 500 KB 告警阈值 |
+| TypeScript 与生产构建 | 通过，业务页面按需加载 |
 | npm 生产依赖审计 | Server / Web 均为 0 个已知漏洞 |
 
 浏览器测试使用固定模型和通知夹具，不会向真实飞书群发消息。真实模型测试可能计入 Provider 用量，但每个场景只暴露一个只读业务工具，不执行市场搜索或写操作。
@@ -344,7 +336,7 @@ Vantage/
 │   ├── src/push/            # 飞书发送链路
 │   ├── src/scheduler/       # 定时任务
 │   └── test/                # Node.js 测试
-├── web/                     # Agent-first 与经典 React 工作台
+├── web/                     # Agent 与业务页面统一 React 工作台
 ├── cloudflare/              # Hono Worker、D1 适配、R2、Queues 与云端迁移
 ├── db/                      # Node 版 SQLite schema 与迁移
 ├── docs/                    # 重构说明与 Agent 设计资料

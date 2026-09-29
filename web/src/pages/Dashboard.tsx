@@ -205,7 +205,7 @@ export default function Dashboard() {
       )}
 
       {/* KPI 卡片（带数字动画） */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16, alignItems: 'stretch' }}>
+      <Row className="dashboard-kpi-row" gutter={[16, 16]} style={{ marginBottom: 16, alignItems: 'stretch' }}>
         <Col xs={24} sm={12} md={6} style={{ display: 'flex' }}>
           <Card className="kpi-card" style={{ width: '100%' }}>
             <div className="kpi-label"><ThunderboltOutlined /> 监控目标</div>
