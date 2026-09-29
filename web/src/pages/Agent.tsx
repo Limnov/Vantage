@@ -454,21 +454,9 @@ export default function Agent({
         <div className="transcript">
           {!active && !turns.length && (
             <section className="welcome">
-              <div className="welcome-eyebrow">
-                <span /> 从一个目标开始
-              </div>
-              <h1>
-                关注变化，
-                <br />
-                <span>让情报变成行动。</span>
-              </h1>
-              <p>
-                告诉 Vantage 你想了解什么、持续关注什么。
-                <br />
-                从市场研究到监控管理，在同一段对话中完成。
-              </p>
-              <div className="suggestion-grid">
-                {examples.map((example) => (
+              <h1>想了解什么？</h1>
+              <div className="suggestion-list">
+                {examples.slice(0, 3).map((example) => (
                   <button
                     key={example.title}
                     disabled={user?.is_demo}
@@ -481,11 +469,8 @@ export default function Agent({
                       }
                     }}
                   >
-                    <div>
-                      <strong>{example.title}</strong>
-                      <ArrowRightOutlined />
-                    </div>
-                    <span>{example.detail}</span>
+                    <span>{example.title}</span>
+                    <ArrowRightOutlined />
                   </button>
                 ))}
               </div>

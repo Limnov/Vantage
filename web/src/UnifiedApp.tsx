@@ -11,7 +11,7 @@ import {
 import { Routes, Route, Link, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { lazy, Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
-import { searchApi, alertsApi, agentApi, watchlistApi, reportsApi } from './api';
+import { searchApi, alertsApi, agentApi } from './api';
 import { useAuth } from './lib/auth';
 import { HelpModal } from './components/HelpModal';
 import { APP_VERSION } from './version';
@@ -123,30 +123,12 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
   const [threadsTotal, setThreadsTotal] = useState(0);
   const [threadsLoading, setThreadsLoading] = useState(false);
   const [historyRevision, setHistoryRevision] = useState(0);
-  // 列表栏业务记录
-  const [records, setRecords] = useState<any[]>([]);
-  const [recordsLoading, setRecordsLoading] = useState(false);
-
   const inAgent = location.pathname === '/app' || location.pathname.startsWith('/app/');
   const activeThread = inAgent && location.pathname.startsWith('/app/t/')
     ? location.pathname.slice('/app/t/'.length)
     : null;
 
-  const listKind: 'threads' | 'dashboard' | 'watchlist' | 'reports' | 'alerts' | null =
-    inAgent ? 'threads'
-      : location.pathname === '/dashboard' ? 'dashboard'
-      : location.pathname === '/watchlist' ? 'watchlist'
-      : location.pathname === '/reports' ? 'reports'
-      : location.pathname === '/alerts' ? 'alerts'
-      : null;
-
-  const listTitle =
-    listKind === 'threads' ? '对话'
-      : listKind === 'dashboard' ? '最近动态'
-      : listKind === 'watchlist' ? '监控目标'
-      : listKind === 'reports' ? '情报报告'
-      : listKind === 'alerts' ? '告警'
-      : '';
+  const showList = inAgent;
 
   const loadThreads = useCallback(async (append = false) => {
     setThreadsLoading(true);
@@ -166,32 +148,10 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
     }
   }, [threads.length]);
 
-  const loadRecords = useCallback(async () => {
-    if (!listKind || listKind === 'threads') return;
-    setRecordsLoading(true);
-    try {
-      if (listKind === 'watchlist') {
-        const r = await watchlistApi.list({ page: 1, pageSize: 50 });
-        setRecords(r.items || []);
-      } else if (listKind === 'reports' || listKind === 'dashboard') {
-        const r = await reportsApi.list({ page: 1, pageSize: listKind === 'dashboard' ? 5 : 30 });
-        setRecords(r.items || []);
-      } else if (listKind === 'alerts') {
-        const r = await alertsApi.list({ page: 1, pageSize: 30 });
-        setRecords(r.items || []);
-      }
-    } catch {
-      setRecords([]);
-    } finally {
-      setRecordsLoading(false);
-    }
-  }, [listKind]);
-
   useEffect(() => {
-    if (listKind === 'threads') void loadThreads();
-    else if (listKind) void loadRecords();
+    if (showList) void loadThreads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listKind, historyRevision, currentOrgId]);
+  }, [showList, historyRevision, currentOrgId]);
 
   // 待处理告警数量
   const loadPendingAlerts = useCallback(async () => {
@@ -271,11 +231,6 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
         {user?.is_system_admin && <div><Tag style={{ marginTop: 4 }}>系统超管</Tag></div>}
       </div>
     ), disabled: true },
-    { type: 'divider' as const },
-    { key: 'refresh', icon: <ReloadOutlined />, label: '刷新当前页面', onClick: () => window.location.reload() },
-    { key: 'theme', icon: themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />, label: themeMode === 'dark' ? '切换浅色' : '切换深色', onClick: onToggleTheme },
-    { key: 'about', icon: <InfoCircleOutlined />, label: '关于', onClick: () => navigate('/about') },
-    { key: 'help', icon: <QuestionCircleOutlined />, label: '帮助 & 快捷键 (?)', onClick: () => setHelpOpen(true) },
     { type: 'divider' as const },
     { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true, onClick: () => { logout(); navigate('/app'); } }
   ];
@@ -436,36 +391,29 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
 
   const selected = inAgent ? ['/app'] : [location.pathname];
 
-  const openRecord = (item: any) => {
-    if (listKind === 'watchlist') navigate(`/watchlist?edit=${item.id}`);
-    else if (listKind === 'reports') navigate(`/reports?open=${item.id}`);
-    else if (listKind === 'alerts') navigate(`/alerts?focus=${item.id}`);
-    else if (listKind === 'dashboard') {
-      if (item.__kind === 'report') navigate(`/reports?open=${item.id}`);
-      else navigate(`/alerts?focus=${item.id}`);
-    }
-  };
-
-  const dashboardRecords = listKind === 'dashboard'
-    ? [
-      ...records.map(r => ({ ...r, __kind: 'report' })),
-      ...pendingAlertItems.map(a => ({ ...a, __kind: 'alert' }))
-    ]
-    : [];
-
   return (
     <div className="uni-shell">
       {/* 第一栏：导航 */}
       <nav className="uni-nav" style={{ width: navWidth }} aria-label="主导航">
         <div className="uni-nav-top">
-          <div className="uni-brand">
-            <span className="brand-symbol">V</span>
-            <span className="uni-brand-name">Vantage</span>
-          </div>
+          {/* 头像置顶 */}
+          <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomLeft">
+            <button className="uni-user-row" type="button" aria-label="账户菜单">
+              <Avatar size={34} icon={<UserOutlined />} />
+              <span className="uni-user-name">
+                <Text strong ellipsis style={{ maxWidth: navWidth - 110 }}>
+                  {user?.display_name || user?.username}
+                </Text>
+                <small>@{user?.username}</small>
+              </span>
+            </button>
+          </Dropdown>
           <Dropdown menu={{ items: orgMenuItems }} trigger={['click']} disabled={orgSwitching}>
             <Button className="uni-org-switch" type="text" loading={orgSwitching} block>
               <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-                <Text strong ellipsis style={{ maxWidth: navWidth - 90 }}>{currentOrg?.name || '选择组织'}</Text>
+                <Text ellipsis style={{ maxWidth: navWidth - 100, color: 'var(--v-text-2)' }}>
+                  {currentOrg?.name || '选择组织'}
+                </Text>
                 {user?.is_demo ? <Tag className="topbar-demo-tag">Demo</Tag> : null}
               </Space>
             </Button>
@@ -494,7 +442,7 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
               {
                 key: '/app',
                 icon: <MessageOutlined />,
-                label: <Link to="/app">Agent 对话</Link>
+                label: <Link to="/app">Agent</Link>
               },
               ...menuGroups
             ]}
@@ -502,30 +450,35 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
         </div>
 
         <div className="uni-nav-bottom">
-          <Space size={2}>
-            <Tooltip title="通知" placement="top">
-              <Dropdown menu={{ items: notificationItems }} trigger={['click']} placement="topRight">
-                <Button type="text" className="uni-tool-button" aria-label="查看通知" icon={
-                  <Badge count={pendingAlerts} size="small" offset={[-2, 2]}>
-                    <BellOutlined />
-                  </Badge>
-                } />
-              </Dropdown>
-            </Tooltip>
-            <Tooltip title={themeMode === 'dark' ? '切换浅色' : '切换深色'} placement="top">
-              <Button type="text" className="uni-tool-button" aria-label="切换主题" onClick={onToggleTheme}
-                icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />} />
-            </Tooltip>
-            <Tooltip title="帮助 (?)" placement="top">
-              <Button type="text" className="uni-tool-button" aria-label="帮助" onClick={() => setHelpOpen(true)}
-                icon={<QuestionCircleOutlined />} />
-            </Tooltip>
-            <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="topRight">
-              <Button type="text" className="uni-tool-button uni-avatar-button" aria-label="账户菜单"
-                icon={<Avatar size={26} icon={<UserOutlined />} />} />
-            </Dropdown>
-          </Space>
-          <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 6 }}>
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'alerts',
+                  icon: <BellOutlined />,
+                  label: `通知${pendingAlerts ? `（${pendingAlerts} 条待处理）` : ''}`,
+                  onClick: () => navigate('/alerts')
+                },
+                { type: 'divider' as const },
+                {
+                  key: 'theme',
+                  icon: themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />,
+                  label: themeMode === 'dark' ? '切换浅色' : '切换深色',
+                  onClick: onToggleTheme
+                },
+                { key: 'refresh', icon: <ReloadOutlined />, label: '刷新当前页面', onClick: () => window.location.reload() },
+                { key: 'help', icon: <QuestionCircleOutlined />, label: '帮助 & 快捷键 (?)', onClick: () => setHelpOpen(true) },
+                { key: 'about', icon: <InfoCircleOutlined />, label: '关于', onClick: () => navigate('/about') }
+              ]
+            }}
+            trigger={['click']}
+            placement="topLeft"
+          >
+            <Button type="text" className="uni-settings-button" block icon={<SettingOutlined />}>
+              设置
+            </Button>
+          </Dropdown>
+          <Text type="secondary" className="uni-version">
             <ApiOutlined /> v{APP_VERSION}
           </Text>
         </div>
@@ -533,46 +486,32 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
 
       <div className="uni-split" onPointerDown={startNavDrag} role="separator" aria-orientation="vertical" />
 
-      {/* 第二栏：列表 */}
-      {listKind && (
+      {/* 第二栏：会话列表（仅 Agent 界面） */}
+      {showList && (
         <>
-          <aside className="uni-list" style={{ width: listWidth }} aria-label={listTitle}>
+          <aside className="uni-list" style={{ width: listWidth }} aria-label="对话">
             <div className="uni-list-header">
-              <span className="uni-list-title">{listTitle}</span>
-              <Space size={2}>
-                {listKind === 'threads' && (
-                  <Button
-                    className="uni-new-thread"
-                    size="small"
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => navigate('/app')}
-                    disabled={user?.is_demo}
-                  >
-                    新建
-                  </Button>
-                )}
-                <Button
-                  type="text"
-                  size="small"
-                  aria-label="刷新列表"
-                  icon={<ReloadOutlined />}
-                  onClick={() => listKind === 'threads' ? setHistoryRevision(v => v + 1) : loadRecords()}
-                />
-              </Space>
+              <span className="uni-list-title">对话</span>
+              <Button
+                type="text"
+                size="small"
+                aria-label="刷新对话"
+                icon={<ReloadOutlined />}
+                onClick={() => setHistoryRevision(v => v + 1)}
+              />
             </div>
             <div className="uni-list-body">
-              {(threadsLoading || recordsLoading) && (
+              {threadsLoading && !threads.length && (
                 <div className="uni-list-loading"><Spin size="small" /></div>
               )}
-              {listKind === 'threads' && !threadsLoading && !threads.length && (
+              {!threadsLoading && !threads.length && (
                 <p className="history-empty">
                   你的目标、证据和行动
                   <br />
                   会保存在这里。
                 </p>
               )}
-              {listKind === 'threads' && threadGroups.map(g => (
+              {threadGroups.map(g => (
                 <div key={g.label}>
                   <div className="uni-day-label">{g.label}</div>
                   {g.items.map(r => (
@@ -588,35 +527,11 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
                   ))}
                 </div>
               ))}
-              {listKind === 'threads' && threads.length < threadsTotal && (
+              {threads.length < threadsTotal && (
                 <Button type="text" size="small" onClick={() => loadThreads(true)}>
                   加载更早对话
                 </Button>
               )}
-              {listKind !== 'threads' && !recordsLoading && !(listKind === 'dashboard' ? dashboardRecords.length : records.length) && (
-                <p className="history-empty">暂无记录</p>
-              )}
-              {listKind !== 'threads' && (listKind === 'dashboard' ? dashboardRecords : records).map((item: any) => (
-                <button
-                  className="uni-record"
-                  key={`${item.__kind || listKind}-${item.id}`}
-                  onClick={() => openRecord(item)}
-                >
-                  <span className="uni-record-title">
-                    {listKind === 'watchlist' && <EyeOutlined />}
-                    {listKind === 'reports' && <FileTextOutlined />}
-                    {listKind === 'alerts' && <WarningOutlined style={{ color: item.level === 'critical' ? 'var(--v-risk)' : item.level === 'warning' ? 'var(--v-warn)' : undefined }} />}
-                    {listKind === 'dashboard' && (item.__kind === 'report' ? <FileTextOutlined /> : <WarningOutlined />)}
-                    <span>{item.title || item.name || item.goal}</span>
-                  </span>
-                  <span className="uni-record-meta">
-                    {listKind === 'watchlist' && `${item.enabled ? '启用' : '停用'} · P${item.priority}`}
-                    {listKind === 'reports' && dayjs(item.created_at).format('MM-DD HH:mm')}
-                    {listKind === 'alerts' && `${dayjs(item.created_at).format('MM-DD HH:mm')} · ${item.status}`}
-                    {listKind === 'dashboard' && dayjs(item.created_at).format('MM-DD HH:mm')}
-                  </span>
-                </button>
-              ))}
             </div>
           </aside>
           <div className="uni-split" onPointerDown={startListDrag} role="separator" aria-orientation="vertical" />

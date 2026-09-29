@@ -4,7 +4,9 @@
   "private": true,
   "license": "MIT",
   "description": "以 Agent 为唯一业务入口的市场情报工作台",
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "setup": "npm --prefix server ci && npm --prefix web ci",
     "dev": "node scripts/dev.js",
@@ -16,6 +18,7 @@
     "test": "npm --prefix server test",
     "check": "npm test && npm run build && npm --prefix server run eval:agent",
     "test:ui": "npm run build && node server/scripts/smoke-agent-ui.js",
-    "test:live": "node server/scripts/smoke-agent-live.js"
+    "test:live": "node server/scripts/smoke-agent-live.js",
+    "desktop:dev": "VANTAGE_DESKTOP_URL=http://127.0.0.1:5177/app npm --prefix desktop start"
   }
 }

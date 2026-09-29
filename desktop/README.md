@@ -8,7 +8,8 @@ Electron 桌面端承载现有正式工作台。账号、组织、Agent、搜索
 
 ```bash
 npm run desktop:setup
-npm run desktop:start
+npm run desktop:start      # 连接线上正式站
+npm run desktop:dev        # 连接本机开发前端 127.0.0.1:5177（需先起 web 与 server）
 npm --prefix desktop test
 npm run desktop:pack
 npm run desktop:dist

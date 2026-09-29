@@ -860,3 +860,46 @@
 .conversation-sidebar[hidden] {
   display: none !important;
 }
+
+/* 极简欢迎区 */
+.welcome {
+  max-width: 640px;
+  margin: 12vh auto 40px;
+}
+.welcome h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0 0 16px;
+  color: var(--a-text);
+}
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.suggestion-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--a-line);
+  border-radius: 8px;
+  background: var(--a-card);
+  color: var(--a-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  text-align: left;
+}
+.suggestion-list button:hover {
+  border-color: var(--a-accent);
+}
+.suggestion-list button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.suggestion-list .anticon {
+  color: var(--a-muted);
+}
