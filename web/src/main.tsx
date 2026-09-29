@@ -92,11 +92,11 @@ function Root() {
           borderRadius: 6,
           fontSize: 14,
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
-          colorBgLayout: mode === 'dark' ? '#1f2329' : '#f5f6f7',
-          colorBgContainer: mode === 'dark' ? '#262a31' : '#ffffff',
-          colorBgElevated: mode === 'dark' ? '#2e333a' : '#ffffff',
-          colorBorder: mode === 'dark' ? '#3a3f47' : '#dee0e3',
-          colorBorderSecondary: mode === 'dark' ? '#2e333a' : '#e9ebed',
+          colorBgLayout: mode === 'dark' ? '#1f2126' : '#f2f3f5',
+          colorBgContainer: mode === 'dark' ? '#26282d' : '#ffffff',
+          colorBgElevated: mode === 'dark' ? '#2e3138' : '#ffffff',
+          colorBorder: mode === 'dark' ? '#3a3d44' : '#dee0e3',
+          colorBorderSecondary: mode === 'dark' ? '#2e3138' : '#e9ebed',
           boxShadow: mode === 'dark'
             ? '0 2px 8px 0 rgba(0, 0, 0, 0.4)'
             : '0 2px 8px 0 rgba(31, 35, 41, 0.06)',
@@ -108,7 +108,7 @@ function Root() {
           Layout: {
             headerBg: mode === 'dark' ? '#262a31' : '#ffffff',
             siderBg: mode === 'dark' ? '#262a31' : '#ffffff',
-            bodyBg: mode === 'dark' ? '#1f2329' : '#f5f6f7'
+            bodyBg: mode === 'dark' ? '#1f2126' : '#f2f3f5'
           },
           Card: {
             borderRadiusLG: 8
@@ -116,19 +116,19 @@ function Root() {
           Menu: {
             itemBg: 'transparent',
             itemSelectedBg: mode === 'dark' ? 'rgba(51, 112, 255, 0.18)' : '#e1eaff',
-            itemHoverBg: mode === 'dark' ? '#2e333a' : '#f5f6f7',
+            itemHoverBg: mode === 'dark' ? '#2e3138' : '#f2f3f5',
             itemSelectedColor: '#3370ff',
             itemColor: mode === 'dark' ? '#a0a6ad' : '#646a73'
           },
           Table: {
-            headerBg: mode === 'dark' ? '#22262c' : '#f5f6f7',
-            rowHoverBg: mode === 'dark' ? '#2e333a' : '#f5f6f7'
+            headerBg: mode === 'dark' ? '#212327' : '#f2f3f5',
+            rowHoverBg: mode === 'dark' ? '#2e3138' : '#f2f3f5'
           },
           Tag: {
-            defaultBg: mode === 'dark' ? '#2e333a' : '#f5f6f7'
+            defaultBg: mode === 'dark' ? '#2e3138' : '#f2f3f5'
           },
           Progress: {
-            remainingColor: mode === 'dark' ? '#2e333a' : '#e9ebed'
+            remainingColor: mode === 'dark' ? '#2e3138' : '#e9ebed'
           }
         }
       }}

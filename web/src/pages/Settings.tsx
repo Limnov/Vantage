@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Card, Form, Input, Button, message, Typography, Space, Alert, Row, Col, Divider, Tag, Empty, Badge, Collapse, Spin, Select, InputNumber, Switch } from 'antd';
+import { Card, Form, Input, Button, message, Typography, Space, Alert, Row, Col, Divider, Tag, Empty, Badge, Collapse, Spin, Select, InputNumber, Switch, Avatar } from 'antd';
 import {
   SaveOutlined, SettingOutlined, CheckCircleOutlined, CloseCircleOutlined,
   BulbOutlined, ApiOutlined, BellOutlined, ThunderboltOutlined, DatabaseOutlined,
   SendOutlined, ReloadOutlined, ExperimentOutlined, CloudServerOutlined,
   GlobalOutlined, ClockCircleOutlined, CloudSyncOutlined, EditOutlined,
-  LinkOutlined, SyncOutlined
+  LinkOutlined, SyncOutlined, CloseOutlined, UserOutlined
 } from '@ant-design/icons';
 import { settingsApi, dashboardApi, aiApi, tavilyApi, runtimeConfigApi } from '../api';
 import { useAuth } from '../lib/auth';
@@ -60,7 +60,7 @@ const configSourceMap: Record<string, { color: string; label: string }> = {
   none: { color: 'default', label: '未配置' }
 };
 
-export default function Settings() {
+export default function Settings({ themeMode, onToggleTheme }: { themeMode: 'light' | 'dark'; onToggleTheme: () => void }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [items, setItems] = useState<Setting[]>([]);
@@ -395,42 +395,79 @@ export default function Settings() {
 
   if (!user?.is_system_admin) {
     return (
-      <div>
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">
-              <SettingOutlined />
-              系统设置
-            </h1>
-            <div className="page-subtitle">主机级凭据、模型、采集与推送配置</div>
+      <div className="settings-panel">
+        <div className="settings-panel-bar">
+          <span className="settings-panel-title">设置</span>
+          <Button type="text" className="settings-panel-close" aria-label="关闭设置" icon={<CloseOutlined />} onClick={() => navigate('/app')} />
+        </div>
+        <div className="settings-panel-body">
+          <div className="settings-panel-nav">
+            <div className="settings-nav-item active"><UserOutlined /><span>账号与安全</span></div>
+          </div>
+          <div className="settings-panel-content">
+            <Alert
+              type="warning"
+              showIcon
+              message="仅系统管理员可访问"
+              description="这些配置由整个 Vantage 实例共享，可能包含 API Key、Provider 地址和全局推送凭据。组织管理员可在组织、成员、Bot 和告警路由页面管理本组织资源。"
+            />
           </div>
         </div>
-        <Alert
-          type="warning"
-          showIcon
-          message="仅系统管理员可访问"
-          description="这些配置由整个 Vantage 实例共享，可能包含 API Key、Provider 地址和全局推送凭据。组织管理员可在组织、成员、Bot 和告警路由页面管理本组织资源。"
-        />
       </div>
     );
   }
 
+  const [settingsSection, setSettingsSection] = useState('general');
+  const gotoSection = (key: string) => {
+    setSettingsSection(key);
+    document.getElementById(`settings-section-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">
-            <SettingOutlined />
-            系统设置
-          </h1>
-          <div className="page-subtitle">配置 AI 模型、采集、推送、系统行为</div>
-        </div>
+    <div className="settings-panel">
+      <div className="settings-panel-bar">
+        <span className="settings-panel-title">设置</span>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={() => { load(); loadAiData(); loadTavilyConfig(); loadFeishuConfig(); }} loading={loading}>刷新状态</Button>
-          <Button type="primary" icon={<ApiOutlined />} onClick={() => navigate('/bots')}>
-            管理飞书 Bot
-          </Button>
+          <Button size="small" icon={<ReloadOutlined />} onClick={() => { load(); loadAiData(); loadTavilyConfig(); loadFeishuConfig(); }} loading={loading}>刷新</Button>
+          <Button type="text" className="settings-panel-close" aria-label="关闭设置" icon={<CloseOutlined />} onClick={() => navigate('/app')} />
         </Space>
+      </div>
+      <div className="settings-panel-body">
+        <div className="settings-panel-nav">
+          <div className={`settings-nav-item ${settingsSection === 'general' ? 'active' : ''}`} onClick={() => gotoSection('general')}>
+            <UserOutlined /><span>账号与通用</span>
+          </div>
+          {Object.entries(settingGroups).map(([k, g]) => (
+            <div key={k} className={`settings-nav-item ${settingsSection === k ? 'active' : ''}`} onClick={() => gotoSection(k)}>
+              {g.icon}<span>{g.label}</span>
+            </div>
+          ))}
+          <div className="settings-nav-item" onClick={() => navigate('/bots')}>
+            <ApiOutlined /><span>飞书 Bot</span>
+          </div>
+        </div>
+        <div className="settings-panel-content">
+      <div id="settings-section-general">
+        <h2 className="settings-section-title">我的账号</h2>
+        <div className="settings-account-row">
+          <Avatar size={44} icon={<UserOutlined />} />
+          <div>
+            <Text strong>{user?.display_name || user?.username}</Text>
+            <div><Text type="secondary" style={{ fontSize: 12 }}>@{user?.username} · {user?.email}</Text></div>
+          </div>
+        </div>
+        <h2 className="settings-section-title" style={{ marginTop: 28 }}>通用</h2>
+        <div className="settings-sub-label">主题模式</div>
+        <div className="settings-theme-cards">
+          <button type="button" className={`settings-theme-card ${themeMode === 'light' ? 'active' : ''}`} onClick={() => themeMode === 'dark' && onToggleTheme()}>
+            <span className="settings-theme-preview light"><i /><i className="bar" /><i className="bar accent" /></span>
+            <span className="settings-theme-name">浅色</span>
+          </button>
+          <button type="button" className={`settings-theme-card ${themeMode === 'dark' ? 'active' : ''}`} onClick={() => themeMode === 'light' && onToggleTheme()}>
+            <span className="settings-theme-preview dark"><i /><i className="bar" /><i className="bar accent" /></span>
+            <span className="settings-theme-name">深色</span>
+          </button>
+        </div>
       </div>
 
       {health && (
@@ -469,7 +506,7 @@ export default function Settings() {
           // AI model group: editable local runtime config
           if (groupKey === 'ai_model') {
             return (
-              <div key={groupKey} className="settings-group">
+              <div key={groupKey} id={`settings-section-${groupKey}`} className="settings-group">
                 <div className="settings-group-title">
                   <Space>
                     {group.icon}
@@ -870,7 +907,7 @@ export default function Settings() {
           if (groupKey === 'tavily') {
             const srcInfo = configSourceMap[tavilyConfig?.configSource] || configSourceMap.none;
             return (
-              <div key={groupKey} className="settings-group">
+              <div key={groupKey} id={`settings-section-${groupKey}`} className="settings-group">
                 <div className="settings-group-title">
                   <Space>
                     {group.icon}
@@ -1049,7 +1086,7 @@ export default function Settings() {
             const secretValue = values.FEISHU_SECRET || {};
             const webhookSource = configSourceMap[webhookValue.source] || configSourceMap.none;
             return (
-              <div key={groupKey} className="settings-group">
+              <div key={groupKey} id={`settings-section-${groupKey}`} className="settings-group">
                 <div className="settings-group-title">
                   <Space>
                     {group.icon}
@@ -1142,7 +1179,7 @@ export default function Settings() {
           // Scheduler group: custom render
           if (groupKey === 'scheduler') {
             return (
-              <div key={groupKey} className="settings-group">
+              <div key={groupKey} id={`settings-section-${groupKey}`} className="settings-group">
                 <div className="settings-group-title">
                   <Space>
                     {group.icon}
@@ -1232,7 +1269,7 @@ export default function Settings() {
 
           // Standard setting groups
           return (
-            <div key={groupKey} className="settings-group">
+            <div key={groupKey} id={`settings-section-${groupKey}`} className="settings-group">
               <div className="settings-group-title">
                 <Space>
                   {group.icon}
@@ -1317,6 +1354,8 @@ export default function Settings() {
           </Col>
         </Row>
       </Card>
+        </div>
+      </div>
     </div>
   );
 }

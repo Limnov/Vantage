@@ -1,9 +1,9 @@
 import { useAuth } from '../lib/auth';
 import { useEffect, useState } from 'react';
-import { Table, Card, Tag, Space, Typography, Button, Drawer, Skeleton, Empty } from 'antd';
+import { Card, Tag, Space, Typography, Button, Drawer, Skeleton, Empty, Row, Col, Pagination, Spin } from 'antd';
 import {
   EyeOutlined, SendOutlined, FileTextOutlined,
-  RiseOutlined, FallOutlined, ArrowRightOutlined,
+  ArrowRightOutlined,
   LinkOutlined, AimOutlined, MessageOutlined, ClockCircleOutlined, ApiOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -13,9 +13,9 @@ import ForecastCard from '../components/ForecastCard';
 const { Title, Paragraph, Text } = Typography;
 
 const signalMeta: Record<string, { color: string; text: string; icon: any }> = {
-  opportunity: { color: 'var(--v-ok)', text: '机会', icon: <RiseOutlined /> },
+  opportunity: { color: 'var(--v-ok)', text: '机会', icon: null },
   neutral: { color: 'var(--v-info)', text: '中性', icon: null },
-  risk: { color: 'var(--v-risk)', text: '风险', icon: <FallOutlined /> }
+  risk: { color: 'var(--v-risk)', text: '风险', icon: null }
 };
 
 const sentimentMeta: Record<string, { color: string; text: string }> = {
@@ -103,77 +103,48 @@ export default function Reports() {
         </Space>
       </Card>
 
-      <Card styles={{ body: { padding: 0 } }}>
-        <Table
-          loading={loading}
-          dataSource={items}
-          rowKey="id"
-          size="middle"
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => { setPage(p); setPageSize(ps); }
-          }}
-          rowClassName={(record: any) => `report-row-${record.signal_type}`}
-          columns={[
-            { title: 'ID', dataIndex: 'id', width: 60 },
-            {
-              title: '标题',
-              dataIndex: 'title',
-              render: (v, r: any) => (
-                <Space size={6}>
-                  <Text strong style={{ fontSize: 13 }}>{v}</Text>
+      {loading && !items.length ? (
+        <div style={{ padding: 60, textAlign: 'center' }}><Spin /></div>
+      ) : !items.length ? (
+        <Card><Empty description="暂无报告" style={{ padding: 40 }} /></Card>
+      ) : (
+        <Row gutter={[16, 16]}>
+          {items.map((r: any) => (
+            <Col xs={24} sm={12} xl={8} key={r.id}>
+              <Card className="report-card-item" styles={{ body: { padding: 18 } }} onClick={() => onShowDetail(r.id)}>
+                <div className="report-card-item-head">
+                  <span className={`signal-tag ${r.signal_type}`}>{signalMeta[r.signal_type]?.text || r.signal_type}</span>
+                  <span className={`signal-tag ${r.sentiment === 'positive' ? 'opportunity' : r.sentiment === 'negative' ? 'risk' : 'neutral'}`}>
+                    {sentimentMeta[r.sentiment]?.text || r.sentiment}
+                  </span>
                   {r.agent_run_id && <Tag bordered={false} icon={<ApiOutlined />}>Agent</Tag>}
-                </Space>
-              )
-            },
-            {
-              title: '信号',
-              dataIndex: 'signal_type',
-              width: 110,
-              render: (v) => {
-                const meta = signalMeta[v];
-                return <span className={`signal-tag ${v}`}>{meta?.icon}{meta?.text || v}</span>;
-              }
-            },
-            {
-              title: '情感',
-              dataIndex: 'sentiment',
-              width: 90,
-              render: (v) => <span className={`signal-tag ${v === 'positive' ? 'opportunity' : v === 'negative' ? 'risk' : 'neutral'}`}>{sentimentMeta[v]?.text || v}</span>
-            },
-            {
-              title: '摘要',
-              dataIndex: 'summary',
-              ellipsis: true,
-              render: (v) => <Text type="secondary" style={{ fontSize: 12 }}>{v}</Text>
-            },
-            {
-              title: '时间',
-              dataIndex: 'created_at',
-              width: 140,
-              render: (v) => (
-                <Space direction="vertical" size={0}>
-                  <Text style={{ fontSize: 12 }}>{dayjs(v).format('MM-DD HH:mm')}</Text>
-                  <Text type="secondary" style={{ fontSize: 10 }}>{dayjs(v).format('YYYY')}</Text>
-                </Space>
-              )
-            },
-            {
-              title: '操作',
-              width: 160,
-              render: (_, r: any) => (
-                <Space size={4}>
-                  <Button size="small" type="link" icon={<EyeOutlined />} onClick={() => onShowDetail(r.id)}>查看</Button>
-                  <Button size="small" type="link" disabled={user?.is_demo} icon={<SendOutlined />} onClick={() => onPush(r.id)}>推送</Button>
-                </Space>
-              )
-            }
-          ]}
+                  <Text type="secondary" style={{ fontSize: 11, marginLeft: 'auto' }}>
+                    {dayjs(r.created_at).format('MM-DD HH:mm')}
+                  </Text>
+                </div>
+                <div className="report-card-item-title">{r.title}</div>
+                <Paragraph ellipsis={{ rows: 3 }} className="report-card-item-summary">{r.summary}</Paragraph>
+                <div className="report-card-item-foot">
+                  <Text type="secondary" style={{ fontSize: 11 }}>#{r.id}</Text>
+                  <Space size={4}>
+                    <Button size="small" type="text" icon={<EyeOutlined />} onClick={(e) => { e.stopPropagation(); onShowDetail(r.id); }}>查看</Button>
+                    <Button size="small" type="text" disabled={user?.is_demo} icon={<SendOutlined />} onClick={(e) => { e.stopPropagation(); onPush(r.id); }}>推送</Button>
+                  </Space>
+                </div>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      )}
+      <div style={{ marginTop: 16, textAlign: 'right' }}>
+        <Pagination
+          current={page}
+          pageSize={pageSize}
+          total={total}
+          showSizeChanger
+          onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
         />
-      </Card>
+      </div>
 
       <Drawer
         title={null}

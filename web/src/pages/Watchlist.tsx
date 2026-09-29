@@ -1,7 +1,7 @@
 import { useAuth } from '../lib/auth';
 import { useEffect, useState } from 'react';
 import {
-  Table, Button, Space, Tag, Modal, Form, Input, Select, InputNumber,
+  Button, Space, Tag, Modal, Form, Input, Select, InputNumber, Pagination, Spin,
   Switch, message, Popconfirm, Card, Typography, Tooltip, Empty, Row, Col
 } from 'antd';
 import {
@@ -96,6 +96,16 @@ export default function Watchlist() {
         message.success('已创建');
       }
       setModalOpen(false);
+      load();
+    } catch (e: any) {
+      message.error(e.response?.data?.error || e.message);
+    }
+  };
+
+  const onToggleEnabled = async (id: number, enabled: boolean) => {
+    try {
+      await watchlistApi.update(id, { enabled });
+      message.success(enabled ? '已启用' : '已停用');
       load();
     } catch (e: any) {
       message.error(e.response?.data?.error || e.message);
@@ -204,88 +214,80 @@ export default function Watchlist() {
         </Space>
       </Card>
 
-      <Card styles={{ body: { padding: 0 } }}>
-        <Table
-          loading={loading}
-          dataSource={items}
-          rowKey="id"
-          size="middle"
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            showTotal: (t) => `共 ${t} 个`,
-            onChange: (p, ps) => { setPage(p); setPageSize(ps); }
-          }}
-          locale={{ emptyText: <Empty description="还没有监控目标" style={{ padding: 40 }} /> }}
-          columns={[
-            { title: 'ID', dataIndex: 'id', width: 60 },
-            {
-              title: '名称',
-              dataIndex: 'name',
-              render: (v, r: any) => (
-                <Space size="small">
-                  <Tag color={typeMeta[r.type]?.color}>{typeMeta[r.type]?.label}</Tag>
-                  {r.search_mode && (
-                    <Tooltip title={searchModeMeta[r.search_mode]?.desc}>
-                      <Tag color={searchModeMeta[r.search_mode]?.color} style={{ marginLeft: 0 }}>
-                        {searchModeMeta[r.search_mode]?.label}
-                      </Tag>
-                    </Tooltip>
-                  )}
-                  <Text strong>{v}</Text>
-                  {r.priority >= 8 && <Tag style={{ marginLeft: 0 }}>高优</Tag>}
-                </Space>
-              )
-            },
-            { title: '分类', dataIndex: 'category', width: 80, render: (v) => v ? <Tag>{v}</Tag> : <Text type="secondary">-</Text> },
-            { title: '查询', dataIndex: 'query', ellipsis: true, render: (v) => <Text code style={{ fontSize: 12 }}>{v}</Text> },
-            { title: '优先级', dataIndex: 'priority', width: 80, render: (v) => <Tag>{v}</Tag> },
-            { title: '启用', dataIndex: 'enabled', width: 70, render: (v) => v ? <Tag>是</Tag> : <Tag>否</Tag> },
-            {
-              title: '最近状态',
-              dataIndex: 'last_status',
-              width: 140,
-              render: (v, r: any) => {
-                const meta = statusMeta[v] || statusMeta.pending;
-                return (
-                  <Space direction="vertical" size={0}>
-                    <Tag color={meta.color} icon={meta.icon}>{meta.text}</Tag>
-                    {r.last_run_at && <Text type="secondary" style={{ fontSize: 11 }}>{dayjs(r.last_run_at).format('MM-DD HH:mm')}</Text>}
-                  </Space>
-                );
-              }
-            },
-            {
-              title: '操作',
-              width: 200,
-              render: (_, r: any) => (
-                <Space size={4}>
-                  <Tooltip title="立即执行">
-                    <Button
+      {loading && !items.length ? (
+        <div style={{ padding: 60, textAlign: 'center' }}><Spin /></div>
+      ) : !items.length ? (
+        <Card><Empty description="还没有监控目标" style={{ padding: 40 }} /></Card>
+      ) : (
+        <Row gutter={[16, 16]}>
+          {items.map((r: any) => {
+            const st = statusMeta[r.last_status] || statusMeta.pending;
+            return (
+              <Col xs={24} sm={12} xl={8} key={r.id}>
+                <Card className="watch-card" styles={{ body: { padding: 18 } }}>
+                  <div className="watch-card-head">
+                    <Text strong ellipsis style={{ fontSize: 15, flex: 1 }}>{r.name}</Text>
+                    <Switch
                       size="small"
-                      type="text"
+                      checked={!!r.enabled}
                       disabled={user?.is_demo}
-                      loading={runningId === r.id}
-                      icon={runningId === r.id ? undefined : <PlayCircleOutlined style={{ color: 'var(--v-text)' }} />}
-                      onClick={() => onRun(r.id)}
+                      onChange={(c) => { onToggleEnabled?.(r.id, c); }}
                     />
-                  </Tooltip>
-                  <Tooltip title="编辑">
-                    <Button size="small" type="text" disabled={user?.is_demo} icon={<EditOutlined />} onClick={() => onEdit(r)} />
-                  </Tooltip>
-                  <Popconfirm title="确定删除？" onConfirm={() => onDelete(r.id)}>
-                    <Tooltip title="删除">
-                      <Button size="small" type="text" danger disabled={user?.is_demo} icon={<DeleteOutlined />} />
-                    </Tooltip>
-                  </Popconfirm>
-                </Space>
-              )
-            }
-          ]}
+                  </div>
+                  <div className="watch-card-tags">
+                    <Tag>{typeMeta[r.type]?.label || r.type}</Tag>
+                    {r.search_mode && (
+                      <Tooltip title={searchModeMeta[r.search_mode]?.desc}>
+                        <Tag>{searchModeMeta[r.search_mode]?.label}</Tag>
+                      </Tooltip>
+                    )}
+                    {r.category && <Tag>{r.category}</Tag>}
+                    {r.priority >= 8 && <Tag>高优 P{r.priority}</Tag>}
+                  </div>
+                  <div className="watch-card-query" title={r.query}>{r.query}</div>
+                  <div className="watch-card-foot">
+                    <span className="watch-card-status">
+                      <i className={`status-dot ${r.last_status === 'failed' ? 'failed' : r.last_status === 'success' ? 'done' : ''}`} />
+                      {st.text}
+                      {r.last_run_at && <Text type="secondary" style={{ fontSize: 11 }}> · {dayjs(r.last_run_at).format('MM-DD HH:mm')}</Text>}
+                    </span>
+                    <Space size={0}>
+                      <Tooltip title="立即执行">
+                        <Button
+                          size="small"
+                          type="text"
+                          disabled={user?.is_demo}
+                          loading={runningId === r.id}
+                          icon={runningId === r.id ? undefined : <PlayCircleOutlined />}
+                          onClick={() => onRun(r.id)}
+                        />
+                      </Tooltip>
+                      <Tooltip title="编辑">
+                        <Button size="small" type="text" disabled={user?.is_demo} icon={<EditOutlined />} onClick={() => onEdit(r)} />
+                      </Tooltip>
+                      <Popconfirm title="确定删除？" onConfirm={() => onDelete(r.id)}>
+                        <Tooltip title="删除">
+                          <Button size="small" type="text" danger disabled={user?.is_demo} icon={<DeleteOutlined />} />
+                        </Tooltip>
+                      </Popconfirm>
+                    </Space>
+                  </div>
+                </Card>
+              </Col>
+            );
+          })}
+        </Row>
+      )}
+      <div style={{ marginTop: 16, textAlign: 'right' }}>
+        <Pagination
+          current={page}
+          pageSize={pageSize}
+          total={total}
+          showSizeChanger
+          showTotal={(t) => `共 ${t} 个`}
+          onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
         />
-      </Card>
+      </div>
 
       <Modal
         title={

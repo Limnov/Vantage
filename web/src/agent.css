@@ -491,31 +491,69 @@
   margin: 15px auto 35px;
   max-width: 800px;
 }
+/* 消息流：飞书式头像 + 气泡 */
 .user-turn {
-  margin-bottom: 24px;
-  text-align: right;
+  margin-bottom: 26px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 10px;
 }
-.user-turn > span {
+.user-avatar {
+  order: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--v-surface-3);
+  color: var(--a-text);
+  font-size: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.user-bubble {
+  order: 1;
+  max-width: 72%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.user-bubble p {
+  margin: 0;
+  background: var(--a-accent);
+  color: #ffffff;
+  border-radius: 10px 10px 2px 10px;
+  padding: 10px 14px;
+  white-space: pre-wrap;
+  line-height: 1.7;
+  font-size: 14px;
+}
+.turn-time {
   font-size: 11px;
   color: var(--a-muted);
 }
-.user-turn p {
-  margin: 8px 0 0 auto;
-  background: var(--v-accent-soft);
-  border-radius: 10px 10px 2px 10px;
-  padding: 12px 16px;
-  max-width: 85%;
-  display: table;
-  text-align: left;
-  white-space: pre-wrap;
-  line-height: 1.8;
+.assistant-turn {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.assistant-turn .agent-avatar {
+  margin-top: 2px;
+}
+.assistant-turn .assistant-card {
+  flex: 1;
+  min-width: 0;
 }
 .assistant-label {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   font-size: 13px;
+}
+.assistant-label .ant-tag {
+  margin-left: auto;
 }
 .assistant-label .ant-tag {
   margin-left: auto;
@@ -686,11 +724,18 @@
   gap: 16px;
   flex-wrap: wrap;
   align-items: center;
-  margin-top: 20px;
+  margin-top: 16px;
   color: var(--a-muted);
-  font-size: 10px;
+  font-size: 11px;
   border-top: 1px solid var(--a-line);
-  padding-top: 12px;
+  padding-top: 10px;
+}
+/* 助手回复容器：灰底圆角卡片（飞书消息卡片感） */
+.assistant-card {
+  background: var(--a-panel);
+  border: 1px solid var(--a-line);
+  border-radius: 10px;
+  padding: 16px 18px;
 }
 .approval-card {
   padding: 20px;

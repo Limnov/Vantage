@@ -167,7 +167,6 @@ export default function Alerts() {
                   <div style={{ flex: 1 }}>
                     <Space size="small" style={{ marginBottom: 6 }}>
                       <span className={`signal-tag ${meta.bgClass}`}>{meta.icon}{meta.text}</span>
-                      <Tag>{a.type}</Tag>
                       <Tag color={statusMeta[a.status]?.color}>{statusMeta[a.status]?.text || a.status}</Tag>
                     </Space>
                     <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{a.title}</div>

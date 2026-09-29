@@ -484,12 +484,16 @@ export default function Agent({
           {turns.map((run) => (
             <section className="conversation-turn" key={run.id}>
               <div className="user-turn">
-                <span>你</span>
-                <p>{run.goal}</p>
+                <span className="user-avatar">你</span>
+                <div className="user-bubble">
+                  <p>{run.goal}</p>
+                  <span className="turn-time">{new Date(run.created_at || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                </div>
               </div>
               <div className="assistant-turn">
+                <span className="agent-avatar">V</span>
+                <div className="assistant-card">
                 <div className="assistant-label">
-                  <span className="agent-avatar">V</span>
                   <strong>Vantage</strong>
                   <Tag>{statuses[run.status] || run.status}</Tag>
                 </div>
@@ -747,6 +751,7 @@ export default function Agent({
                       ))}
                   </div>
                 ))}
+                </div>
               </div>
             </section>
           ))}

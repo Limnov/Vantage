@@ -554,7 +554,7 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
             <Route path="/bots" element={<Bots />} />
             <Route path="/routes" element={<AlertRoutes />} />
             <Route path="/logs" element={<Logs />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings" element={<Settings themeMode={themeMode} onToggleTheme={onToggleTheme} />} />
             <Route path="/about" element={<About />} />
             <Route path="*" element={<Navigate to="/app" replace />} />
           </Routes>
