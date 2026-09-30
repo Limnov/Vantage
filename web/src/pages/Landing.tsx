@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { productEnabled } from '../lib/deployment';
-import { FloatingMark, Phone, FeatureArt, MoneyScene, SecurityOrbit, Symbol, HeroPattern, BrandLogo } from '../components/LandingVisuals';
+import { FloatingMark, DesktopPreview, FeatureArt, MoneyScene, SecurityOrbit, Symbol, HeroPattern, BrandLogo } from '../components/LandingVisuals';
 import '../metamask-landing.css';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -98,7 +98,7 @@ function Bento({ type, children }: { type: string; children?: ReactNode }) {
     setSlide(next);
     if (type === 'trade' && innerWidth < 768) document.querySelector('.vantage-landing .fox-floating')?.classList.toggle('carousel-fox-hidden', next !== 0);
   };
-  return <div className={'bento bento-' + type}><div className="bento-column bento-left">{cards[type].slice(0,2).map((data,i) => <FeatureCard key={data.title} data={data} index={i}/>)}</div><div className="bento-center">{children || <Phone type={type}/>}</div><div className="bento-column bento-right">{cards[type].slice(2).map((data,i) => <FeatureCard key={data.title} data={data} index={i+2}/>)}</div><div className="mobile-carousel" aria-label={type === 'trade' ? '研究功能' : type === 'money' ? '监控功能' : '通知功能'} onTouchStart={event => { touch.current = event.touches[0].clientX; }} onTouchEnd={event => { const delta = touch.current - event.changedTouches[0].clientX; if (Math.abs(delta) > 35) advance(slide + (delta > 0 ? 1 : -1)); }}><div className="carousel-track" style={{ transform: 'translateX(calc(' + -slide + ' * (80vw + 20px)))' }}><div className={'carousel-heading carousel-heading-' + type}><h2 className="poly">{titles[type]}</h2><button aria-label="下一张功能卡片" onClick={() => advance(1)}><Arrow/></button></div>{cards[type].map((data,i) => <FeatureCard key={data.title} data={data} index={i}/>)}</div><div className="carousel-dots">{[0,1,2,3,4].map(i => <button key={i} onClick={() => advance(i)} aria-label={'显示功能卡片 ' + (i+1)} aria-current={slide === i ? 'true' : undefined}/>)}</div></div></div>;
+  return <div className={'bento bento-' + type}><div className="bento-column bento-left">{cards[type].slice(0,2).map((data,i) => <FeatureCard key={data.title} data={data} index={i}/>)}</div><div className="bento-center">{children || <DesktopPreview type={type}/>}</div><div className="bento-column bento-right">{cards[type].slice(2).map((data,i) => <FeatureCard key={data.title} data={data} index={i+2}/>)}</div><div className="mobile-carousel" aria-label={type === 'trade' ? '研究功能' : type === 'money' ? '监控功能' : '通知功能'} onTouchStart={event => { touch.current = event.touches[0].clientX; }} onTouchEnd={event => { const delta = touch.current - event.changedTouches[0].clientX; if (Math.abs(delta) > 35) advance(slide + (delta > 0 ? 1 : -1)); }}><div className="carousel-track" style={{ transform: 'translateX(calc(' + -slide + ' * (80vw + 20px)))' }}><div className={'carousel-heading carousel-heading-' + type}><h2 className="poly">{titles[type]}</h2><button aria-label="下一张功能卡片" onClick={() => advance(1)}><Arrow/></button></div>{cards[type].map((data,i) => <FeatureCard key={data.title} data={data} index={i}/>)}</div><div className="carousel-dots">{[0,1,2,3,4].map(i => <button key={i} onClick={() => advance(i)} aria-label={'显示功能卡片 ' + (i+1)} aria-current={slide === i ? 'true' : undefined}/>)}</div></div></div>;
 }
 
 function ScrollExperience({ foxRef }: { foxRef: React.RefObject<HTMLDivElement> }) {
@@ -113,9 +113,14 @@ function ScrollExperience({ foxRef }: { foxRef: React.RefObject<HTMLDivElement> 
         const { mobile, reduced } = matchContext.conditions;
         const fox = foxRef.current;
         const header = document.querySelector('.vantage-landing .site-header');
-        const originalFoxWidth = Math.min(window.innerWidth * (mobile ? .92 : .845), 1330);
+        const originalFoxWidth = () => Math.min(window.innerWidth * (mobile ? .92 : .845), 1330);
+        const initialLogoTop = () => {
+          const heading = root.current!.querySelector<HTMLElement>('.hero-heading')!;
+          const cta = root.current!.querySelector<HTMLElement>('.hero-cta')!;
+          return Math.max(innerHeight * .84, heading.offsetTop + heading.offsetHeight + 28, cta.offsetTop + cta.offsetHeight + 28);
+        };
         const smallFoxWidth = mobile ? 120 : 210;
-        gsap.set(fox, { width: originalFoxWidth, height: originalFoxWidth, x: 0, y: 0, xPercent: -50, top: mobile ? '82.2vh' : '60.3vh', visibility: 'visible', opacity: 1 });
+        gsap.set(fox, { width: originalFoxWidth, height: originalFoxWidth, x: 0, y: 0, xPercent: -50, top: initialLogoTop, visibility: 'visible', opacity: 1 });
         gsap.from('.hero-heading .heading-line', { yPercent: reduced ? 0 : 105, opacity: 0, duration: reduced ? 0 : .9, stagger: .085, ease: 'power4.out' });
         const hero = gsap.timeline({ scrollTrigger: { trigger: '.hero-scroll', start: 'top top', end: 'bottom bottom', scrub: reduced ? true : .55, invalidateOnRefresh: true }, defaults: { ease: 'none' } });
         hero.to('.hero-heading', { scale: 5, xPercent: -5, duration: .28, ease: 'expo.inOut' }, .15)
@@ -123,18 +128,19 @@ function ScrollExperience({ foxRef }: { foxRef: React.RefObject<HTMLDivElement> 
           .to(['.hero-title-wrap','.hero-title-recolor','.hero-video'], { autoAlpha: 0, duration: .09 }, .35)
           .to('.hero-cta', { opacity: 0, y: -50, duration: .08 }, .15)
           .to('.hero-stage', { backgroundColor: '#e5ffc3', duration: .12 }, .27)
-          .fromTo('.hero-phone', { y: '110vh', opacity: 0 }, { y: 0, opacity: 1, duration: .21, ease: 'power3.out' }, .27)
-          .to(fox, { width: smallFoxWidth, height: smallFoxWidth, top: '58vh', duration: .3, ease: 'power2.inOut' }, .23)
-          .to('.hero-phone .phone-shutter', { clipPath: 'polygon(0 0,100% 0,100% 100%,0 100%)', opacity: 1, duration: .12 }, .52)
+          .fromTo('.hero-desktop', { y: '110vh', opacity: 0 }, { y: 0, opacity: 1, duration: .21, ease: 'power3.out' }, .27)
+          .fromTo(fox, { width: originalFoxWidth, height: originalFoxWidth, top: initialLogoTop }, { width: smallFoxWidth, height: smallFoxWidth, top: '58vh', duration: .3, ease: 'power2.inOut', immediateRender: false }, .23)
+          .to(fox, { autoAlpha: 0, duration: .08 }, .27)
+          .to('.hero-desktop .desktop-shutter', { clipPath: 'polygon(0 0,100% 0,100% 100%,0 100%)', opacity: 1, duration: .12 }, .52)
           .fromTo('.trade-title', { autoAlpha: 0, scale: .85 }, { autoAlpha: 1, scale: 1, duration: .08 }, .57)
           .to('.trade-title', { autoAlpha: 0, duration: .06 }, .68)
-          .to('.hero-phone .phone-shutter', { opacity: 0, duration: .1 }, .69)
+          .to('.hero-desktop .desktop-shutter', { opacity: 0, duration: .1 }, .69)
 
           .fromTo('.bento-trade .bento-column', { y: '70vh', autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: .12, ease: 'power3.out', stagger: .015 }, .72)
-          .to(fox, { top: mobile ? '22.9vh' : '29vh', duration: .1 }, .72)
+          .to(fox, { autoAlpha: 0, duration: .1 }, .72)
           .to('.bento-trade .mobile-carousel', { autoAlpha: 1, duration: .12 }, .72)
-          .to('.hero-phone', { autoAlpha: mobile ? 0 : 1, duration: .1 }, .72)
-          .to(fox, { autoAlpha: mobile ? 1 : 0, duration: .04 }, .86)
+          .to('.hero-desktop', { autoAlpha: mobile ? 0 : 1, duration: .1 }, .72)
+          .to(fox, { autoAlpha: 0, duration: .04 }, .86)
           .to({}, { duration: .15 });
 
         const money = gsap.timeline({ scrollTrigger: { trigger: '.money-scroll', start: 'top top', end: 'bottom bottom', scrub: reduced ? true : .55 }, defaults: { ease: 'none' } });
@@ -171,7 +177,10 @@ function ScrollExperience({ foxRef }: { foxRef: React.RefObject<HTMLDivElement> 
             gsap.to(header, { '--logo-color': color, duration: reduced ? 0 : .12, overwrite: true });
           }
         };
-        ScrollTrigger.create({ trigger: root.current, start: 'top top', end: 'bottom bottom', onUpdate: updateHeader, onRefresh: updateHeader });
+        ScrollTrigger.create({ trigger: root.current, start: 'top top', end: 'bottom bottom', onUpdate: updateHeader, onRefresh: () => {
+          updateHeader();
+          if (window.scrollY < 1) gsap.set(fox, { width: originalFoxWidth, height: originalFoxWidth, top: initialLogoTop });
+        } });
         updateHeader();
         root.current!.querySelectorAll('.reveal-block').forEach(el => { gsap.from(el, { y: reduced ? 0 : 35, opacity: 0, duration: reduced ? 0 : .65, scrollTrigger: { trigger: el, start: 'top 95%', once: true } }); });
       }, root);
@@ -186,7 +195,7 @@ function ScrollExperience({ foxRef }: { foxRef: React.RefObject<HTMLDivElement> 
       <div className="hero-title-recolor" aria-hidden="true" />
       <div className="hero-cta"><Pill light /></div>
       <h2 className="scene-title trade-title poly">搜索<br />核验来源</h2>
-      <Bento type="trade"><Phone type="trade" className="hero-phone" /></Bento>
+      <Bento type="trade"><DesktopPreview type="trade" className="hero-desktop" /></Bento>
     </div></section>
     <section className="money-scroll" id="monitoring"><div className="sticky-stage money-stage"><MoneyScene /><h2 className="scene-title money-title poly">判断趋势<br />持续跟进</h2><Bento type="money" /></div></section>
     <section className="security-scroll" id="notifications"><div className="sticky-stage security-stage"><SecurityOrbit /><h2 className="scene-title security-title poly">重要变化<br />飞书通知</h2><Bento type="security" /></div></section>
