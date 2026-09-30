@@ -551,9 +551,9 @@ export default function Settings({ themeMode, onToggleTheme }: { themeMode: 'lig
         {Object.entries(settingGroups).map(([groupKey, group]) => {
           if (feishuConfig?.editable === false && ['ai_model','tavily','feishu'].includes(groupKey)) {
             return <Card key={groupKey} title={group.label} style={{marginBottom: 24}}>
-              <Alert type="info" showIcon message="由部署管理员管理" description="云端模型、搜索和全局通知凭据通过 Cloudflare Secrets 配置。组织 Bot 和告警规则仍可在产品内管理。" />
+              <Alert type="info" showIcon message="由部署管理员管理" description="模型、搜索和全局通知凭据由服务端管理员配置。组织 Bot 和告警规则仍可在产品内管理。" />
               {groupKey === 'ai_model' && <p style={{marginTop:16}}>当前模型服务：{aiData?.activeProviderLabel || aiData?.activeProvider || '未配置'}</p>}
-              <a href="https://github.com/Limnov/Vantage/blob/cloudflare/docs/cloudflare-deployment.md" target="_blank" rel="noreferrer">查看云端配置说明 ↗</a>
+              <a href="https://github.com/Limnov/Vantage#配置" target="_blank" rel="noreferrer">查看服务端配置说明 ↗</a>
             </Card>;
           }
           // AI model group: editable local runtime config
@@ -1386,7 +1386,7 @@ export default function Settings({ themeMode, onToggleTheme }: { themeMode: 'lig
                 <Text strong>提示</Text>
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    {feishuConfig?.editable === false ? '云端凭据保存在 Cloudflare Secrets，业务设置保存在 D1。' : 'AI、Tavily 和全局飞书凭据保存在 server/.env；业务设置保存在 SQLite。'}
+                    AI、Tavily 和全局飞书凭据保存在服务端私有环境配置；业务设置保存在 SQLite。
                   </Text>
                 </div>
               </div>

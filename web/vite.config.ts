@@ -21,11 +21,12 @@ export default defineConfig({
   base: base,
   server: {
     host: devHost,
-    port: 5177,
+    port: Number(process.env.VANTAGE_WEB_PORT || 5177),
+    strictPort: true,
     allowedHosts: devAllowedHosts,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3004',
+        target: `http://127.0.0.1:${process.env.PORT || 3004}`,
         changeOrigin: true
       }
     }

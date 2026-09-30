@@ -95,3 +95,6 @@ cloudflare/dist/
 .wrangler/
 .dev.vars
 .env.cloudflare.local
+
+# Shared website prerender cache
+web/.cache/

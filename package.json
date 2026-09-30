@@ -3,22 +3,25 @@
   "version": "3.0.0",
   "private": true,
   "license": "MIT",
-  "description": "以 Agent 为唯一业务入口的市场情报工作台",
+  "description": "以 Electron Desktop 为主的 Agent 市场情报工作台",
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
-    "setup": "npm --prefix server ci && npm --prefix web ci",
-    "dev": "node scripts/dev.js",
+    "setup": "npm --prefix server ci && npm --prefix web ci && npm --prefix desktop ci",
+    "dev": "node scripts/dev.js --desktop",
     "desktop:setup": "npm --prefix desktop ci",
     "desktop:start": "npm --prefix desktop start",
     "desktop:pack": "npm --prefix desktop run pack",
     "desktop:dist": "npm --prefix desktop run dist",
     "build": "npm --prefix web run build",
-    "test": "npm --prefix server test",
+    "test": "node --test scripts/test/*.test.js && npm --prefix desktop test && npm --prefix server test",
     "check": "npm test && npm run build && npm --prefix server run eval:agent",
     "test:ui": "npm run build && node server/scripts/smoke-agent-ui.js",
     "test:live": "node server/scripts/smoke-agent-live.js",
-    "desktop:dev": "VANTAGE_DESKTOP_URL=http://127.0.0.1:5177/app npm --prefix desktop start"
+    "desktop:dev": "node scripts/dev.js --desktop",
+    "dev:web": "node scripts/dev.js",
+    "build:site": "npm run build && node scripts/prerender.mjs",
+    "desktop:check": "node --check desktop/main.cjs && node --check desktop/offline.js && npm --prefix desktop test"
   }
 }

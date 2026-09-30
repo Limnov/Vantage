@@ -9,21 +9,34 @@
 
 <p align="center">
   <strong>让 Agent 接住市场研究、持续监控与告警处置，再把每一步留在可核验的业务轨迹里。</strong><br />
-  <sub>Agent-first · 经典工作台 · D1 · R2 · Hono · Queues · MCP · 飞书审批</sub>
+  <sub>Electron Desktop · Agent · 常驻 Node.js · SQLite · MCP · 飞书审批</sub>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Vantage-3.0.0-111111?style=flat-square" alt="Vantage 3.0.0" />
   <img src="https://img.shields.io/badge/Node.js-%E2%89%A522.12-111111?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js 22.12 or newer" />
   <img src="https://img.shields.io/badge/React-18-111111?style=flat-square&logo=react&logoColor=white" alt="React 18" />
-  <img src="https://img.shields.io/badge/Cloudflare-D1%20%2B%20R2%20%2B%20Queues-111111?style=flat-square&logo=cloudflare&logoColor=white" alt="Cloudflare D1, R2 and Queues" />
+  <img src="https://img.shields.io/badge/Electron-Desktop-111111?style=flat-square&logo=electron&logoColor=white" alt="Electron Desktop" />
   <img src="https://img.shields.io/badge/MCP-supported-111111?style=flat-square" alt="Model Context Protocol supported" />
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-111111?style=flat-square" alt="MIT License" /></a>
 </p>
 
-Vantage 是一个可自行部署的市场情报应用。登录后默认进入 Agent-first 工作台：用户只需描述目标，Agent 就能查询业务、创建和运行监控、研究公开市场、比较报告、处理告警和维护通知规则。顶部按钮可随时切换到经典管理界面，两种模式共用账户、组织与后端数据。
+Vantage 是以 Electron Desktop 为主要入口的市场情报工作台。用户描述目标后，Agent 查询业务、运行监控、研究公开市场、比较报告并处理告警；管理页面与 Agent 共用导航、账户和组织。React 界面由桌面端和浏览器共用，业务运行在常驻 Node.js / SQLite / Agent Worker 服务。
 
-[产品界面](#产品界面) · [桌面应用](#桌面应用) · [核心能力](#核心能力) · [Agent 如何工作](#agent-如何工作) · [快速开始](#快速开始) · [配置](#配置) · [验证](#验证) · [安全与开源](#安全与开源)
+[桌面应用](#桌面应用) · [开发策略与分支](./docs/development-strategy.md) · [产品界面](#产品界面) · [核心能力](#核心能力) · [Agent 如何工作](#agent-如何工作) · [快速开始](#快速开始) · [配置](#配置) · [验证](#验证) · [安全与开源](#安全与开源)
+
+## 桌面应用
+
+Electron Desktop 是主产品与默认开发入口，打开统一 Vantage 工作台，沿用同一套账号、组织、报告和 Agent 服务。客户端不包含数据库或 API Key，运行时需要连接 `https://vantage.limnov.com/app`。外部来源在系统浏览器打开；断网时提供重试页面。窗口禁用 Node.js 集成、WebView 和网页权限，仅允许正式域名在应用内导航。
+
+```bash
+npm run setup             # 安装 API、界面与 Electron 依赖
+npm run dev               # 本地 API + 前端就绪后自动启动 Electron
+npm run desktop:start     # 连接线上工作台
+npm run desktop:dist      # 在 macOS 生成 DMG 安装包
+```
+
+`npm run desktop:pack` 只生成未签名的应用目录，适合本机验证。公开分发前仍需 Apple Developer ID 签名和公证；当前构建产物不应称为已通过 macOS 公证的发布版。已启动其他本地服务时可用 `VANTAGE_DESKTOP_URL=http://127.0.0.1:5177/app npm run desktop:start` 单独连接前端。默认 `npm run dev` 会管理 API、前端与 Electron 的启动和退出。[桌面端说明 →](./desktop/README.md)
 
 ## 在线体验
 
@@ -50,51 +63,13 @@ npm --prefix server run account:trial
 | --- | --- |
 | ![Vantage 真实仪表盘 Demo](./assets/readme/aliyun-demo.png) | ![Vantage Agent 历史 Demo](./assets/readme/aliyun-agent-demo.png) |
 
-## 桌面应用
-
-Electron 客户端打开正式 Vantage 工作台，沿用同一套账号、组织、报告和 Agent 服务。客户端不包含数据库或 API Key，运行时需要连接 `https://vantage.limnov.com/app`。外部来源在系统浏览器打开；断网时提供重试页面。窗口禁用 Node.js 集成、WebView 和网页权限，仅允许正式域名在应用内导航。
-
-```bash
-npm run desktop:setup
-npm run desktop:start      # 在本机启动
-npm run desktop:dist       # 在 macOS 生成 DMG 安装包
-```
-
-`npm run desktop:pack` 只生成未签名的应用目录，适合本机验证。公开分发前仍需 Apple Developer ID 签名和公证；当前构建产物不应称为已通过 macOS 公证的发布版。开发时可用 `VANTAGE_DESKTOP_URL=http://127.0.0.1:5177/app npm run desktop:start` 连接本机前端。[桌面端说明 →](./desktop/README.md)
-
-## Cloudflare 适配分支
-
-`cloudflare` 分支保留 D1 / R2 / Hono / Queues 方案；`main` 保留此前的 Node 自托管基线。以下是 Cloudflare 适配能力，当前线上正式业务使用上述阿里云部署。完整 Cloudflare 后端仍需满足该分支文档中的 Workers 套餐和资源要求。
-
-| 服务 | 职责 |
-| --- | --- |
-| Workers + Hono | 公网 API 入口、鉴权业务路由适配、安全响应头 |
-| D1 | 业务数据、会话、Agent 轨迹、审批、持久限流与任务状态 |
-| R2 | 私有报告归档，按登录用户及组织校验下载 |
-| Queues + Cron Triggers | Agent 与监控任务、重复认领保护、待处理任务补发 |
-| Static Assets | React 产品与预渲染展示页（Demo 以相应分支实现为准） |
-| Secrets | 模型、搜索及全局通知配置 |
-
-Hono 入口通过 Cloudflare 官方 Node HTTP 适配器复用现有 Express 业务路由，保留组织权限和业务工具。[完整部署步骤与运行边界 →](./docs/cloudflare-deployment.md)
-
-```bash
-npm ci --prefix server
-npm ci --prefix web
-npm ci --prefix cloudflare
-cd cloudflare
-npm run build:web
-npm test
-# 创建资源、填写私有配置并应用 D1 迁移后：
-npm run deploy
-```
-
 ## 产品界面
 
-| Agent-first（默认入口） | 经典管理界面 |
+| Agent 界面历史截图 | 业务页面历史截图 |
 | --- | --- |
 | ![Vantage Agent-first 对话工作台](./assets/readme/agent-workspace.png) | ![Vantage 经典管理界面](./assets/readme/classic-workspace.png) |
 
-两个版本采用统一的黑、白、米色视觉系统，并支持明暗主题。Agent 模式使用 `/app`，经典仪表盘使用 `/dashboard`；刷新与直接访问链接都保留相应界面。
+当前是统一工作台：Agent 使用 `/app`，总览使用 `/dashboard`，报告、预测、监控和告警共用固定导航。仅 Agent 使用三栏布局，设置集中管理，支持明暗主题。以上截图记录旧界面，不代表当前桌面布局。
 
 <p align="center">
   <img src="./assets/readme/agent-mobile.png" width="300" alt="Vantage Agent-first 移动端界面" />
@@ -114,9 +89,9 @@ npm run deploy
 | 通知治理 | 管理组织 Bot 路由；Agent 只提出通知建议，由 `owner/admin` 独立批准 |
 | 多组织协作 | 组织、成员和 `owner / admin / member / viewer` 角色；数据库实时校验成员关系 |
 | 身份与会话 | 自助注册默认关闭；Access/Refresh Token 绑定持久会话，登出和改密会撤销会话 |
-| 经典工作台 | Dashboard、监控、报告、告警、组织、系统设置与运行日志，按页面加载 |
+| 统一工作台 | Agent、Dashboard、监控、报告、预测、告警、组织、设置与日志，按页面加载 |
 | 开发者接口 | REST API、HTTP/stdio MCP，与内部 Agent 共用 21 个 Zod 工具契约 |
-| 任务执行 | Cloudflare Queues + D1 原子认领、取消和过期失败保护；Node 版使用 SQLite 持久队列 |
+| 任务执行 | 常驻 Node Worker + SQLite 持久队列，原子认领、租约心跳、取消与崩溃恢复 |
 
 ## Agent 如何工作
 
@@ -155,14 +130,14 @@ Agent 与 MCP 共用同一套参数校验、权限判断和业务实现：
 
 ## 系统结构
 
-下面展示共享业务分层与 Node 自托管结构。Cloudflare 对应 D1 / Queues / R2，详见[云端架构](./docs/cloudflare-deployment.md#架构)。
+Electron Desktop 与浏览器共用 React 界面，通过 API 连接常驻 Node 服务。Cloudflare Serverless 适配已退出主线，历史实现保留在归档标签，详见[开发策略](./docs/development-strategy.md)。
 
 <p align="center">
   <img src="./assets/readme/system-architecture.png" width="100%" alt="Vantage 的 Web 与 MCP 入口、REST API 与 Agent 编排层，以及搜索、模型、SQLite 和飞书服务层" />
 </p>
 
 ```text
-Agent-first / 经典工作台 / MCP Client
+Electron Desktop / 共享 React 工作台 / MCP Client
                  ↓ JWT + 当前组织
          REST API 与 Tool Registry
                  ↓
@@ -185,7 +160,7 @@ Agent Runner（连续上下文、工具预算、取消检查、执行记录）
 
 ## 快速开始
 
-**Cloudflare 部署请使用[云端部署指南](./docs/cloudflare-deployment.md)。以下步骤运行本机 Node / SQLite 版本。**
+默认开发方式为本机 Electron Desktop + Node / SQLite；正式客户端连接远程常驻服务。部署参见[树莓派运行说明](./deploy/pi/README.md)。
 
 ### 环境要求
 
@@ -217,7 +192,8 @@ npm run dev
 
 | 服务 | 默认地址 |
 | --- | --- |
-| Web | <http://127.0.0.1:5177> |
+| Electron 开发工作台 | 自动打开 <http://127.0.0.1:5177/app> |
+| 浏览器辅助入口 | <http://127.0.0.1:5177> |
 | API | <http://127.0.0.1:3004> |
 | 健康检查 | <http://127.0.0.1:3004/health> |
 
@@ -229,14 +205,14 @@ CORS_ORIGINS=http://192.168.31.251:5177 \
 ALLOW_INSECURE_DEV_ADMIN=false \
 VANTAGE_WEB_HOST=0.0.0.0 \
 VANTAGE_WEB_ALLOWED_HOSTS=192.168.31.251 \
-npm run dev
+npm run dev:web
 ```
 
-Windows 可运行根目录的 `start.ps1`。前后端启动后，使用 `Ctrl+C` 停止；也可运行 `stop.ps1` 清理残留进程。
+Windows 可运行根目录的 `start.ps1`。启动后使用 `Ctrl+C` 停止本轮服务，或退出 Electron（macOS Cmd+Q）。端口占用时不会结束其他工作区的进程。
 
 ## 配置
 
-Cloudflare 版通过 `cloudflare/secrets.mjs` 或 `wrangler secret put` 配置模型和搜索；页面只读，普通业务设置保存在 D1。下面描述 Node 自托管版本。
+模型、搜索和通知凭据保存在服务端私有环境配置，业务设置保存在 SQLite；桌面安装包不包含这些凭据。
 
 首次登录后，可在右上角「连接配置」中填写模型、搜索和飞书连接。密钥通过独立表单直接发送到后端，不进入模型消息，也不会写入 SQLite；运行时接口只返回脱敏状态。
 
@@ -276,17 +252,17 @@ stdio 进程继承启动者提供的用户和组织上下文，只适合受信�
 
 ## 验证
 
-Cloudflare 验证：`npm test --prefix cloudflare`（事务/隔离/恢复），`npm run test:smoke --prefix cloudflare`（实际 API），`npm run test:browser --prefix cloudflare`（展示页与独立 Demo）。命令前置条件及真实模型测试见[部署指南](./docs/cloudflare-deployment.md#本地验证)。
-
-共享业务验证：
+Desktop 与共享业务验证：
 
 ```bash
-npm run check       # 后端测试 + 前端生产构建 + 离线 Agent 评测
+npm run check       # 启动器/桌面/后端测试 + 前端生产构建 + 离线 Agent 评测
+npm run desktop:pack # 未签名桌面应用目录
+npm run build:site   # 网站构建与展示页预渲染
 npm run test:ui     # 真实 HTTP / SQLite / 浏览器流程
 npm run test:live   # 真实模型的临时只读业务任务
 ```
 
-最近一次验收结果（2026-09-05）：
+历史验收记录（2026-09-05，当前交付需重新执行上述检查）：
 
 | 检查 | 结果 |
 | --- | --- |
@@ -310,7 +286,7 @@ npm run test:live   # 真实模型的临时只读业务任务
 
 ## 安全与开源
 
-Vantage 是自托管应用。公网部署前应配置 HTTPS、可信 `CORS_ORIGINS` 和网关限流，并为 Access Token 与 Refresh Token 使用不同的强随机密钥。API Key、Webhook、数据库文件、日志和本地 `.env` 不应提交到 Git。Cloudflare 资源 ID 不是授权凭据；密钥与管理员密码仅保存在忽略文件和云端 Secrets / D1 密码哈希中。MIT 许可覆盖项目原创代码，第三方依赖和外部服务仍遵循各自条款。
+Vantage 是自托管应用。公网部署前应配置 HTTPS、可信 `CORS_ORIGINS` 和网关限流，并为 Access Token 与 Refresh Token 使用不同的强随机密钥。API Key、Webhook、数据库文件、日志和本地 `.env` 不应提交到 Git。密钥与管理员密码仅保存在服务端私有环境文件、环境变量与数据库密码哈希中。MIT 许可覆盖项目原创代码，第三方依赖和外部服务仍遵循各自条款。
 
 安全默认值：
 
@@ -326,7 +302,7 @@ JWT_REFRESH_EXPIRES_IN=7d
 - 登录会创建可撤销的 SQLite 会话；登出和改密会立即撤销相应会话。升级后旧版无会话标识的 Token 会失效，需要重新登录。
 - 全局运行日志、搜索分析和缓存管理仅限系统管理员；外部通知、Bot 测试及 Agent 写操作执行最小角色检查。
 
-Node 自托管版的内置限流与 MCP 传输会话保存在单进程内，登录会话和 Agent 队列保存在 SQLite。多个 Worker 必须访问同一个本机 SQLite 文件；跨主机水平扩展需要外部队列、共享 MCP 会话与统一限流。该 Node 模式需要自行配置 TLS 和密钥管理。Cloudflare 分支使用 HTTPS 自定义域名、Secrets、D1 限流和无状态 MCP；两种版本均需部署者负责账户、备份和费用管理。
+Node 自托管版的内置限流与 MCP 传输会话保存在单进程内，登录会话和 Agent 队列保存在 SQLite。多个后台进程必须访问同一个本机 SQLite 文件；跨主机水平扩展需要外部队列、共享 MCP 会话与统一限流。该 Node 模式需要自行配置 TLS 和密钥管理。部署者负责账户、备份和费用管理。
 
 项目以 [MIT License](./LICENSE) 开源。发布前与每次安全事件后，都应重新扫描当前树和全部可达 Git 历史，并轮换任何可能暴露的凭据。安全问题请按 [`SECURITY.md`](./SECURITY.md) 的方式私下报告。
 
@@ -334,6 +310,8 @@ Node 自托管版的内置限流与 MCP 传输会话保存在单进程内，登�
 
 ```text
 Vantage/
+├── desktop/                 # Electron 主进程、URL 边界、断连恢复与安装包
+├── scripts/                 # 本地 Desktop 启动与共享站点预渲染
 ├── server/
 │   ├── src/agent/           # Agent Runner、持久队列、工具和执行记录
 │   ├── src/mcp/             # HTTP / stdio MCP
@@ -344,15 +322,14 @@ Vantage/
 │   ├── src/push/            # 飞书发送链路
 │   ├── src/scheduler/       # 定时任务
 │   └── test/                # Node.js 测试
-├── web/                     # Agent-first 与经典 React 工作台
-├── cloudflare/              # Hono Worker、D1 适配、R2、Queues 与云端迁移
+├── web/                     # Desktop 与浏览器共用的统一 React 工作台
 ├── db/                      # Node 版 SQLite schema 与迁移
 ├── docs/                    # 重构说明与 Agent 设计资料
 ├── assets/readme/           # README 产品截图与架构图
 └── README.md
 ```
 
-[Agent-first 重构说明](./docs/agent-first-refactor.md) · [Agent 设计与面试说明](./docs/agent-interview.md) · [安全策略](./SECURITY.md) · [GitHub 仓库](https://github.com/Limnov/Vantage)
+[当前开发策略与分支规范](./docs/development-strategy.md) · [Agent-first 历史重构说明](./docs/agent-first-refactor.md) · [Agent 设计与面试说明](./docs/agent-interview.md) · [安全策略](./SECURITY.md) · [GitHub 仓库](https://github.com/Limnov/Vantage)
 
 ---
 

@@ -1,0 +1,32 @@
+name: Desktop checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  desktop:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            desktop/package-lock.json
+            server/package-lock.json
+            web/package-lock.json
+      - run: npm run setup
+      - run: npm run desktop:check
+      - run: npm run check
+      - run: node scripts/prerender.mjs
+      - run: npm run desktop:pack
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'

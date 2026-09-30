@@ -1,6 +1,6 @@
 # Aliyun / Linux 部署
 
-这一分支使用 **Node.js + SQLite + 常驻 Agent Worker**，前端、产品展示页和 Demo 共用一个站点。Cloudflare 提供 DNS 代理及边缘 HTTPS，Caddy 提供源站 HTTPS 和反向代理。不需要 Workers Paid。
+该部署方案使用 **Node.js + SQLite + 常驻 Agent Worker**，前端、产品展示页和 Demo 共用一个站点。Cloudflare 提供 DNS 代理及边缘 HTTPS，Caddy 提供源站 HTTPS 和反向代理。不需要 Workers Paid。
 
 - `/`：产品展示页
 - `/app`：正式 Agent 工作台；`/dashboard`：经典工作台
@@ -32,9 +32,7 @@ Demo 使用真实 API 和独立组织。它是只读访客，不能读取配置�
 ```bash
 npm ci --prefix server
 npm ci --prefix web
-npm ci --prefix cloudflare
-VITE_PLATFORM=aliyun VITE_PRODUCT_ENABLED=true npm run build --prefix web
-VITE_PRODUCT_ENABLED=true node cloudflare/prerender.mjs
+npm run build:site
 npm test --prefix server
 # 启动并初始化 Demo 后执行浏览器验证
 DEMO_BASE_URL=https://vantage.limnov.com node server/scripts/smoke-demo-ui.js

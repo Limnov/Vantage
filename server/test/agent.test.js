@@ -1472,11 +1472,17 @@ test('LLM adapter keeps one hard deadline across JSON-mode fallback and retries'
       throw error;
     }
     return new Promise((_resolve, reject) => {
-      config.signal.addEventListener('abort', () => {
+      // A real pending HTTP request keeps the event loop alive; AbortSignal's
+      // timeout is unref'd, so this transport fixture needs an active handle.
+      const pendingTransport = setTimeout(() => reject(new Error('fixture transport did not abort')), 10000);
+      const abort = () => {
+        clearTimeout(pendingTransport);
         const error = new Error('canceled');
         error.code = 'ERR_CANCELED';
         reject(error);
-      }, { once: true });
+      };
+      if (config.signal.aborted) abort();
+      else config.signal.addEventListener('abort', abort, { once: true });
     });
   };
   try {

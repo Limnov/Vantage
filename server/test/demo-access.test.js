@@ -38,7 +38,8 @@ test('demo logs into the real API, is tenant confined and cannot mutate or invok
       assert.ok(!JSON.stringify(r.data).includes('private marker'),url);
     }
     const reports=await request('/api/reports?orgId=1');
-    assert.equal(reports.data.total,28);
+    // Four seven-day report histories plus the forecast sample added to Demo.
+    assert.equal(reports.data.total,29);
     assert.ok(reports.data.items.every(r=>r.org_id===seeded.orgId));
     assert.equal((await request(`/api/reports/${foreignReport}`)).status,403);
     assert.equal((await request(`/api/reports/${foreignReport}/export`)).status,403);

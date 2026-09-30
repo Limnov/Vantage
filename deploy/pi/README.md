@@ -12,7 +12,7 @@
 | 静态站点 | `/var/www/vantage`，由 Caddy 读取 |
 | 公网入口 | `https://vantage.limnov.com/`、`/app`、`/demo`、`/evidence` |
 
-一次发布先记录当前 Git SHA，并对 SQLite 做在线备份。SQLite 使用 WAL；备份时使用 `sqlite3 .backup`，不要直接复制单个 `.sqlite` 文件当成一致性备份。前端执行 `npm run build --prefix web` 和 `node cloudflare/prerender.mjs`，先上传带哈希的资源文件，再替换应用入口 `app.html` 与首页 `index.html`；后端只合入已测试的提交，不覆盖 `.runtime`。代码、数据库与静态资源是三种独立资产，切换版本时分别检查。
+一次发布先记录当前 Git SHA，并对 SQLite 做在线备份。SQLite 使用 WAL；备份时使用 `sqlite3 .backup`，不要直接复制单个 `.sqlite` 文件当成一致性备份。前端执行 `npm run build --prefix web` 和 `node scripts/prerender.mjs`，先上传带哈希的资源文件，再替换应用入口 `app.html` 与首页 `index.html`；后端只合入已测试的提交，不覆盖 `.runtime`。代码、数据库与静态资源是三种独立资产，切换版本时分别检查。
 
 ```bash
 cd /home/freak/Projects/Vantage

@@ -3,13 +3,13 @@
   "productName": "Vantage",
   "version": "3.0.0",
   "private": true,
-  "description": "Vantage desktop client",
+  "description": "Vantage Electron Desktop 市场情报工作台",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.cjs",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder --mac dmg"
+    "pack": "electron-builder --dir --publish never",
+    "dist": "electron-builder --mac dmg --publish never"
   },
   "devDependencies": {
     "electron": "44.4.5",
