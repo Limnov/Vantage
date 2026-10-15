@@ -31,3 +31,12 @@
 使用 Gitleaks 8.30.1 或更新版本运行 `npm run security:secrets`，并运行 `npm run security:deps`。CI 扫描可达 Git 历史，依赖检查在中危及以上失败；不创建 Dependabot PR。Gitleaks 配置仅放行三种经核对的固定离线测试假密钥，且仅在三个指定测试文件生效，不排除整个测试目录。
 
 2026-10-15 的审查范围及后续构建依赖修补见 [审查记录](docs/security-review-2026-10-15.md)。扫描无命中不等于证明不存在漏洞。
+
+Gitleaks、依赖审计与 GitHub 自身的 Secret scanning 是不同检查。发布前还要核对 GitHub 原生告警，不能用 CI 通过代替。可只读取告警元数据，避免将密钥输出到终端：
+
+```bash
+gh api 'repos/Limnov/Vantage/secret-scanning/alerts?state=open&per_page=100' --paginate \
+  --jq '.[] | {number,secret_type_display_name,state,validity}'
+```
+
+示例环境文件的 API Key 和 Webhook 留空，不写入看似真实的占位密钥。有效密钥告警必须先撤销或轮换；确认是固定占位符的告警，保留核对依据后按误报处理，不关闭扫描功能。
