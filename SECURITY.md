@@ -17,9 +17,17 @@
 
 ## 部署基线
 
+- 原公共站点已于 2026-10-15 下线，官方不再提供共享模型密钥或在线测试账号；自托管必须配置自己的凭据。
+
 - 保持 `REGISTRATION_MODE=disabled`，除非已部署邀请、验证码和成本配额控制。
 - 为 `JWT_SECRET` 与 `JWT_REFRESH_SECRET` 使用不同的强随机值。
 - 只在明确的可信代理拓扑下设置 `TRUST_PROXY`；示例单层 Nginx 使用 `TRUST_PROXY=1`。
 - 限制 `CORS_ORIGINS`、数据库与 `.env` 文件访问权限。
 - 定期运行 `npm audit --omit=dev`，并在发布前扫描当前树和全部可达 Git 历史中的秘密。
 - 泄露过的凭据必须轮换；从当前文件删除明文不能使历史提交中的值失效。
+
+## 检查命令
+
+使用 Gitleaks 8.30.1 或更新版本运行 `npm run security:secrets`，并运行 `npm run security:deps`。CI 扫描可达 Git 历史，依赖检查在高危及以上失败；不创建 Dependabot PR。Gitleaks 配置仅放行三种经核对的固定离线测试假密钥，且仅在三个指定测试文件生效，不排除整个测试目录。
+
+2026-10-15 的审查范围和残留构建依赖风险见 [审查记录](docs/security-review-2026-10-15.md)。扫描无命中不等于证明不存在漏洞。

@@ -2,6 +2,8 @@
 
 Electron Desktop 是 Vantage 的主要产品入口，承载共享 React 工作台。账号、组织、Agent、搜索和监控都在既有 Vantage 服务端运行，桌面安装包不内置密钥、数据库或后台 Worker。使用时需要网络连接；网页版功能更新会直接出现在桌面端。
 
+公共服务已于 2026-10-15 下线。历史安装包固定的公共地址不再可用；从源码运行请配置本机服务并使用 `npm run dev`。本次安全维护未更改客户端对可信来源的限制，也未提供新的签名安装包。
+
 ## 开发和构建
 
 在仓库根目录执行：
@@ -11,7 +13,7 @@ npm run setup             # 安装 server / web / Electron 依赖
 # 首次开发先配置 server/.env 并执行 npm --prefix server run db:migrate
 npm run dev               # 自动启动本地 API、前端和 Electron
 npm run desktop:dev       # 与 npm run dev 相同
-npm run desktop:start     # 仅启动客户端，连接线上正式站
+npm run desktop:start     # 单独启动 需按下文指定本机开发地址
 npm run dev:web           # 仅调试 API 与浏览器界面
 npm --prefix desktop test
 npm run desktop:pack

@@ -14,6 +14,8 @@
     "desktop:start": "npm --prefix desktop start",
     "desktop:pack": "npm --prefix desktop run pack",
     "desktop:dist": "npm --prefix desktop run dist",
+    "security:secrets": "gitleaks git --log-opts=--all --redact=100 --no-banner .",
+    "security:deps": "npm --prefix server audit --audit-level=high && npm --prefix web audit --audit-level=high && npm --prefix desktop audit --audit-level=high",
     "build": "npm --prefix web run build",
     "test": "node --test scripts/test/*.test.js && npm --prefix desktop test && npm --prefix server test",
     "check": "npm test && npm run build && npm --prefix server run eval:agent",

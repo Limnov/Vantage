@@ -1,0 +1,11 @@
+title = "Vantage secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Three reviewed offline test fixtures only"
+condition = "AND"
+paths = ['''^server/test/(agent|search-collector|provider-config)\.test\.js$''']
+regexTarget = "secret"
+regexes = ['''^(tvly-fixture-key-12345|fixture-api-key-123456|dummy-tavily-key-12345)$''']

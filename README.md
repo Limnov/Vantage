@@ -27,26 +27,26 @@ Vantage 是以 Electron Desktop 为主要入口的市场情报工作台。用户
 
 ## 桌面应用
 
-Electron Desktop 是主产品与默认开发入口，打开统一 Vantage 工作台，沿用同一套账号、组织、报告和 Agent 服务。客户端不包含数据库或 API Key，运行时需要连接 `https://vantage.limnov.com/app`。外部来源在系统浏览器打开；断网时提供重试页面。窗口禁用 Node.js 集成、WebView 和网页权限，仅允许正式域名在应用内导航。
+Electron Desktop 是默认开发入口，打开统一 Vantage 工作台。客户端不包含数据库或 API Key；使用 `npm run dev` 连接本地前后端。历史安装包连接的公共服务已于 2026 年 10 月 15 日下线，自托管请按下方快速开始配置。外部来源在系统浏览器打开，窗口禁用 Node.js 集成、WebView 和网页权限。
 
 ```bash
 npm run setup             # 安装 API、界面与 Electron 依赖
 npm run dev               # 本地 API + 前端就绪后自动启动 Electron
-npm run desktop:start     # 连接线上工作台
+npm run desktop:start     # 历史默认地址已下线 开发时需指定本机地址
 npm run desktop:dist      # 在 macOS 生成 DMG 安装包
 ```
 
 `npm run desktop:pack` 只生成未签名的应用目录，适合本机验证。公开分发前仍需 Apple Developer ID 签名和公证；当前构建产物不应称为已通过 macOS 公证的发布版。已启动其他本地服务时可用 `VANTAGE_DESKTOP_URL=http://127.0.0.1:5177/app npm run desktop:start` 单独连接前端。默认 `npm run dev` 会管理 API、前端与 Electron 的启动和退出。[桌面端说明 →](./desktop/README.md)
 
-## 在线体验
+## 服务状态
 
-**[产品展示页](https://vantage.limnov.com/) · [真实案例评分](https://vantage.limnov.com/evidence) · [登录 Demo](https://vantage.limnov.com/demo) · [正式工作台](https://vantage.limnov.com/app)**
+公共站点 `vantage.limnov.com` 已于 **2026-10-15** 下线。展示页、工作台、Demo 与 API 均返回 HTTP 410；原测试账号不再提供公网访问。项目继续以 [MIT License](./LICENSE) 提供源码，可在本机运行或自行部署。
 
-当前正式环境在树莓派运行 Node.js、SQLite 和常驻 Agent Worker，Caddy 提供静态站点与 API 反代，Cloudflare 提供公网 HTTPS。产品展示页、真实工作台和 Demo 共用域名，无需开通 Workers Paid。[当前生产运行说明 →](./deploy/pi/README.md)
+原服务已停止并禁用开机自启，业务数据库保留在私有备份中，不随源码发布。[历史部署与下线说明 →](./deploy/pi/README.md) · [本次安全审查 →](./docs/security-review-2026-10-15.md)
 
 真实案例评分记录了同一道美国手机配件任务中 Vantage 与 Google 搜索加逐页核验的观察值，并明确标出未测的监控信噪比；这是单例故障定位对照，不是总体产品排名。[评分口径与原始来源 →](./docs/real-case-scorecard.md)
 
-**演示账号：`demo` / 密码：`demo`。** Demo 登录正式界面，复用仪表盘、监控、报告、告警和 Agent 历史；数据来自独立演示组织。账号只读，不提供 API Key，不执行真实模型、搜索或通知，也不能访问正式组织的数据。
+自托管初始化后的演示账号为 `demo` / `demo`。账号只读，使用独立演示组织，不提供 API Key，不执行真实模型、搜索或通知，也不能访问正式组织的数据。它不是已下线公共服务的可用登录方式。
 
 ### 受限外部测试账号
 
@@ -260,6 +260,8 @@ npm run desktop:pack # 未签名桌面应用目录
 npm run build:site   # 网站构建与展示页预渲染
 npm run test:ui     # 真实 HTTP / SQLite / 浏览器流程
 npm run test:live   # 真实模型的临时只读业务任务
+npm run security:secrets # 需安装 Gitleaks 扫描全部可达 Git 历史
+npm run security:deps    # 审计三个模块 高危及以上使检查失败
 ```
 
 历史验收记录（2026-09-05，当前交付需重新执行上述检查）：
@@ -304,7 +306,7 @@ JWT_REFRESH_EXPIRES_IN=7d
 
 Node 自托管版的内置限流与 MCP 传输会话保存在单进程内，登录会话和 Agent 队列保存在 SQLite。多个后台进程必须访问同一个本机 SQLite 文件；跨主机水平扩展需要外部队列、共享 MCP 会话与统一限流。该 Node 模式需要自行配置 TLS 和密钥管理。部署者负责账户、备份和费用管理。
 
-项目以 [MIT License](./LICENSE) 开源。发布前与每次安全事件后，都应重新扫描当前树和全部可达 Git 历史，并轮换任何可能暴露的凭据。安全问题请按 [`SECURITY.md`](./SECURITY.md) 的方式私下报告。
+项目以 [MIT License](./LICENSE) 开源。发布前与每次安全事件后，都应重新扫描当前树和全部可达 Git 历史，并轮换任何可能暴露的凭据。安全问题请按 [`SECURITY.md`](./SECURITY.md) 的方式私下报告。本次审查范围、验证结果和桌面构建依赖的已知限制见 [安全审查记录](./docs/security-review-2026-10-15.md)。
 
 ## 项目结构
 

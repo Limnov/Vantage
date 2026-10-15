@@ -45,7 +45,7 @@ GitHub Actions 在 macOS 上执行测试、构建、预渲染与未签名打包�
 
 - `main`：唯一长期主线，保持 Desktop、共享界面与常驻服务同步。
 - `codex/<任务>`：从最新 `origin/main` 开始，完成验证后合入并删除；worktree 使用自己的任务分支。
-- `dependabot/*`：Desktop、renderer、service 每模块每周一个普通更新组，补丁/次版本优先；大版本升级作为迁移任务。安全更新独立分组，不受普通 PR 数量限制。[Dependabot 配置依据](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference)
+- Dependabot 已按维护者要求停用。依赖升级使用短期 `codex/` 分支人工处理，通过 `npm run security:deps`、回归测试与构建后合入；不自动创建更新 PR。
 - `archive/*` 标签：保留旧功能分叉或停用架构的完整提交，不作为当前开发分支。
 
 本次归档：
