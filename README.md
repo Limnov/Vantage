@@ -261,7 +261,7 @@ npm run build:site   # 网站构建与展示页预渲染
 npm run test:ui     # 真实 HTTP / SQLite / 浏览器流程
 npm run test:live   # 真实模型的临时只读业务任务
 npm run security:secrets # 需安装 Gitleaks 扫描全部可达 Git 历史
-npm run security:deps    # 审计三个模块 高危及以上使检查失败
+npm run security:deps    # 审计三个模块 中危及以上使检查失败
 ```
 
 历史验收记录（2026-09-05，当前交付需重新执行上述检查）：

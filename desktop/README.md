@@ -22,6 +22,8 @@ npm run desktop:dist
 
 macOS DMG 位于 `desktop/release/`。默认构建当前机器架构，未配置 Apple 签名证书时产物未签名、未公证。公开提供下载前，应配置 Apple Developer ID 签名和公证，并在实际目标系统上验证安装。
 
+构建依赖使用 `overrides` 将 `global-agent` 固定为 4.1.3，移除旧版代理模块引入的 `roarr` / `sprintf-js` 漏洞链。打包器和下载器版本保持不变，回归测试通过本机 HTTP 代理验证下载、校验和刷新、缓存复用及坏校验和拒绝。更新打包工具时应重新评估这一覆盖，并使用 `npm ci` 安装锁文件。
+
 本机前端开发时可指定：
 
 ```bash

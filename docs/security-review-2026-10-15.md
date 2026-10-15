@@ -30,11 +30,15 @@ Gitleaks 8.30.1 扫描当前目录和全部可达 Git 历史。原始 7 个历�
 | --- | --- | --- |
 | Server | MCP SDK 1.32.1、fast-uri 3.1.8、ip-address 10.7.4、Hono 4.13.13、proxy-addr 2.0.8 | 0 个已知漏洞 |
 | Web | proxy-addr 2.0.8、source-map-js 1.2.2 | 0 个已知漏洞 |
-| Desktop 构建工具 | http-cache-semantics 4.3.0 | 无高危或严重，仍有下述中危链 |
+| Desktop 构建工具 | http-cache-semantics 4.3.0、global-agent 4.1.3 | 后续修补后为 0 个已知漏洞 |
 
 升级未改变直接依赖的大版本或产品业务代码。新增回归验证百分号主机规范化、IPv4/IPv6 跨族子网判断、超长 IPv6 输入诊断与代理信任边界，含正常同族访问控制。
 
-桌面构建仍有 `sprintf-js → roarr → global-agent → @electron/get → electron-builder` 的中危拒绝服务公告，npm 按依赖关系报告 8 个受影响包。当前公告没有 `sprintf-js` 修复版；npm 建议强制回退打包器，未采用这一未经兼容性验证的回退。受影响链是开发/打包依赖，当前应用代码没有将远程输入交给其格式化接口，安装包文件列表也不包含这条 Node 依赖链；不能因此称依赖审计完全清零。后续升级打包工具需重新执行打包验证。
+初次审查时，桌面构建存在 `sprintf-js → roarr → global-agent → @electron/get → electron-builder` 的中危拒绝服务链，npm 按依赖关系报告 8 个受影响包。`sprintf-js` 没有修复版，未采用 npm 建议的强制回退打包器。
+
+维护者随后要求继续修补，现已通过 `desktop/package.json` 的 `overrides` 将代理模块固定为 `global-agent 4.1.3`。该版本不依赖 `roarr`，锁文件及干净安装树不再包含 `roarr` 或 `sprintf-js`；打包器 26.17.0 与下载器 3.1.0 保持不变。重新生成锁文件并执行干净 `npm ci` 后，Desktop 审计为 0。原本会触发 `RangeError` 的格式化路径已从依赖树移除，并未通过隐藏或忽略公告消除告警。
+
+新增本地代理集成回归验证真实 HTTP 下载、SHA-256 校验和、重复下载的缓存复用，以及错误校验和必须被拒绝；代理初始化在独立子进程执行。升级依据见 [global-agent 4 的上游发布记录](https://github.com/gajus/global-agent/releases/tag/v4.0.0)。后续更新打包工具时，应重新评估覆盖的必要性并执行同一回归。
 
 公告与复核依据：[proxy-addr](https://github.com/advisories/GHSA-jqcg-44mw-7w3h)、[MCP SDK](https://github.com/advisories/GHSA-6qxp-vccf-f47h)、[sprintf-js](https://github.com/advisories/GHSA-hp3w-g68c-fv3c)。完整依赖审计在本机私有检查记录中保留，未将生产配置附入报告。
 
@@ -45,7 +49,7 @@ Gitleaks 8.30.1 扫描当前目录和全部可达 Git 历史。原始 7 个历�
 - 修正既有并发回归对请求到达顺序的假设，仍要求两次并发调用只创建一个任务、复用相同任务 ID 且只扣一次额度。
 - `npm run build:site`：展示页预渲染与独立应用入口构建通过。
 - `CSC_IDENTITY_AUTO_DISCOVERY=false npm run desktop:pack`：本机 ARM64 应用目录打包通过；没有发布安装包或声称通过 Apple 公证。
-- `npm run security:secrets`：当前可达历史未发现未解释的秘密；`npm run security:deps`：在高危及以上失败，中危构建链明确保留在输出中。
+- `npm run security:secrets`：当前可达历史未发现未解释的秘密；`npm run security:deps`：三个模块目前均为 0，已将 CI 失败门槛收紧为中危及以上。
 - 未调用真实模型、搜索或飞书通知，不产生这些供应商的请求额度。
 
 新增 CI 在推送及 PR 中检查全部可达历史与三个模块的依赖公告，Gitleaks 下载固定版本并核对校验和。Dependabot 继续关闭，GitHub 原有秘密扫描、推送保护与私密漏洞报告入口保持开启。

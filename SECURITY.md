@@ -28,6 +28,6 @@
 
 ## 检查命令
 
-使用 Gitleaks 8.30.1 或更新版本运行 `npm run security:secrets`，并运行 `npm run security:deps`。CI 扫描可达 Git 历史，依赖检查在高危及以上失败；不创建 Dependabot PR。Gitleaks 配置仅放行三种经核对的固定离线测试假密钥，且仅在三个指定测试文件生效，不排除整个测试目录。
+使用 Gitleaks 8.30.1 或更新版本运行 `npm run security:secrets`，并运行 `npm run security:deps`。CI 扫描可达 Git 历史，依赖检查在中危及以上失败；不创建 Dependabot PR。Gitleaks 配置仅放行三种经核对的固定离线测试假密钥，且仅在三个指定测试文件生效，不排除整个测试目录。
 
-2026-10-15 的审查范围和残留构建依赖风险见 [审查记录](docs/security-review-2026-10-15.md)。扫描无命中不等于证明不存在漏洞。
+2026-10-15 的审查范围及后续构建依赖修补见 [审查记录](docs/security-review-2026-10-15.md)。扫描无命中不等于证明不存在漏洞。
