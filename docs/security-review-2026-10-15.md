@@ -42,6 +42,7 @@ Gitleaks 8.30.1 扫描当前目录和全部可达 Git 历史。原始 7 个历�
 
 - `npm run check`：启动器、私有文件边界、桌面 URL 策略、后端测试、TypeScript/Vite 构建及 15 个离线 Agent 场景通过。
 - 新增两个依赖安全回归场景单独通过。
+- 修正既有并发回归对请求到达顺序的假设，仍要求两次并发调用只创建一个任务、复用相同任务 ID 且只扣一次额度。
 - `npm run build:site`：展示页预渲染与独立应用入口构建通过。
 - `CSC_IDENTITY_AUTO_DISCOVERY=false npm run desktop:pack`：本机 ARM64 应用目录打包通过；没有发布安装包或声称通过 Apple 公证。
 - `npm run security:secrets`：当前可达历史未发现未解释的秘密；`npm run security:deps`：在高危及以上失败，中危构建链明确保留在输出中。

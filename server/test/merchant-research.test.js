@@ -145,12 +145,17 @@ test('confirmed research follow-up creates one server-defined paused-monitor act
       request('/api/agent/merchant-research/follow-up-monitor', 'POST', { conversationId }),
       request('/api/agent/merchant-research/follow-up-monitor', 'POST', { conversationId })
     ]);
-    const first = simultaneous[0];
+    // 并发请求的到达顺序不保证与 Promise.all 的输入顺序一致。
+    // 不论谁先到达，都必须只创建一个任务，另一个复用该任务。
+    assert.deepEqual(simultaneous.map(result => result.status), [202, 202]);
+    const created = simultaneous.filter(result => result.data.idempotent !== true);
+    const reused = simultaneous.filter(result => result.data.idempotent === true);
+    assert.equal(created.length, 1);
+    assert.equal(reused.length, 1);
+    const first = created[0];
     assert.equal(first.status, 202);
     assert.equal(first.data.status, 'queued');
-    assert.equal(simultaneous[1].status, 202);
-    assert.equal(simultaneous[1].data.idempotent, true);
-    assert.equal(simultaneous[1].data.run_id, first.data.run_id);
+    assert.equal(reused[0].data.run_id, first.data.run_id);
     const queued = await agentQueue.loadRun(first.data.run_id);
     assert.equal(queued.context.agent, 'merchant_followup_monitor');
     assert.equal(queued.context.confirmedAction.tool, 'create_watchlist');
