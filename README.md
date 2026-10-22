@@ -27,12 +27,12 @@ Vantage 是以 Electron Desktop 为主要入口的市场情报工作台。用户
 
 ## 桌面应用
 
-Electron Desktop 是默认开发入口，打开统一 Vantage 工作台。客户端不包含数据库或 API Key；使用 `npm run dev` 连接本地前后端。历史安装包连接的公共服务已于 2026 年 10 月 15 日下线，自托管请按下方快速开始配置。外部来源在系统浏览器打开，窗口禁用 Node.js 集成、WebView 和网页权限。
+Electron Desktop 是默认开发入口，打开统一 Vantage 工作台。客户端不包含数据库或 API Key；使用 `npm run dev` 连接本地前后端，独立客户端连接公共工作台。外部来源在系统浏览器打开，窗口禁用 Node.js 集成、WebView 和网页权限。
 
 ```bash
 npm run setup             # 安装 API、界面与 Electron 依赖
 npm run dev               # 本地 API + 前端就绪后自动启动 Electron
-npm run desktop:start     # 历史默认地址已下线 开发时需指定本机地址
+npm run desktop:start     # 独立客户端 默认连接公共工作台
 npm run desktop:dist      # 在 macOS 生成 DMG 安装包
 ```
 
@@ -40,13 +40,13 @@ npm run desktop:dist      # 在 macOS 生成 DMG 安装包
 
 ## 服务状态
 
-公共站点 `vantage.limnov.com` 已于 **2026-10-15** 下线。展示页、工作台、Demo 与 API 均返回 HTTP 410；原测试账号不再提供公网访问。项目继续以 [MIT License](./LICENSE) 提供源码，可在本机运行或自行部署。
+公共站点 [vantage.limnov.com](https://vantage.limnov.com) 于 **2026-10-22** 恢复上线，提供展示页、工作台与只读 Demo。站点曾于 2026-10-15 下线；恢复时保留原有数据和静态页面，并更新服务端安全修复。项目以 [MIT License](./LICENSE) 提供源码，可在本机运行或自行部署。
 
-原服务已停止并禁用开机自启，业务数据库保留在私有备份中，不随源码发布。[历史部署与下线说明 →](./deploy/pi/README.md) · [本次安全审查 →](./docs/security-review-2026-10-15.md)
+正式环境采用树莓派常驻 Node.js、SQLite、Caddy 与 Cloudflare Tunnel，服务由 systemd 管理。数据库、备份和供应商凭据不随源码发布。[部署说明 →](./deploy/pi/README.md) · [历史安全审查 →](./docs/security-review-2026-10-15.md)
 
 真实案例评分记录了同一道美国手机配件任务中 Vantage 与 Google 搜索加逐页核验的观察值，并明确标出未测的监控信噪比；这是单例故障定位对照，不是总体产品排名。[评分口径与原始来源 →](./docs/real-case-scorecard.md)
 
-自托管初始化后的演示账号为 `demo` / `demo`。账号只读，使用独立演示组织，不提供 API Key，不执行真实模型、搜索或通知，也不能访问正式组织的数据。它不是已下线公共服务的可用登录方式。
+公共站点及自托管初始化后的演示账号为 `demo` / `demo`。账号只读，使用独立演示组织，不提供 API Key，不执行真实模型、搜索或通知，也不能访问正式组织的数据。
 
 ### 受限外部测试账号
 
