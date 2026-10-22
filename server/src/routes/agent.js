@@ -10,6 +10,7 @@ const { randomUUID } = require('node:crypto');
 const {
   createRun,
   listRuns,
+  archiveConversations,
   getRun,
   updateRun,
   appendStep,
@@ -80,12 +81,23 @@ router.get('/runs', asyncHandler(async (req, res) => {
     : null;
   return res.json(await listRuns({
     orgId,
+    userId: req.user.id,
     status,
     agent,
     conversation,
     limit: req.query.limit,
     offset: req.query.offset
   }));
+}));
+
+// Removing history is personal to the authenticated user and current workspace.
+router.delete(['/conversations', '/conversations/:id'], requireOrgRole('owner', 'admin', 'member'), asyncHandler(async (req, res) => {
+  if (!req.currentOrgId) return res.status(400).json({ error: 'organization context required' });
+  const conversationId = req.params.id || null;
+  if (conversationId && !/^[a-zA-Z0-9_-]{1,64}$/.test(conversationId)) {
+    return res.status(400).json({ error: 'invalid_conversation_id' });
+  }
+  return res.json(archiveConversations({ orgId: req.currentOrgId, userId: req.user.id, conversationId }));
 }));
 
 router.post('/runs', requireOrgRole('owner', 'admin', 'member'), asyncHandler(async (req, res) => {

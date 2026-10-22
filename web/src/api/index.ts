@@ -36,6 +36,8 @@ export const reportsApi = {
 
 // --- Agent 工作台 ---
 export const agentApi = {
+  removeConversation: (id?: string) =>
+    api.delete(id ? `/agent/conversations/${encodeURIComponent(id)}` : '/agent/conversations').then(r => r.data),
   list: (params?: { status?: string; agent?: string; conversation?: string; limit?: number; offset?: number }) =>
     api.get('/agent/runs', { params }).then((r) => r.data),
   start: (data: { goal: string; watchlistId?: number; agent?: string; conversationId?: string }) =>

@@ -2,7 +2,8 @@
  * Agent run persistence.
  */
 
-const { pool, query, queryOne } = require("../db");
+const { pool, query, queryOne, sqlite } = require("../db");
+const { ApiError } = require('../middleware/errorHandler');
 const { randomUUID } = require("node:crypto");
 
 function jsonText(value) {
@@ -102,6 +103,10 @@ async function createRun({ id, orgId, userId, goal, metadata = {} }) {
      VALUES (?, ?, ?, ?, 'queued', 'received', 0, ?)`,
     [id, orgId, userId, goal, jsonText(metadata)],
   );
+  if (metadata.conversation_id) {
+    await query('DELETE FROM agent_conversation_archives WHERE org_id=? AND user_id=? AND conversation_id=?',
+      [orgId, userId, metadata.conversation_id]);
+  }
   return id;
 }
 
@@ -182,6 +187,7 @@ async function updateRun(id, patch = {}) {
 
 async function listRuns({
   orgId,
+  userId = null,
   status = null,
   agent = null,
   conversation = null,
@@ -192,6 +198,12 @@ async function listRuns({
   const normalizedOffset = Math.max(0, Number(offset) || 0);
   const where = ["org_id = ?"];
   const params = [orgId];
+  if (userId) {
+    where.push(`NOT EXISTS (SELECT 1 FROM agent_conversation_archives h
+      WHERE h.org_id = agent_runs.org_id AND h.user_id = ?
+        AND h.conversation_id = COALESCE(NULLIF(json_extract(agent_runs.metadata, '$.conversation_id'), ''), agent_runs.id))`);
+    params.push(userId);
+  }
   if (status) {
     where.push("status = ?");
     params.push(status);
@@ -201,7 +213,7 @@ async function listRuns({
     params.push(agent);
   }
   if (conversation) {
-    where.push("json_extract(metadata, '$.conversation_id') = ?");
+    where.push("COALESCE(NULLIF(json_extract(metadata, '$.conversation_id'), ''), id) = ?");
     params.push(conversation);
   }
   const whereSql = where.join(" AND ");
@@ -224,6 +236,31 @@ async function listRuns({
     limit: normalizedLimit,
     offset: normalizedOffset,
   };
+}
+
+function archiveConversations({ orgId, userId, conversationId = null }) {
+  // No await inside the transaction: queue transitions cannot interleave the check.
+  sqlite.exec('BEGIN IMMEDIATE');
+  try {
+    const rows = sqlite.prepare(`SELECT status,
+      COALESCE(NULLIF(json_extract(metadata, '$.conversation_id'), ''), id) AS conversation_id
+      FROM agent_runs WHERE org_id = ?`).all(orgId)
+      .filter(row => !conversationId || row.conversation_id === conversationId);
+    if (conversationId && !rows.length) throw new ApiError('未找到此会话', 404, 'conversation_not_found');
+    const busy = new Set(rows.filter(row => ['queued', 'running'].includes(row.status)).map(row => row.conversation_id));
+    if (conversationId && busy.size) throw new ApiError('请等待任务结束后再删除会话', 409, 'conversation_running');
+    const insert = sqlite.prepare(`INSERT OR IGNORE INTO agent_conversation_archives
+      (org_id,user_id,conversation_id) VALUES (?,?,?)`);
+    const removed = [];
+    for (const id of new Set(rows.map(row => row.conversation_id))) {
+      if (!busy.has(id) && insert.run(orgId, userId, id).changes) removed.push(id);
+    }
+    sqlite.exec('COMMIT');
+    return { deleted: removed.length, conversation_ids: removed, skipped: busy.size };
+  } catch (error) {
+    sqlite.exec('ROLLBACK');
+    throw error;
+  }
 }
 
 async function getRun(id) {
@@ -666,6 +703,7 @@ module.exports = {
   appendStep,
   updateRun,
   listRuns,
+  archiveConversations,
   getRun,
   isCancelled,
   saveAgentReport,

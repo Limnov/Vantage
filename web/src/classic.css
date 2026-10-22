@@ -1033,6 +1033,20 @@ body.uni-resizing * {
   text-align: left;
   font-size: 13px;
 }
+.uni-history-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.uni-history-row .history-item {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+.uni-history-delete.ant-btn {
+  flex-shrink: 0;
+  color: var(--v-text-3);
+}
 .uni-list .history-item:hover {
   background: var(--v-surface-3);
   color: var(--v-text);

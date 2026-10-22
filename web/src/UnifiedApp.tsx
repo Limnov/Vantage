@@ -1,4 +1,4 @@
-import { Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typography, Avatar, Badge, Spin } from 'antd';
+import { Menu, theme, Tooltip, Space, Button, Input, Dropdown, Tag, Empty, Typography, Avatar, Badge, Spin, Modal, message } from 'antd';
 const { Text } = Typography;
 import {
   DashboardOutlined, EyeOutlined, FileTextOutlined, WarningOutlined, SettingOutlined,
@@ -6,7 +6,7 @@ import {
   RiseOutlined, FallOutlined, ArrowRightOutlined, TeamOutlined, RobotOutlined, AimOutlined,
   LogoutOutlined, UserOutlined,
   QuestionCircleOutlined, InfoCircleOutlined, BellOutlined, CheckOutlined, ApiOutlined,
-  FileSearchOutlined, PlusOutlined, MessageOutlined
+  FileSearchOutlined, PlusOutlined, MessageOutlined, DeleteOutlined
 } from '@ant-design/icons';
 import { Routes, Route, Link, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { lazy, Suspense, useEffect, useState, useCallback, useRef } from 'react';
@@ -130,6 +130,29 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
     : null;
 
   const showList = inAgent;
+  const canRemoveHistory = !user?.is_demo && (user?.is_system_admin
+    || ['owner', 'admin', 'member'].includes(currentOrg?.my_role || currentOrg?.role || ''));
+
+  const removeHistory = (run?: Run) => {
+    Modal.confirm({
+      title: run ? '删除此会话' : '清空历史对话',
+      content: run ? '从你的会话列表中移除此对话，报告和监控将保留。' : '清理当前工作区的历史对话，报告和监控将保留，正在运行的任务会跳过。',
+      okText: run ? '删除' : '清空',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const result = await agentApi.removeConversation(run ? threadOf(run) : undefined);
+          if (activeThread && result.conversation_ids.includes(activeThread)) navigate('/app', { replace: true });
+          setHistoryRevision(value => value + 1);
+          message.success(result.skipped ? `已清理 ${result.deleted} 个会话，${result.skipped} 个任务仍在运行` : '会话已清理');
+        } catch (error: any) {
+          message.error(error?.response?.data?.message || '清理失败，请稍后重试');
+          throw error;
+        }
+      }
+    });
+  };
 
   const loadThreads = useCallback(async (append = false) => {
     setThreadsLoading(true);
@@ -483,6 +506,13 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
           <aside className="uni-list" style={{ width: listWidth }} aria-label="对话">
             <div className="uni-list-header">
               <span className="uni-list-title">对话</span>
+              <Space size={4}>
+              {canRemoveHistory && (
+                <Tooltip title="清空历史对话">
+                  <Button type="text" size="small" aria-label="清空历史对话" icon={<DeleteOutlined />}
+                    disabled={!threads.length} onClick={() => removeHistory()} />
+                </Tooltip>
+              )}
               <Tooltip title="新建会话">
                 <Button
                   type="primary"
@@ -493,6 +523,7 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
                   disabled={user?.is_demo}
                 />
               </Tooltip>
+              </Space>
             </div>
             <div className="uni-list-body">
               {threadsLoading && !threads.length && (
@@ -509,15 +540,23 @@ export default function UnifiedApp({ themeMode, onToggleTheme }: Props) {
                 <div key={g.label}>
                   <div className="uni-day-label">{g.label}</div>
                   {g.items.map(r => (
+                    <div className="uni-history-row" key={threadOf(r)}>
                     <button
                       className={`history-item ${activeThread === threadOf(r) ? 'selected' : ''}`}
-                      key={threadOf(r)}
                       onClick={() => navigate(`/app/t/${threadOf(r)}`)}
                     >
                       <MessageOutlined />
                       <span>{r.goal}</span>
                       <i className={`status-dot ${r.status}`} title={r.status} />
                     </button>
+                    {canRemoveHistory && (
+                      <Tooltip title={['queued', 'running'].includes(r.status) ? '任务结束后可删除' : '删除会话'}>
+                        <Button type="text" size="small" className="uni-history-delete" icon={<DeleteOutlined />}
+                          aria-label={`删除会话 ${r.goal}`} disabled={['queued', 'running'].includes(r.status)}
+                          onClick={() => removeHistory(r)} />
+                      </Tooltip>
+                    )}
+                    </div>
                   ))}
                 </div>
               ))}

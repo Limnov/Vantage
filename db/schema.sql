@@ -199,6 +199,17 @@ CREATE INDEX IF NOT EXISTS idx_agent_runs_org_created ON agent_runs(org_id, crea
 CREATE INDEX IF NOT EXISTS idx_agent_runs_status ON agent_runs(status);
 CREATE INDEX IF NOT EXISTS idx_agent_runs_report ON agent_runs(report_id);
 
+-- Personal conversation-list removal; reports and execution records remain intact.
+CREATE TABLE IF NOT EXISTS agent_conversation_archives (
+  org_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  conversation_id TEXT NOT NULL,
+  archived_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (org_id, user_id, conversation_id),
+  FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- 持久任务队列。Agent run 与调度状态分开保存，便于多实例原子领取和租约恢复。
 CREATE TABLE IF NOT EXISTS agent_jobs (
   run_id TEXT PRIMARY KEY,

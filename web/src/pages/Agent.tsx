@@ -315,7 +315,12 @@ export default function Agent({
   }, []);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      setTurns([]);
+      setError('');
+      setLoading(false);
+      return;
+    }
     let stale = false;
     let timer: ReturnType<typeof setTimeout>;
     setLoading(true);
