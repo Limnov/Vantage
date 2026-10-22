@@ -7,6 +7,7 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { getActiveProvider: getConfiguredActiveProvider } = require('./providerConfig');
+const { providerRequestBody } = require('../agent/llm');
 
 /**
  * 获取当前生效的 AI Provider 配置
@@ -61,9 +62,8 @@ ${contextText}
 }`;
 
   try {
-    const requestBody = {
-      model: provider.model,
-      max_tokens: 800,
+    const requestBody = providerRequestBody(provider, {
+      maxTokens: 800,
       temperature: 0.3,
       messages: [
         {
@@ -71,9 +71,8 @@ ${contextText}
           content: '你是一个专业跨境市场情报分析师，擅长从多源信息中提炼关键洞察。始终用 JSON 格式回答。'
         },
         { role: 'user', content: prompt }
-      ],
-      ...provider.extraBody
-    };
+      ]
+    });
 
     const response = await axios.post(
       `${provider.baseUrl}/chat/completions`,

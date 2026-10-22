@@ -19,8 +19,8 @@ if (process.env.BAILIAN_API_KEY && process.env.BAILIAN_API_KEY !== 'sk-your-bail
 if (process.env.MINIMAX_API_KEY && process.env.MINIMAX_API_KEY !== 'your_key_here') {
   aiManager.register('minimax', new MiniMaxProvider(
     process.env.MINIMAX_API_KEY,
-    process.env.MINIMAX_BASE_URL || 'https://api.minimax.chat/v1',
-    process.env.MINIMAX_MODEL || 'abab6.5s-chat'
+    process.env.MINIMAX_BASE_URL || 'https://api.minimax.cn/v1',
+    process.env.MINIMAX_MODEL || 'MiniMax-M3.1-Flash'
   ), true);
 }
 

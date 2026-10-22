@@ -139,6 +139,12 @@ function providerRequestBody(provider, { messages, tools, maxTokens, temperature
   if (reasoning && /^https?:\/\/(?:[^/]+\.)?openrouter\.ai\//i.test(`${provider.baseUrl}/`)) {
     body.reasoning = reasoning;
   }
+  if (/^MiniMax-M3\.1-Flash(?:$|-)/i.test(provider.model)
+    && /^https:\/\/api\.(?:minimax\.cn|minimaxi\.com)\/v1\/?$/i.test(provider.baseUrl)) {
+    // Thinking cannot be disabled; its tokens share the output budget.
+    body.reasoning_effort = 'low';
+    body.max_tokens = Math.max(maxTokens || 0, 8192);
+  }
   if (/^qwen3\.7-plus(?:$|-)/i.test(provider.model)
     && /^https:\/\/[^/]*\.aliyuncs\.com\/compatible-mode\/v1\/?$/i.test(provider.baseUrl)) {
     // DashScope defaults to thinking mode; tool decisions and JSON output need
@@ -288,6 +294,7 @@ async function chatWithTools({ messages, tools, maxTokens = 1400, temperature = 
 
 module.exports = {
   AIProviderError,
+  providerRequestBody,
   chatWithTools,
   redactMessage,
   canFailover,

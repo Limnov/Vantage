@@ -885,7 +885,8 @@ async function runAgent({
           formatRepairPending = true;
           workflow.phase = PHASES.REPORTING;
           workflow.stepCount = stepNo;
-          messages.push({ role: 'assistant', content: finalText || 'invalid final response' });
+          messages.push({ role: 'assistant', content: finalText || 'invalid final response',
+            ...(typeof message.reasoning_content === 'string' ? { reasoning_content: message.reasoning_content } : {}) });
           messages.push({ role: 'user', content: buildFinalRepairPrompt(evidenceMap) });
           await store.updateRun(runId, {
             phase: PHASES.REPORTING,
@@ -1021,6 +1022,8 @@ async function runAgent({
       messages.push({
         role: 'assistant',
         content: runnerForcedExtraction ? null : message.content || null,
+        ...(!runnerForcedExtraction && typeof message.reasoning_content === 'string'
+          ? { reasoning_content: message.reasoning_content } : {}),
         tool_calls: toolCalls
       });
 

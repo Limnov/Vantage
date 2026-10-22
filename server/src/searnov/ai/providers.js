@@ -4,6 +4,7 @@
  */
 
 const axios = require('axios');
+const { providerRequestBody } = require('../../agent/llm');
 
 class AIProvider {
   constructor(name) { this.name = name; }
@@ -13,44 +14,44 @@ class AIProvider {
 }
 
 class MiniMaxProvider extends AIProvider {
-  constructor(apiKey, baseUrl = 'https://api.minimax.chat/v1', model = 'abab6.5s-chat') {
+  constructor(apiKey, baseUrl = 'https://api.minimax.cn/v1', model = 'MiniMax-M3.1-Flash') {
     super('MiniMax');
     this.apiKey = apiKey;
-    this.baseUrl = baseUrl;
+    this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.model = model;
   }
 
   async summarize(content, options = {}) {
     const { maxTokens = 500, temperature = 0.7 } = options;
     const prompt = `请为以下内容生成一段简洁的中文摘要（100字以内）：\n\n${content.substring(0, 3000)}`;
-    const response = await axios.post(`${this.baseUrl}/chat/completions`, {
-      model: this.model, max_tokens: maxTokens, temperature,
+    const response = await axios.post(`${this.baseUrl}/chat/completions`, providerRequestBody(this, {
+      maxTokens, temperature,
       messages: [
         { role: 'system', content: '你是一个专业的摘要生成助手。请用简洁的中文总结内容。' },
         { role: 'user', content: prompt }
       ]
-    }, { headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }, timeout: 30000 });
+    }), { headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }, timeout: 30000 });
     return response.data.choices?.[0]?.message?.content || '';
   }
 
   async extract(content, query, options = {}) {
     const { maxTokens = 800, temperature = 0.3 } = options;
     const prompt = `你是一个信息提取助手。用户查询是："${query}"\n\n请从以下内容中提取与查询最相关的信息：\n\n${content.substring(0, 4000)}\n\n请以 JSON 格式返回：\n{\n  "summary": "2-3句话总结",\n  "answer": "直接回答用户问题的内容",\n  "keyPoints": ["要点1", "要点2", "要点3"]\n}`;
-    const response = await axios.post(`${this.baseUrl}/chat/completions`, {
-      model: this.model, max_tokens: maxTokens, temperature,
-      response_format: { type: 'json_object' },
+    const response = await axios.post(`${this.baseUrl}/chat/completions`, providerRequestBody(this, {
+      maxTokens, temperature,
+      responseFormat: { type: 'json_object' },
       messages: [
         { role: 'system', content: '你是一个专业信息提取助手。根据用户查询从内容中提取最相关的信息，以JSON格式回答。' },
         { role: 'user', content: prompt }
       ]
-    }, { headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }, timeout: 30000 });
+    }), { headers: { 'Authorization': `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }, timeout: 30000 });
     const text = response.data.choices?.[0]?.message?.content || '';
     try { const jsonMatch = text.match(/\{[\s\S]*\}/); if (jsonMatch) return JSON.parse(jsonMatch[0]); } catch {}
     return { summary: text, answer: text, keyPoints: [] };
   }
 
   async healthCheck() {
-    try { await axios.get('https://api.minimax.chat/v1/models', { headers: { 'Authorization': `Bearer ${this.apiKey}` }, timeout: 5000 }); return true; } catch { return false; }
+    try { await axios.get(`${this.baseUrl}/models`, { headers: { 'Authorization': `Bearer ${this.apiKey}` }, timeout: 5000 }); return true; } catch { return false; }
   }
 }
 

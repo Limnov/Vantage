@@ -60,8 +60,8 @@ const PROVIDER_META = Object.freeze({
     label: 'MiniMax',
     priority: 3,
     type: 'openai-compatible',
-    defaultBaseUrl: 'https://api.minimax.chat/v1',
-    defaultModels: { text: 'abab6.5s-chat', fast: 'abab6.5s-chat' },
+    defaultBaseUrl: 'https://api.minimax.cn/v1',
+    defaultModels: { text: 'MiniMax-M3.1-Flash', fast: 'MiniMax-M3.1-Flash' },
     envVars: ['MINIMAX_API_KEY', 'MINIMAX_BASE_URL', 'MINIMAX_MODEL'],
     envMap: { apiKey: 'MINIMAX_API_KEY', baseUrl: 'MINIMAX_BASE_URL', model: 'MINIMAX_MODEL' }
   }

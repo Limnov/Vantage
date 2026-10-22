@@ -94,8 +94,8 @@ module.exports = {
     },
     minimax: {
       apiKey: process.env.MINIMAX_API_KEY || '',
-      baseUrl: process.env.MINIMAX_BASE_URL || 'https://api.minimax.chat/v1',
-      model: process.env.MINIMAX_MODEL || 'abab6.5s-chat'
+      baseUrl: process.env.MINIMAX_BASE_URL || 'https://api.minimax.cn/v1',
+      model: process.env.MINIMAX_MODEL || 'MiniMax-M3.1-Flash'
     },
     deepseek: {
       apiKey: process.env.DEEPSEEK_API_KEY || '',
