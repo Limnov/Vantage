@@ -136,7 +136,11 @@ router.put('/:id', requireAuth, asyncHandler(async (req, res) => {
   if (!canMutateWatchlist(req, item)) {
     return res.status(403).json({ error: 'forbidden' });
   }
-  assertTrialSchedulingAllowed(req.user, req.body?.enabled === true || req.body?.enabled === 1);
+  const enabled = req.body?.enabled;
+  if (enabled !== undefined && ![true, false, 0, 1].includes(enabled)) {
+    return res.status(400).json({ error: 'invalid_arguments', message: 'enabled must be a boolean or 0/1' });
+  }
+  assertTrialSchedulingAllowed(req.user, enabled === true || enabled === 1);
 
   const allowed = ['name', 'type', 'search_mode', 'query', 'category', 'tags', 'region', 'language', 'priority', 'schedule', 'alert_threshold', 'meta', 'enabled'];
   const sets = [];
@@ -144,7 +148,7 @@ router.put('/:id', requireAuth, asyncHandler(async (req, res) => {
   for (const k of allowed) {
     if (req.body[k] !== undefined) {
       sets.push(`${k} = ?`);
-      params.push(['alert_threshold', 'meta'].includes(k) ? JSON.stringify(req.body[k]) : req.body[k]);
+      params.push(k === 'enabled' ? Number(enabled) : ['alert_threshold', 'meta'].includes(k) ? JSON.stringify(req.body[k]) : req.body[k]);
     }
   }
   if (sets.length === 0) return res.json({ updated: 0 });

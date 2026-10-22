@@ -69,7 +69,8 @@ async function extractPage(url, options = {}) {
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
       },
       maxRedirects: safeMode ? 0 : 3,
-      ...(safeTarget ? { lookup: safeTarget.lookup } : {}),
+      // An environment proxy would resolve the hostname again, bypassing pinning.
+      ...(safeTarget ? { lookup: safeTarget.lookup, proxy: false } : {}),
       maxContentLength: 5 * 1024 * 1024,
       validateStatus: (status) => status >= 200 && status < 400
     });

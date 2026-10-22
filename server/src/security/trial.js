@@ -47,7 +47,8 @@ function trialAccess(method, originalUrl, requestedOrgId, policy) {
   if (requestedOrgId && Number(requestedOrgId) !== policy.org_id) {
     return { status: 403, error: 'trial_forbidden', message: '测试账号只能访问指定工作区' };
   }
-  const path = String(originalUrl || '').split('?')[0];
+  // Express routes ignore case and trailing slashes; policy checks must agree.
+  const path = String(originalUrl || '').split('?')[0].toLowerCase().replace(/\/+$/, '') || '/';
   const upper = String(method || 'GET').toUpperCase();
   if (path.startsWith('/mcp') && !policy.allow_mcp) {
     return { status: 403, error: 'trial_forbidden', message: '测试账号未开放 MCP' };

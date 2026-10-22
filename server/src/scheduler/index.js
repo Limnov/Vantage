@@ -19,6 +19,16 @@ let reviewTask = null;
 let isReviewing = false;
 const manualRuns = new Map();  // watchlistId -> Promise
 
+// Enforce trial policy again at execution, including old or directly edited rows.
+const SCHEDULED_WATCHLISTS = `SELECT * FROM watchlist
+  WHERE enabled = 1 AND org_id NOT IN (SELECT org_id FROM demo_accounts)
+  AND NOT EXISTS (
+    SELECT 1 FROM trial_accounts t JOIN users u ON u.id = t.user_id
+    WHERE t.org_id = watchlist.org_id
+      AND (t.allow_scheduled = 0 OR datetime(t.expires_at) IS NULL
+        OR datetime(t.expires_at) <= datetime('now') OR u.is_active = 0)
+  )`;
+
 /**
  * 初始化调度
  */
@@ -54,7 +64,7 @@ async function tick() {
   }
   isRunning = true;
   try {
-    const candidates = await query('SELECT * FROM watchlist WHERE enabled = 1 AND org_id NOT IN (SELECT org_id FROM demo_accounts)');
+    const candidates = await query(SCHEDULED_WATCHLISTS);
     const now = new Date();
     const items = candidates.filter(item => isWatchlistDue(item, now));
 
@@ -94,7 +104,7 @@ async function runNow(watchlistId) {
  * 手动触发全部
  */
 async function runAll() {
-  const items = await query('SELECT id FROM watchlist WHERE enabled = 1 AND org_id NOT IN (SELECT org_id FROM demo_accounts)');
+  const items = await query(SCHEDULED_WATCHLISTS);
   const results = [];
   for (const item of items) {
     results.push(await runWatchlist(item.id, { silent: true }));

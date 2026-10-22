@@ -79,6 +79,16 @@ test('trial account uses real feature paths within tenant, expiry and quota boun
       ['/mcp', 'POST', {}]
     ]) assert.equal((await request(url, method, body)).status, 403, url);
 
+    for (const url of ['/api/auth/change-password/', '/API/AUTH/CHANGE-PASSWORD/']) {
+      assert.equal((await request(url, 'POST', {
+        oldPassword: 'Trial-account-password-1!', newPassword: 'Changed-password-2!'
+      })).status, 403, url);
+    }
+    assert.equal(await bcrypt.compare('Trial-account-password-1!', sqlite.prepare('SELECT password_hash FROM users WHERE id=?').get(userId).password_hash), true);
+    for (const url of ['/MCP', '/McP/', '/API/VANTAGE/ai/status', '/API/VANTAGE/ai/status/']) {
+      assert.equal((await request(url, url.toLowerCase().startsWith('/mcp') ? 'POST' : 'GET', url.toLowerCase().startsWith('/mcp') ? {} : undefined)).status, 403, url);
+    }
+
     for (let index = 1; index <= 3; index++) {
       const created = await request('/api/watchlist', 'POST', {
         name: `Trial monitor ${index}`,
@@ -94,6 +104,12 @@ test('trial account uses real feature paths within tenant, expiry and quota boun
     assert.equal(monitors.length, 3);
     assert.ok(monitors.every(item => item.enabled === 0));
     assert.equal((await request(`/api/watchlist/${monitors[0].id}`, 'PUT', { enabled: true })).status, 403);
+    assert.equal((await request(`/api/watchlist/${monitors[0].id}`, 'PUT', { enabled: 1 })).status, 403);
+    for (const enabled of ['1', 'true', '0', null, [], {}, 2]) {
+      assert.equal((await request(`/api/watchlist/${monitors[0].id}`, 'PUT', { enabled })).status, 400);
+    }
+    assert.equal(sqlite.prepare('SELECT enabled FROM watchlist WHERE id=?').get(monitors[0].id).enabled, 0);
+    assert.equal((await request(`/api/watchlist/${monitors[0].id}`, 'PUT', { enabled: false })).status, 200);
 
     for (let index = 0; index < 10; index++) {
       const run = await request('/api/agent/runs', 'POST', { goal: `Review market signal ${index}` });
